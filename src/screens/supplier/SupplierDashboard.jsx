@@ -20,9 +20,17 @@ export default function SupplierDashboard({ navigation }) {
   const clients = useAsyncData(fetchSupplierClients, [])
   const myProjects = useAsyncData(() => fetchSupplierMyProjects().catch(() => []), [])
   const onRefresh = useCallback(async () => {
-    setRefreshing(true)
-    await Promise.all([products.reload(), requests.reload(), clients.reload(), myProjects.reload()])    setRefreshing(false)
-  }, [products, requests, clients])
+  setRefreshing(true);
+
+  await Promise.all([
+    products.reload(),
+    requests.reload(),
+    clients.reload(),
+    myProjects.reload(),
+  ]);
+
+  setRefreshing(false);
+}, [products, requests, clients, myProjects]);
 
   async function respond(id, action) {
     try {

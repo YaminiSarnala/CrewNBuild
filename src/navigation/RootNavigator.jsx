@@ -75,7 +75,7 @@ export default function RootNavigator() {
         {!signedIn ? (
           <>
             {/* Landing is the first screen an unauthenticated user sees. */}
-            <Stack.Screen name="Landing" component={LandingScreen} />
+            {/* <Stack.Screen name="Landing" component={LandingScreen} /> */}
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
                         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

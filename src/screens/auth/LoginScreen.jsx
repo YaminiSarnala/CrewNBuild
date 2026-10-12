@@ -78,7 +78,7 @@ export default function LoginScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Pressable
+          {/* <Pressable
             onPress={() => navigation.navigate('Landing')}
             accessibilityRole="button"
             className="ml-4 mt-2 flex-row items-center self-start rounded-full bg-white/10 px-3.5 py-2"
@@ -88,7 +88,7 @@ export default function LoginScreen({ navigation }) {
             <Text className="font-sansSemi text-white" style={{ fontSize: 12.5 }}>
               {t('shared.backHome')}
             </Text>
-          </Pressable>
+          </Pressable> */}
 
           <View className="px-6 pt-10">
             <Image

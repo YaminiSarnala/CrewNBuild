@@ -85,7 +85,7 @@ export default function SignupScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Pressable
+          {/* <Pressable
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
             className="ml-4 mt-2 flex-row items-center self-start rounded-full bg-white/10 px-3.5 py-2"
@@ -95,7 +95,7 @@ export default function SignupScreen({ navigation }) {
             <Text className="font-sansSemi text-white" style={{ fontSize: 12.5 }}>
               {t('shared.backHome')}
             </Text>
-          </Pressable>
+          </Pressable> */}
 
           <View className="px-6 pt-8">
             <Text className="font-display text-white" style={{ fontSize: 26, letterSpacing: -0.9 }}>

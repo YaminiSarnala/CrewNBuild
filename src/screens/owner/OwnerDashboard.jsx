@@ -47,15 +47,30 @@ export default function OwnerDashboard({ navigation }) {
   const [refreshing, setRefreshing] = useState(false)
 
   const projects = useAsyncData(fetchOwnerProjects, [])
-  const contractors = useAsyncData(() => fetchNearbyContractors(user?.pincode), [user?.pincode])
-  const suppliers = useAsyncData(() => fetchNearbySuppliers(user?.pincode), [user?.pincode])
+  const contractors = useAsyncData(
+    () => fetchNearbyContractors(user?.pincode),
+    [user?.pincode]
+  )
+  const suppliers = useAsyncData(
+    () => fetchNearbySuppliers(user?.pincode),
+    [user?.pincode]
+  )
   const requests = useAsyncData(fetchIncomingRequests, [])
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true)
-    await Promise.all([projects.reload(), contractors.reload(), suppliers.reload(), requests.reload()])
+  setRefreshing(true)
+
+  try {
+    await Promise.all([
+      projects.reload(),
+      contractors.reload(),
+      suppliers.reload(),
+      requests.reload(),
+    ])
+  } finally {
     setRefreshing(false)
-  }, [projects, contractors, suppliers, requests])
+  }
+}, [projects, contractors, suppliers, requests])
 
   const projectList = Array.isArray(projects.data) ? projects.data : []
   const activeCount = projectList.filter((p) => Number(p.completion_percentage || 0) < 100).length
@@ -103,49 +118,89 @@ export default function OwnerDashboard({ navigation }) {
         </Panel>
 
         <Panel title="Builders near you">
-          <PanelState
-            loading={contractors.loading}
-            error={contractors.error}
-            empty={!Array.isArray(contractors.data) || contractors.data.length === 0}
-            emptyText="No builders found for your pincode yet."
+  <PanelState
+    loading={contractors.loading}
+    error={contractors.error}
+    empty={
+      !Array.isArray(contractors.data) ||
+      contractors.data.length === 0
+    }
+    emptyText="No builders found for your pincode yet."
+  >
+    {Array.isArray(contractors.data) &&
+      contractors.data.slice(0, 5).map((item, index) => (
+        <View
+          key={item?.id ?? `contractor-${index}`}
+          className="mb-3 flex-row items-center justify-between"
+        >
+          <View className="flex-1">
+            <Text
+              className="font-sansBold text-graphite"
+              style={{ fontSize: 14 }}
+            >
+              {item?.company_name || item?.name || 'Builder'}
+            </Text>
+
+            <Text
+              className="font-sans text-slate-500"
+              style={{ fontSize: 12 }}
+            >
+              {item?.pincode || '—'}
+              {' · '}
+              {item?.experience_years
+                ? `${item.experience_years} yrs`
+                : '—'}
+            </Text>
+          </View>
+
+          <Text
+            className="font-display text-brand-700"
+            style={{ fontSize: 13 }}
           >
-            {(contractors.data || []).slice(0, 5).map((item) => (
-              <View key={item.id} className="mb-3 flex-row items-center justify-between">
-                <View className="flex-1">
-                  <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
-                    {item.company_name || item.name}
-                  </Text>
-                  <Text className="font-sans text-slate-500" style={{ fontSize: 12 }}>
-                    {item.pincode} · {item.experience_years ? `${item.experience_years} yrs` : '—'}
-                  </Text>
-                </View>
-                <Text className="font-display text-brand-700" style={{ fontSize: 13 }}>
-                  ★ {Number(item.rating || 0).toFixed(1)}
-                </Text>
-              </View>
-            ))}
-          </PanelState>
-        </Panel>
+            {item?.rating != null
+              ? `★ ${Number(item.rating).toFixed(1)}`
+              : '—'}
+          </Text>
+        </View>
+      ))}
+  </PanelState>
+</Panel>
 
         <Panel title="Suppliers near you">
-          <PanelState
-            loading={suppliers.loading}
-            error={suppliers.error}
-            empty={!Array.isArray(suppliers.data) || suppliers.data.length === 0}
-            emptyText="No suppliers found for your pincode yet."
+  <PanelState
+    loading={suppliers.loading}
+    error={suppliers.error}
+    empty={
+      !Array.isArray(suppliers.data) ||
+      suppliers.data.length === 0
+    }
+    emptyText="No suppliers found for your pincode yet."
+  >
+    {Array.isArray(suppliers.data) &&
+      suppliers.data.slice(0, 5).map((item, index) => (
+        <View
+          key={item?.id ?? `supplier-${index}`}
+          className="mb-3"
+        >
+          <Text
+            className="font-sansBold text-graphite"
+            style={{ fontSize: 14 }}
           >
-            {(suppliers.data || []).slice(0, 5).map((item) => (
-              <View key={item.id} className="mb-3">
-                <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
-                  {item.store_name || item.name}
-                </Text>
-                <Text className="font-sans text-slate-500" style={{ fontSize: 12 }}>
-                  {item.categories || '—'}
-                </Text>
-              </View>
-            ))}
-          </PanelState>
-        </Panel>
+            {item?.store_name || item?.name || 'Supplier'}
+          </Text>
+
+          <Text
+            className="font-sans text-slate-500"
+            style={{ fontSize: 12 }}
+          >
+            {Array.isArray(item?.categories)
+              ? item.categories.join(', ')
+              : item?.categories || '—'}
+          </Text>
+        </View>
+      ))}
+  </PanelState>
+</Panel>
       </DashboardShell>
       <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
     </>

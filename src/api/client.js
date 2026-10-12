@@ -16,26 +16,9 @@ import Constants from 'expo-constants'
 
 export const AUTH_STORAGE_KEY = 'gharbano_auth'
 
-function resolveBaseUrl() {
-  // 1. Explicit override from .env — always wins.
-  const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL
-  if (fromEnv) return fromEnv.replace(/\/+$/, '')
+export const API_BASE_URL = 'https://crewnbuild.com'
 
-  // 2. Fall back to the IP of the machine running the Metro bundler. When you
-  //    run `npx expo start` on Windows this is your PC's LAN IP, which is very
-  //    often exactly where the FastAPI server is running too.
-  const hostUri =
-    Constants.expoConfig?.hostUri ||
-    Constants.manifest2?.extra?.expoGo?.debuggerHost ||
-    ''
-  const host = hostUri.split(':')[0]
-  if (host) return `http://${host}:8000`
-
-  // 3. Last resort. Will only work on an emulator with port forwarding.
-  return 'http://localhost:8000'
-}
-
-export const API_BASE_URL = resolveBaseUrl()
+console.log('API BASE URL:', API_BASE_URL);
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -14,7 +14,6 @@ import {
   sendBuyRequest, selectCart, selectCartCount, clearCartMessage,
 } from '../../store/cartSlice'
 import { COLORS } from '../../theme/tokens'
-import PropertyMarketSection from './PropertyMarketSection'
 
 const inr = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`
 
