@@ -40,6 +40,32 @@ export const COLORS = {
   warm: '#dc2626',
   paper: '#fcfaf3',
   white: '#ffffff',
+  // A card's own surface: white in light, navy in dark.
+  card: '#ffffff',
+}
+
+// --- dark theme -------------------------------------------------------------
+// Colours passed in code (icon tints, placeholders, image backdrops) cannot use
+// `dark:` classes, so COLORS itself switches. The values are the web's dark
+// remaps (index.css html.dark .dash-canvas): light ink, navy surfaces, pale
+// greens. ThemeProvider calls applyColorTheme before the app re-renders.
+const LIGHT_COLORS = JSON.parse(JSON.stringify(COLORS))
+const DARK_OVERRIDES = {
+  graphite: '#e2e8f0',
+  slate: { 50: '#1e293b', 100: '#1e293b', 200: '#334155', 300: '#475569', 400: '#64748b', 500: '#94a3b8', 600: '#94a3b8', 700: '#cbd5e1' },
+  brand: { 50: '#0c2317', 100: '#10301f', 200: '#16402a', 600: '#5fae85', 700: '#82c29e', 800: '#a8d8bd', 900: '#c9e9d6' },
+}
+
+export function applyColorTheme(dark) {
+  Object.assign(COLORS.brand, LIGHT_COLORS.brand)
+  Object.assign(COLORS.slate, LIGHT_COLORS.slate)
+  COLORS.graphite = LIGHT_COLORS.graphite
+  COLORS.card = LIGHT_COLORS.card
+  if (!dark) return
+  Object.assign(COLORS.brand, DARK_OVERRIDES.brand)
+  Object.assign(COLORS.slate, DARK_OVERRIDES.slate)
+  COLORS.graphite = DARK_OVERRIDES.graphite
+  COLORS.card = '#0f172a'
 }
 
 // Web: boxShadow.soft  '0 10px 40px -12px rgba(31, 41, 55, 0.12)'

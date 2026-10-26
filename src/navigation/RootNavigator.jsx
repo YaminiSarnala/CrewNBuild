@@ -1,23 +1,25 @@
 // ---------------------------------------------------------------------------
 // Port of the web src/app/router/AppRouter.jsx.
 //
-// The web app used <ProtectedRoute> with three rules, all reproduced here:
-//   1. no token       -> /login
-//   2. wrong role     -> that role's own dashboard
-//   3. profile_complete === false -> /complete-profile
+// Rules carried over from the web's <ProtectedRoute>:
+//   1. no session -> Login
+//   2. a role only ever sees its own dashboard
+// An unfinished profile no longer blocks the dashboard (same as the web): the
+// actions that need profile data open CompleteProfile themselves through
+// useProfileGate and carry on once it is saved.
 //
-// The mobile difference: because SecureStore is async, we hold on a splash
-// screen until `hydrated` is true. Without that the app would briefly show the
-// landing page to an already-logged-in user on every cold start.
+// SecureStore is async, so we hold on a splash screen until `hydrated` is
+// true; the stored session is confirmed with /auth/refresh during that time.
+// There is no landing page on mobile: signed-out users start at Login.
 // ---------------------------------------------------------------------------
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { View, ActivityIndicator } from 'react-native'
 import { Image } from 'expo-image'
-import { NavigationContainer } from '@react-navigation/native'
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native'
+import { useTheme } from '../theme/ThemeContext'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useDispatch, useSelector } from 'react-redux'
 
-import LandingScreen from '../screens/LandingScreen'
 import EstimateScreen from '../screens/EstimateScreen'
 import LoginScreen from '../screens/auth/LoginScreen'
 import SignupScreen from '../screens/auth/SignupScreen'
@@ -28,9 +30,14 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'
 import LiveCameraScreen from '../screens/engineer/LiveCameraScreen'
 import MessagesScreen from '../screens/shared/MessagesScreen'
 import BookTechnicianScreen from '../screens/shared/BookTechnicianScreen'
+import CreateProjectScreen from '../screens/owner/CreateProjectScreen'
+import OwnerProjectScreen from '../screens/owner/OwnerProjectScreen'
+import BuilderProfileScreen from '../screens/owner/BuilderProfileScreen'
+import { NotificationsProvider } from '../notifications/NotificationsContext'
 
-import { restoreSession, sessionExpired } from '../store/authSlice'
-import { onAuthExpired } from '../api/client'
+import { restoreSession, sessionExpired, setAuthenticatedUser } from '../store/authSlice'
+import { onAuthExpired, onAuthRefreshed } from '../api/client'
+import { createStyles } from '../theme/createStyles'
 
 const Stack = createNativeStackNavigator()
 
@@ -42,9 +49,10 @@ const DASHBOARD_BY_ROLE = {
   ENGINEER: { name: 'EngineerHome', component: EngineerTabs },
 }
 
+
 function SplashGate() {
   return (
-    <View className="flex-1 items-center justify-center bg-brand-800">
+    <View style={styles.view}>
       <Image source={require('../../assets/logo.png')} style={{ width: 72, height: 80 }} contentFit="contain" />
       <ActivityIndicator color="#c3dccd" style={{ marginTop: 24 }} />
     </View>
@@ -54,46 +62,64 @@ function SplashGate() {
 export default function RootNavigator() {
   const dispatch = useDispatch()
   const { user, accessToken, hydrated } = useSelector((state) => state.auth)
+  const { theme, isDark } = useTheme()
+  // Screens read COLORS while rendering, so a theme change remounts the
+  // navigator (keyed on the theme); the last navigation state is kept and
+  // restored, so the person stays on the screen they were on.
+  const navigationState = useRef(undefined)
 
-  // Read the stored session once on launch.
+  // Read and confirm the stored session once on launch.
   useEffect(() => {
     dispatch(restoreSession())
   }, [dispatch])
 
-  // Replaces the web's window 'gharbano_auth_expired' event listener.
+  // Replace the web's 'gharbano_auth_expired' / 'gharbano_auth_refreshed' events.
   useEffect(() => onAuthExpired(() => dispatch(sessionExpired())), [dispatch])
+  useEffect(() => onAuthRefreshed((session) => dispatch(setAuthenticatedUser(session))), [dispatch])
 
   if (!hydrated) return <SplashGate />
 
   const signedIn = Boolean(accessToken && user)
-  const needsProfile = signedIn && user?.profile_complete === false
   const dashboard = DASHBOARD_BY_ROLE[user?.role] || DASHBOARD_BY_ROLE.OWNER
 
   return (
-    <NavigationContainer>
+    <NotificationsProvider signedIn={signedIn}>
+    <NavigationContainer
+      key={theme}
+      initialState={navigationState.current}
+      onStateChange={(state) => { navigationState.current = state }}
+      theme={isDark
+        ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: '#020617', card: '#0f172a', border: '#1e293b' } }
+        : DefaultTheme}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         {!signedIn ? (
           <>
-            {/* Landing is the first screen an unauthenticated user sees. */}
-            {/* <Stack.Screen name="Landing" component={LandingScreen} /> */}
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
-                        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="Estimate" component={EstimateScreen} />
           </>
-        ) : needsProfile ? (
-          <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
         ) : (
           <>
             <Stack.Screen name={dashboard.name} component={dashboard.component} />
+            <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
+            <Stack.Screen name="CreateProject" component={CreateProjectScreen} />
+            <Stack.Screen name="OwnerProject" component={OwnerProjectScreen} />
+            <Stack.Screen name="BuilderProfile" component={BuilderProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
-                        <Stack.Screen name="LiveCamera" component={LiveCameraScreen} />
-                                    <Stack.Screen name="Messages" component={MessagesScreen} />
-                                                <Stack.Screen name="BookTechnician" component={BookTechnicianScreen} />
+            <Stack.Screen name="LiveCamera" component={LiveCameraScreen} />
+            <Stack.Screen name="Messages" component={MessagesScreen} />
+            <Stack.Screen name="BookTechnician" component={BookTechnicianScreen} />
             <Stack.Screen name="Estimate" component={EstimateScreen} />
           </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </NotificationsProvider>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#134127' },
+}))

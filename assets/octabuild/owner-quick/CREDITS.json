@@ -1,0 +1,32 @@
+[
+ {
+  "slug": "construction",
+  "file": "construction.png",
+  "source": "Construction Engineer Presenting Building Site.png (supplied by the project owner, 2026-10-04)",
+  "license": "Owned by the project",
+  "changes": "Trimmed to the picture, resized to fit the card frame; transparency kept."
+ },
+ {
+  "slug": "property",
+  "file": "property.png",
+  "source": "Modern Two-Storey Villa Cutout.png (supplied by the project owner, 2026-10-04)",
+  "license": "Owned by the project",
+  "changes": "Trimmed to the picture, resized to fit the card frame; transparency kept."
+ },
+ {
+  "slug": "technician",
+  "file": "technician.png",
+  "source": "technician.png (supplied by the project owner, 2026-10-04)",
+  "license": "Owned by the project",
+  "artist": "",
+  "page": "",
+  "changes": "Trimmed to the picture, resized to fit the card frame; transparency kept."
+ },
+ {
+  "slug": "materials",
+  "file": "materials.png",
+  "source": "supplier.png (supplied by the project owner, 2026-10-04; same picture as public/octabuild/heroes/supplier.png)",
+  "license": "Owned by the project",
+  "changes": "Trimmed to the picture, resized to fit the card frame; transparency kept."
+ }
+]

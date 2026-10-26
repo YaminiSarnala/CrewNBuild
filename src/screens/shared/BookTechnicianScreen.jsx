@@ -10,6 +10,7 @@ import { ArrowLeft, Paintbrush, Wrench, Zap, Hammer, MapPin } from 'lucide-react
 import { Panel, PanelState } from '../../components/DashboardShell'
 import { startRequesterSession, clearRequesterSession, createBooking, fetchMyBookings, cancelBooking } from '../../api/partner'
 import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 const TRADES = [
   { code: 'PLUMBER', label: 'Plumber', icon: Wrench },
@@ -18,12 +19,13 @@ const TRADES = [
   { code: 'CARPENTER', label: 'Carpenter', icon: Hammer },
 ]
 
-export default function BookTechnicianScreen({ navigation }) {
+export default function BookTechnicianScreen({ navigation, route }) {
   const insets = useSafeAreaInsets()
   const accessToken = useSelector((state) => state.auth.accessToken)
   const [phase, setPhase] = useState('connecting') // connecting | ready | error
   const [error, setError] = useState('')
-  const [trade, setTrade] = useState(null)
+  // Home's trade cards open this screen with that trade already picked.
+  const [trade, setTrade] = useState(route?.params?.trade || null)
   const [description, setDescription] = useState('')
   const [booking, setBooking] = useState(false)
   const [bookings, setBookings] = useState(null)
@@ -84,28 +86,28 @@ export default function BookTechnicianScreen({ navigation }) {
   const cancellable = (status) => ['PENDING', 'SEARCHING', 'OFFERED', 'ASSIGNED'].includes(String(status || '').toUpperCase())
 
   return (
-    <View className="flex-1 bg-brand-50" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+    <View style={[styles.view, { paddingTop: insets.top }]}>
+      <View style={styles.view2}>
         <Pressable onPress={() => navigation.goBack()}><ArrowLeft size={20} color={COLORS.graphite} /></Pressable>
-        <Text className="text-lg font-extrabold text-graphite">Book a technician</Text>
+        <Text style={styles.text}>Book a technician</Text>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        {phase === 'connecting' && <Text className="text-sm font-semibold text-slate-500">Connecting to the booking service…</Text>}
+        {phase === 'connecting' && <Text style={styles.text2}>Connecting to the booking service…</Text>}
         {phase === 'error' && (
-          <View className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2">
-            <Text className="text-[13px] font-semibold text-rose-700">{error}</Text>
+          <View style={styles.view3}>
+            <Text style={styles.text3}>{error}</Text>
           </View>
         )}
         {phase === 'ready' && (
           <>
             <Panel title="What do you need?">
-              <View className="flex-row flex-wrap justify-between gap-y-3">
+              <View style={styles.view4}>
                 {TRADES.map(({ code, label, icon: Icon }) => {
                   const active = trade === code
                   return (
-                    <Pressable key={code} onPress={() => setTrade(code)} className={`w-[48%] items-center rounded-2xl border p-4 ${active ? 'border-brand-700 bg-brand-700' : 'border-slate-200 bg-white'}`}>
+                    <Pressable key={code} onPress={() => setTrade(code)} style={[styles.pressable, active ? styles.pressable2 : styles.pressable3]}>
                       <Icon size={22} color={active ? '#fff' : COLORS.brand[700]} />
-                      <Text className={`mt-2 text-[13px] font-extrabold ${active ? 'text-white' : 'text-graphite'}`}>{label}</Text>
+                      <Text style={[styles.text4, active ? styles.text5 : styles.text6]}>{label}</Text>
                     </Pressable>
                   )
                 })}
@@ -115,32 +117,32 @@ export default function BookTechnicianScreen({ navigation }) {
                 onChangeText={setDescription}
                 placeholder="Describe the job (e.g. Kitchen tap leaking)"
                 multiline
-                className="mt-3 min-h-20 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[14px] font-semibold text-graphite"
+                style={styles.textInput}
                 placeholderTextColor={COLORS.slate[400]}
               />
-              <View className="mt-2 flex-row items-center gap-1.5">
+              <View style={styles.view5}>
                 <MapPin size={12} color={COLORS.slate[400]} />
-                <Text className="text-[11px] font-semibold text-slate-400">Technicians nearest to your current location will be asked.</Text>
+                <Text style={styles.text7}>Technicians nearest to your current location will be asked.</Text>
               </View>
-              <Pressable onPress={book} disabled={booking} className={`mt-3 h-12 items-center justify-center rounded-xl bg-brand-700 ${booking ? 'opacity-50' : ''}`}>
-                <Text className="text-[14px] font-extrabold text-white">{booking ? 'Booking…' : 'Book now'}</Text>
+              <Pressable onPress={book} disabled={booking} style={[styles.pressable4, booking ? styles.pressable5 : null]}>
+                <Text style={styles.text8}>{booking ? 'Booking…' : 'Book now'}</Text>
               </Pressable>
             </Panel>
 
             <Panel title="My bookings">
               <PanelState loading={bookings === null} empty={!bookingList.length} emptyText="No bookings yet.">
                 {bookingList.map((row) => (
-                  <View key={row.id} className="border-b border-slate-100 py-3">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={1}>
+                  <View key={row.id} style={styles.view6}>
+                    <View style={styles.view7}>
+                      <Text style={styles.text9} numberOfLines={1}>
                         {row.technician_type || 'Technician'}{row.technician_name ? ` · ${row.technician_name}` : ''}
                       </Text>
-                      <Text className="text-[10px] font-extrabold text-brand-700">{row.status || 'PENDING'}</Text>
+                      <Text style={styles.text10}>{row.status || 'PENDING'}</Text>
                     </View>
-                    {!!row.description && <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>{row.description}</Text>}
+                    {!!row.description && <Text style={styles.text11} numberOfLines={1}>{row.description}</Text>}
                     {cancellable(row.status) && (
-                      <Pressable onPress={() => cancel(row)} disabled={cancellingId === row.id} className="mt-2 self-start rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5">
-                        <Text className="text-[10px] font-extrabold text-rose-700">Cancel booking</Text>
+                      <Pressable onPress={() => cancel(row)} disabled={cancellingId === row.id} style={styles.pressable6}>
+                        <Text style={styles.text12}>Cancel booking</Text>
                       </Pressable>
                     )}
                   </View>
@@ -153,3 +155,32 @@ export default function BookTechnicianScreen({ navigation }) {
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flex: 1, backgroundColor: c.brandSoft },
+  view2: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 14, paddingVertical: 10.5 },
+  text: { fontSize: 15.75, lineHeight: 24.5, fontWeight: '800', color: c.text },
+  text2: { fontSize: 12.25, lineHeight: 17.5, fontWeight: '600', color: c.textMuted },
+  view3: { borderRadius: 10.5, borderWidth: 1, borderColor: c.roseBorderSoft, backgroundColor: c.roseSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text3: { fontSize: 13, fontWeight: '600', color: c.roseText },
+  view4: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10.5 },
+  pressable: { width: '48%', alignItems: 'center', borderRadius: 14, borderWidth: 1, padding: 14 },
+  pressable2: { borderColor: '#1a5038', backgroundColor: '#1a5038' },
+  pressable3: { borderColor: c.border, backgroundColor: c.card },
+  text4: { marginTop: 7, fontSize: 13, fontWeight: '800' },
+  text5: { color: '#ffffff' },
+  text6: { color: c.text },
+  textInput: { marginTop: 10.5, minHeight: 70, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 8.75, fontSize: 14, fontWeight: '600', color: c.text },
+  view5: { marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text7: { fontSize: 11, fontWeight: '600', color: c.textFaint },
+  pressable4: { marginTop: 10.5, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
+  pressable5: { opacity: 0.5 },
+  text8: { fontSize: 14, fontWeight: '800', color: '#ffffff' },
+  view6: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  view7: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text9: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  text10: { fontSize: 10, fontWeight: '800', color: c.brandText },
+  text11: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  pressable6: { marginTop: 7, alignSelf: 'flex-start', borderRadius: 7, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 8.75, paddingVertical: 5.25 },
+  text12: { fontSize: 10, fontWeight: '800', color: c.roseText },
+}))

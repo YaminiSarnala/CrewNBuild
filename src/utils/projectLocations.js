@@ -6,12 +6,15 @@
 // dataset can be expanded in Phase 2.
 
 export const PROJECT_COUNTRIES = [
-  { value: 'India', label: 'India' },
-  { value: 'Kuwait', label: 'Kuwait' },
+  { value: 'India', label: 'India', labelKey: 'country.india' },
+  { value: 'Kuwait', label: 'Kuwait', labelKey: 'country.kuwait' },
 ]
 
-export function countryLabel(value) {
-  return PROJECT_COUNTRIES.find((country) => country.value === value)?.label || value || 'India'
+// `t` is optional: passing it returns the translated country name for display.
+export function countryLabel(value, t) {
+  const country = PROJECT_COUNTRIES.find((entry) => entry.value === (value || 'India'))
+  if (t && country) return t(country.labelKey)
+  return PROJECT_COUNTRIES.find((entry) => entry.value === value)?.label || value || 'India'
 }
 
 // India: State -> Cities
@@ -79,9 +82,9 @@ export function projectStateLabel(projectCountry, projectState) {
   return projectState || ''
 }
 
-export function projectLocationSummary(project) {
+export function projectLocationSummary(project, t) {
   if (!project) return ''
   const country = project.project_country || 'India'
-  const parts = [project.project_city, project.project_state, country].filter(Boolean)
+  const parts = [project.project_city, project.project_state, t ? countryLabel(country, t) : country].filter(Boolean)
   return parts.join(' • ')
 }

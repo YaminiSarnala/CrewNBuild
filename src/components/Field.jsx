@@ -2,6 +2,7 @@
 import { View, Text, TextInput, Pressable } from 'react-native'
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react-native'
+import { createStyles } from '../theme/createStyles'
 
 export function Field({
   label,
@@ -17,13 +18,13 @@ export function Field({
 }) {
   const [hidden, setHidden] = useState(secure)
   return (
-    <View className="mb-4">
+    <View style={styles.view}>
       {label ? (
-        <Text className="mb-1.5 font-sansSemi text-slate-600" style={{ fontSize: 13 }}>
+        <Text style={[styles.text, { fontSize: 13 }]}>
           {label}
         </Text>
       ) : null}
-      <View className="relative">
+      <View style={styles.view2}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -34,16 +35,13 @@ export function Field({
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
           multiline={multiline}
-          className={`rounded-2xl border bg-white px-4 font-sans text-graphite ${
-            error ? 'border-warm' : 'border-slate-200'
-          }`}
-          style={{
+          style={[styles.textInput, error ? styles.textInput2 : styles.textInput3, {
             fontSize: 15,
             paddingVertical: multiline ? 14 : 15,
             minHeight: multiline ? 96 : undefined,
             textAlignVertical: multiline ? 'top' : 'center',
             paddingRight: secure ? 46 : 16,
-          }}
+          }]}
           {...rest}
         />
         {secure ? (
@@ -51,14 +49,14 @@ export function Field({
             onPress={() => setHidden((prev) => !prev)}
             accessibilityRole="button"
             accessibilityLabel={hidden ? 'Show password' : 'Hide password'}
-            className="absolute right-3 top-0 bottom-0 justify-center px-1"
+            style={styles.pressable}
           >
             {hidden ? <EyeOff size={18} color="#94a3b8" /> : <Eye size={18} color="#94a3b8" />}
           </Pressable>
         ) : null}
       </View>
       {error ? (
-        <Text className="mt-1.5 font-sans text-warm" style={{ fontSize: 12 }}>
+        <Text style={[styles.text2, { fontSize: 12 }]}>
           {error}
         </Text>
       ) : null}
@@ -69,8 +67,8 @@ export function Field({
 export function ErrorBanner({ message }) {
   if (!message) return null
   return (
-    <View className="mb-4 rounded-2xl border border-warm/30 bg-warm/10 px-4 py-3">
-      <Text className="font-sansMedium text-warm" style={{ fontSize: 13, lineHeight: 19 }}>
+    <View style={styles.view3}>
+      <Text style={[styles.text3, { fontSize: 13, lineHeight: 19 }]}>
         {message}
       </Text>
     </View>
@@ -83,29 +81,51 @@ export function RoleCard({ label, description, selected, onPress, icon }) {
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      className={`mb-3 flex-row items-center rounded-2xl border p-4 ${
-        selected ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white active:bg-slate-50'
-      }`}
-      style={{ gap: 12 }}
+      style={[styles.pressable2, selected ? styles.pressable3 : styles.pressable4, { gap: 12 }]}
     >
       <View
-        className={`h-10 w-10 items-center justify-center rounded-xl ${selected ? 'bg-brand-800' : 'bg-slate-100'}`}
+        style={[styles.view4, selected ? styles.view5 : styles.view6]}
       >
         {icon}
       </View>
-      <View className="flex-1">
-        <Text className={`font-sansBold ${selected ? 'text-brand-800' : 'text-graphite'}`} style={{ fontSize: 15 }}>
+      <View style={styles.view7}>
+        <Text style={[styles.text4, selected ? styles.text5 : styles.text6, { fontSize: 15 }]}>
           {label}
         </Text>
-        <Text className="mt-0.5 font-sans text-slate-500" style={{ fontSize: 12.5 }}>
+        <Text style={[styles.text7, { fontSize: 12.5 }]}>
           {description}
         </Text>
       </View>
       <View
-        className={`h-5 w-5 rounded-full border-2 ${
-          selected ? 'border-brand-700 bg-brand-700' : 'border-slate-300'
-        }`}
+        style={[styles.view8, selected ? styles.view9 : styles.view10]}
       />
     </Pressable>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 14 },
+  text: { marginBottom: 5.25, fontFamily: 'Inter_600SemiBold', color: c.textSecondary },
+  view2: { position: 'relative' },
+  textInput: { borderRadius: 14, borderWidth: 1, backgroundColor: c.card, paddingHorizontal: 14, fontFamily: 'Inter_400Regular', color: c.text },
+  textInput2: { borderColor: '#dc2626' },
+  textInput3: { borderColor: c.border },
+  pressable: { position: 'absolute', right: 10.5, top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 3.5 },
+  text2: { marginTop: 5.25, fontFamily: 'Inter_400Regular', color: '#dc2626' },
+  view3: { marginBottom: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(220, 38, 38, 0.3)', backgroundColor: 'rgba(220, 38, 38, 0.1)', paddingHorizontal: 14, paddingVertical: 10.5 },
+  text3: { fontFamily: 'Inter_500Medium', color: '#dc2626' },
+  pressable2: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, padding: 14 },
+  pressable3: { borderColor: '#236645', backgroundColor: c.brandSoft },
+  pressable4: { borderColor: c.border, backgroundColor: c.card },
+  view4: { height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5 },
+  view5: { backgroundColor: '#134127' },
+  view6: { backgroundColor: c.muted },
+  view7: { flex: 1 },
+  text4: { fontFamily: 'Inter_700Bold' },
+  text5: { color: c.brandTextStrong },
+  text6: { color: c.text },
+  text7: { marginTop: 1.75, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view8: { height: 17.5, width: 17.5, borderRadius: 9999, borderWidth: 2 },
+  view9: { borderColor: '#1a5038', backgroundColor: '#1a5038' },
+  view10: { borderColor: c.borderStrong },
+}))

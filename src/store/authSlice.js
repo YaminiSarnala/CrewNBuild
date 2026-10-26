@@ -9,18 +9,36 @@
 // ---------------------------------------------------------------------------
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { loginUser, signupUser, completeUserProfile } from '../api/auth'
-import { apiErrorMessage, clearStoredAuth, readStoredAuth, writeStoredAuth } from '../api/client'
+import { apiErrorMessage, clearStoredAuth, readStoredAuth, refreshSession, writeStoredAuth } from '../api/client'
 
+// Reads the stored session, then confirms it with the server the way the web's
+// verifyStoredSession does: the stored user is only a claim until /auth/refresh
+// answers. A refused session is dropped; an unreachable server keeps the stored
+// one so the app still opens offline.
 export const restoreSession = createAsyncThunk('auth/restoreSession', async () => {
   const stored = await readStoredAuth()
-  return stored // may be null
+  if (!stored?.refreshToken) {
+    if (stored) await clearStoredAuth()
+    return null
+  }
+  try {
+    return await refreshSession()
+  } catch (error) {
+    if (error?.response) {
+      await clearStoredAuth()
+      return null
+    }
+    return stored
+  }
 })
 
 export const loginWithCredentials = createAsyncThunk(
   'auth/loginWithCredentials',
   async (credentials, { rejectWithValue }) => {
     try {
-      return await loginUser(credentials)
+      const session = await loginUser(credentials)
+      if (!session?.access_token) return rejectWithValue('Unable to login. Please check your credentials.')
+      return session
     } catch (error) {
       return rejectWithValue(apiErrorMessage(error, 'Unable to login. Please check your credentials.'))
     }
@@ -44,7 +62,11 @@ export const submitProfileCompletion = createAsyncThunk(
     try {
       return await completeUserProfile(profileDetails)
     } catch (error) {
-      return rejectWithValue(apiErrorMessage(error, 'Unable to save your profile. Please check the form.'))
+      const fields = error?.response?.data?.detail?.fields
+      return rejectWithValue(
+        apiErrorMessage(error, 'Unable to save your profile. Please check the form.'),
+        fields && typeof fields === 'object' ? { fieldErrors: fields } : undefined,
+      )
     }
   },
 )

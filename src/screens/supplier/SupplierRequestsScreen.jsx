@@ -7,6 +7,7 @@ import { House as Home, HardHat, Check, X } from 'lucide-react-native'
 import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
 import { fetchIncomingRequests, acceptProjectRequest, rejectProjectRequest } from '../../api/requests'
 import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 export default function SupplierRequestsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('owner')
@@ -46,13 +47,13 @@ export default function SupplierRequestsScreen({ navigation }) {
 
   return (
     <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
-      <View className="mb-4 flex-row gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5">
+      <View style={styles.view}>
         {tabs.map(({ id, label, icon: Icon }) => {
           const active = activeTab === id
           return (
-            <Pressable key={id} onPress={() => setActiveTab(id)} className={`h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl ${active ? 'bg-brand-700' : ''}`}>
+            <Pressable key={id} onPress={() => setActiveTab(id)} style={[styles.pressable, active ? styles.pressable2 : null]}>
               <Icon size={13} color={active ? '#fff' : COLORS.slate[400]} />
-              <Text className={`text-[11px] font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>{label}</Text>
+              <Text style={[styles.text, active ? styles.text2 : styles.text3]}>{label}</Text>
             </Pressable>
           )
         })}
@@ -62,22 +63,22 @@ export default function SupplierRequestsScreen({ navigation }) {
         {activeList.map((request) => {
           const pending = String(request.status || 'PENDING').toUpperCase() === 'PENDING'
           return (
-            <View key={request.id} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-              <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>
+            <View key={request.id} style={styles.view2}>
+              <Text style={styles.text4} numberOfLines={1}>
                 {request.sender_name || request.owner_name || request.contractor_name || 'New partner request'}
               </Text>
-              <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>
+              <Text style={styles.text5} numberOfLines={1}>
                 {request.project_title || 'Partnership request'}{request.status ? ` · ${request.status}` : ''}
               </Text>
               {pending && (
-                <View className="mt-3 flex-row gap-2">
-                  <Pressable onPress={() => respond(request.id, false)} disabled={busyId === request.id} className="h-9 flex-1 flex-row items-center justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50">
+                <View style={styles.view3}>
+                  <Pressable onPress={() => respond(request.id, false)} disabled={busyId === request.id} style={styles.pressable3}>
                     <X size={13} color="#e11d48" />
-                    <Text className="text-xs font-extrabold text-rose-700">Reject</Text>
+                    <Text style={styles.text6}>Reject</Text>
                   </Pressable>
-                  <Pressable onPress={() => respond(request.id, true)} disabled={busyId === request.id} className="h-9 flex-1 flex-row items-center justify-center gap-1 rounded-lg bg-brand-700">
+                  <Pressable onPress={() => respond(request.id, true)} disabled={busyId === request.id} style={styles.pressable4}>
                     <Check size={13} color="#fff" />
-                    <Text className="text-xs font-extrabold text-white">Accept</Text>
+                    <Text style={styles.text7}>Accept</Text>
                   </Pressable>
                 </View>
               )}
@@ -88,3 +89,20 @@ export default function SupplierRequestsScreen({ navigation }) {
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 14, flexDirection: 'row', gap: 5.25, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 5.25 },
+  pressable: { height: 35, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5.25, borderRadius: 10.5 },
+  pressable2: { backgroundColor: '#1a5038' },
+  text: { fontSize: 11, fontWeight: '800' },
+  text2: { color: '#ffffff' },
+  text3: { color: c.textMuted },
+  view2: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  text4: { fontSize: 14, fontWeight: '800', color: c.text },
+  text5: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  view3: { marginTop: 10.5, flexDirection: 'row', gap: 7 },
+  pressable3: { height: 31.5, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3.5, borderRadius: 7, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft },
+  text6: { fontSize: 10.5, lineHeight: 14, fontWeight: '800', color: c.roseText },
+  pressable4: { height: 31.5, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3.5, borderRadius: 7, backgroundColor: '#1a5038' },
+  text7: { fontSize: 10.5, lineHeight: 14, fontWeight: '800', color: '#ffffff' },
+}))

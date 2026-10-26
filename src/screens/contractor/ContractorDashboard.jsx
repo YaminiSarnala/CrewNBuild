@@ -9,6 +9,8 @@ import LanguageSheet from '../../components/LanguageSheet'
 import { fetchNearbyProjects } from '../../api/projects'
 import { fetchIncomingRequests, acceptProjectRequest, rejectProjectRequest } from '../../api/requests'
 import { fetchEngineerTeam } from '../../api/engineers'
+import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 export default function ContractorDashboard({ navigation }) {
   const [languageOpen, setLanguageOpen] = useState(false)
@@ -89,31 +91,29 @@ export default function ContractorDashboard({ navigation }) {
             emptyText="No pending requests right now."
           >
             {requestList.map((request) => (
-              <View key={request.id} className="mb-4 rounded-2xl bg-slate-50 p-4">
-                <Text className="font-sansBold text-graphite" style={{ fontSize: 14.5 }}>
+              <View key={request.id} style={styles.view}>
+                <Text style={[styles.text, { fontSize: 14.5 }]}>
                   {request.project_title || request.title || `Request #${request.id}`}
                 </Text>
-                <Text className="mt-1 font-sans text-slate-500" style={{ fontSize: 12.5 }}>
+                <Text style={[styles.text2, { fontSize: 12.5 }]}>
                   {request.owner_name ? `From ${request.owner_name}` : ''} {request.status ? `· ${request.status}` : ''}
                 </Text>
-                <View className="mt-3 flex-row" style={{ gap: 10 }}>
+                <View style={[styles.view2, { gap: 10 }]}>
                   <Pressable
  onPress={() => respond(request, true)}
-                    className="flex-1 flex-row items-center justify-center rounded-full bg-brand-800 py-2.5 active:bg-brand-700"
-                    style={{ gap: 6 }}
+                    style={[styles.pressable, { gap: 6 }]}
                   >
                     <Check size={14} color="#ffffff" />
-                    <Text className="font-sansBold text-white" style={{ fontSize: 13 }}>
+                    <Text style={[styles.text3, { fontSize: 13 }]}>
                       Accept
                     </Text>
                   </Pressable>
                   <Pressable
 onPress={() => respond(request, false)}
-                    className="flex-1 flex-row items-center justify-center rounded-full border border-slate-300 bg-white py-2.5 active:bg-slate-100"
-                    style={{ gap: 6 }}
+                    style={[styles.pressable2, { gap: 6 }]}
                   >
                     <X size={14} color="#dc2626" />
-                    <Text className="font-sansBold text-warm" style={{ fontSize: 13 }}>
+                    <Text style={[styles.text4, { fontSize: 13 }]}>
                       Decline
                     </Text>
                   </Pressable>
@@ -131,15 +131,15 @@ onPress={() => respond(request, false)}
             emptyText="No open projects in your service area yet."
           >
             {leadList.slice(0, 8).map((lead) => (
-              <View key={lead.id} className="mb-3 flex-row items-center" style={{ gap: 10 }}>
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-brand-50">
-                  <Briefcase size={16} color="#134127" />
+              <View key={lead.id} style={[styles.view3, { gap: 10 }]}>
+                <View style={styles.view4}>
+                  <Briefcase size={16} color={COLORS.brand[800]} />
                 </View>
-                <View className="flex-1">
-                  <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }} numberOfLines={1}>
+                <View style={styles.view5}>
+                  <Text style={[styles.text, { fontSize: 14 }]} numberOfLines={1}>
                     {lead.title}
                   </Text>
-                  <Text className="font-sans text-slate-500" style={{ fontSize: 12 }} numberOfLines={1}>
+                  <Text style={[styles.text5, { fontSize: 12 }]} numberOfLines={1}>
                     {lead.pincode} · {lead.building_type || '—'}
                     {lead.budget ? ` · ₹${Number(lead.budget).toLocaleString('en-IN')}` : ''}
                   </Text>
@@ -157,15 +157,15 @@ onPress={() => respond(request, false)}
             emptyText="No engineers on your team yet. Invite one from the web dashboard."
           >
             {teamList.map((member) => (
-              <View key={member.id} className="mb-3 flex-row items-center" style={{ gap: 10 }}>
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
+              <View key={member.id} style={[styles.view3, { gap: 10 }]}>
+                <View style={styles.view6}>
                   <Users size={16} color="#475569" />
                 </View>
-                <View className="flex-1">
-                  <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
+                <View style={styles.view5}>
+                  <Text style={[styles.text, { fontSize: 14 }]}>
                     {member.name}
                   </Text>
-                  <Text className="font-sans text-slate-500" style={{ fontSize: 12 }}>
+                  <Text style={[styles.text5, { fontSize: 12 }]}>
                     {member.status || 'Active'}
                   </Text>
                 </View>
@@ -175,10 +175,10 @@ onPress={() => respond(request, false)}
         </Panel>
       </DashboardShell>
             <Modal visible={!!quoteFor} transparent animationType="fade" onRequestClose={() => setQuoteFor(null)}>
-        <View className="flex-1 items-center justify-center bg-black/40 px-6">
-          <View className="w-full rounded-3xl bg-white p-5">
-            <Text className="text-[15px] font-extrabold text-graphite">Your quotation</Text>
-            <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>
+        <View style={styles.view7}>
+          <View style={styles.view8}>
+            <Text style={styles.text6}>Your quotation</Text>
+            <Text style={styles.text7} numberOfLines={1}>
               {quoteFor?.project_title || quoteFor?.title || 'Project'}
             </Text>
             <TextInput
@@ -188,14 +188,14 @@ onPress={() => respond(request, false)}
               placeholder="Amount (₹)"
               placeholderTextColor="#94a3b8"
               autoFocus
-              className="mt-3 h-12 rounded-xl border border-slate-200 bg-white px-3 text-[16px] font-extrabold text-graphite"
+              style={styles.textInput}
             />
-            <View className="mt-4 flex-row gap-2">
-              <Pressable onPress={() => setQuoteFor(null)} className="h-11 flex-1 items-center justify-center rounded-xl border border-slate-200">
-                <Text className="text-[13px] font-extrabold text-slate-500">Cancel</Text>
+            <View style={styles.view9}>
+              <Pressable onPress={() => setQuoteFor(null)} style={styles.pressable3}>
+                <Text style={styles.text8}>Cancel</Text>
               </Pressable>
-              <Pressable onPress={submitQuotation} disabled={quoteBusy} className={`h-11 flex-1 items-center justify-center rounded-xl bg-brand-700 ${quoteBusy ? 'opacity-50' : ''}`}>
-                <Text className="text-[13px] font-extrabold text-white">{quoteBusy ? 'Sending…' : 'Accept with quote'}</Text>
+              <Pressable onPress={submitQuotation} disabled={quoteBusy} style={[styles.pressable4, quoteBusy ? styles.pressable5 : null]}>
+                <Text style={styles.text9}>{quoteBusy ? 'Sending…' : 'Accept with quote'}</Text>
               </Pressable>
             </View>
           </View>
@@ -205,3 +205,30 @@ onPress={() => respond(request, false)}
     </>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 14, borderRadius: 14, backgroundColor: c.subtle, padding: 14 },
+  text: { fontFamily: 'Inter_700Bold', color: c.text },
+  text2: { marginTop: 3.5, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view2: { marginTop: 10.5, flexDirection: 'row' },
+  pressable: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#134127', paddingVertical: 8.75 },
+  text3: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
+  pressable2: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.card, paddingVertical: 8.75 },
+  text4: { fontFamily: 'Inter_700Bold', color: '#dc2626' },
+  view3: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center' },
+  view4: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: c.brandSoft },
+  view5: { flex: 1 },
+  text5: { fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view6: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: c.muted },
+  view7: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.4)', paddingHorizontal: 21 },
+  view8: { width: '100%', borderRadius: 21, backgroundColor: c.card, padding: 17.5 },
+  text6: { fontSize: 15, fontWeight: '800', color: c.text },
+  text7: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  textInput: { marginTop: 10.5, height: 42, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 16, fontWeight: '800', color: c.text },
+  view9: { marginTop: 14, flexDirection: 'row', gap: 7 },
+  pressable3: { height: 38.5, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, borderWidth: 1, borderColor: c.border },
+  text8: { fontSize: 13, fontWeight: '800', color: c.textMuted },
+  pressable4: { height: 38.5, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
+  pressable5: { opacity: 0.5 },
+  text9: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+}))

@@ -1,7 +1,8 @@
 // Shared Profile tab for all four roles: view + edit basics via
 // completeUserProfile (same endpoint web profile settings use), language,
 // help, and logout.
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { View, Text, Pressable, TextInput, Alert, Linking } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { Image } from 'expo-image'
@@ -12,27 +13,32 @@ import { completeUserProfile, updateProfileImage } from '../../api/auth'
 import { uploadLocalFile } from '../../api/upload'
 import * as ImagePicker from 'expo-image-picker'
 import { mergeUser, logoutUser } from '../../store/authSlice'
-import { imageUrl } from '../../api/client'
+import { imageSource } from '../../api/client'
 import { COLORS } from '../../theme/tokens'
+import { userCountry } from '../../utils/countryConfig'
+import { useLanguage } from '../../i18n/LanguageContext'
+import { useNotifications } from '../../notifications/NotificationsContext'
+import { useResponsive } from '../../hooks/useResponsive'
+import { createStyles } from '../../theme/createStyles'
 
 const ROLE_LABELS = { OWNER: 'House Owner', CONTRACTOR: 'Builder', SUPPLIER: 'Supplier', ENGINEER: 'Site Engineer' }
 
 function Row({ label, value }) {
   return (
-    <View className="flex-row items-center justify-between border-b border-slate-100 py-3">
-      <Text className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</Text>
-      <Text className="ml-3 flex-1 text-right text-[13px] font-extrabold text-graphite" numberOfLines={1}>{value || '—'}</Text>
+    <View style={styles.view}>
+      <Text style={styles.text}>{label}</Text>
+      <Text style={styles.text2} numberOfLines={1}>{value || '—'}</Text>
     </View>
   )
 }
 
 function Input({ label, ...props }) {
   return (
-    <View className="mt-3">
-      <Text className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</Text>
+    <View style={styles.view2}>
+      <Text style={styles.text}>{label}</Text>
       <TextInput
         {...props}
-        className="mt-1.5 h-11 rounded-xl border border-slate-200 bg-white px-3 text-[14px] font-semibold text-graphite"
+        style={styles.textInput}
         placeholderTextColor={COLORS.slate[400]}
       />
     </View>
@@ -42,6 +48,11 @@ function Input({ label, ...props }) {
 export default function ProfileScreen({ navigation }) {
   const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
+  const { t, td } = useLanguage()
+  const { markSectionRead } = useNotifications()
+  const { gutter } = useResponsive()
+  // Opening Profile clears its general notifications, as on the web.
+  useFocusEffect(useCallback(() => { markSectionRead('profile') }, [markSectionRead]))
   const [languageOpen, setLanguageOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -98,33 +109,33 @@ export default function ProfileScreen({ navigation }) {
   return (
     <>
       <DashboardShell onOpenNotifications={() => navigation.navigate('Notifications')}>
-        <View className="mb-4 items-center rounded-3xl border border-slate-200 bg-white p-6">
-                      <Pressable onPress={changeAvatar} disabled={avatarBusy} className="relative">
-            <View className={`h-20 w-20 overflow-hidden rounded-full bg-brand-100 ${avatarBusy ? 'opacity-50' : ''}`}>
+        <View style={[styles.view3, { marginHorizontal: gutter }]}>
+                      <Pressable onPress={changeAvatar} disabled={avatarBusy} style={styles.pressable}>
+            <View style={[styles.view4, avatarBusy ? styles.pressable2 : null]}>
               {user?.profile_image_url ? (
-                <Image source={{ uri: imageUrl(user.profile_image_url) }} style={{ width: 80, height: 80 }} contentFit="cover" />
+                <Image source={imageSource(user.profile_image_url)} style={{ width: 80, height: 80 }} contentFit="cover" />
               ) : (
-                <View className="h-full w-full items-center justify-center">
-                  <Text className="text-2xl font-extrabold text-brand-800">{(user?.name || 'U').slice(0, 1).toUpperCase()}</Text>
+                <View style={styles.view5}>
+                  <Text style={styles.text3}>{(user?.name || 'U').slice(0, 1).toUpperCase()}</Text>
                 </View>
               )}
             </View>
-            <View className="absolute -bottom-1 -right-1 h-7 w-7 items-center justify-center rounded-full bg-brand-700 border-2 border-white">
+            <View style={styles.view6}>
               <Camera size={13} color="#fff" />
             </View>
           </Pressable>
-            <Text className="mt-3 text-lg font-extrabold text-graphite">{user?.name || 'User'}</Text>
-          <View className="mt-1.5 rounded-full bg-brand-50 px-3 py-1">
-            <Text className="text-[11px] font-extrabold text-brand-800">{ROLE_LABELS[user?.role] || user?.role || ''}</Text>
+            <Text style={styles.text4}>{td(user?.name) || 'User'}</Text>
+          <View style={styles.view7}>
+            <Text style={styles.text5}>{ROLE_LABELS[user?.role] || user?.role || ''}</Text>
           </View>
         </View>
 
         <Panel
           title="My details"
           action={
-            <Pressable onPress={() => setEditing((e) => !e)} className="flex-row items-center gap-1">
+            <Pressable onPress={() => setEditing((e) => !e)} style={styles.pressable3}>
               <Pencil size={12} color={COLORS.brand[700]} />
-              <Text className="text-xs font-extrabold text-brand-700">{editing ? 'Cancel' : 'Edit'}</Text>
+              <Text style={styles.text6}>{editing ? 'Cancel' : 'Edit'}</Text>
             </Pressable>
           }
         >
@@ -134,42 +145,42 @@ export default function ProfileScreen({ navigation }) {
               <Input label="Phone" value={draft.phone} onChangeText={(phone) => setDraft((d) => ({ ...d, phone }))} placeholder="Phone number" keyboardType="phone-pad" />
               <Input label="Address" value={draft.address} onChangeText={(address) => setDraft((d) => ({ ...d, address }))} placeholder="Address" />
               <Input label="Pincode" value={draft.pincode} onChangeText={(pincode) => setDraft((d) => ({ ...d, pincode }))} placeholder="Pincode" keyboardType="number-pad" />
-              <Pressable onPress={save} disabled={saving} className={`mt-4 h-11 items-center justify-center rounded-xl bg-brand-700 ${saving ? 'opacity-50' : ''}`}>
-                <Text className="text-[13px] font-extrabold text-white">{saving ? 'Saving…' : 'Save changes'}</Text>
+              <Pressable onPress={save} disabled={saving} style={[styles.pressable4, saving ? styles.pressable2 : null]}>
+                <Text style={styles.text7}>{saving ? 'Saving…' : 'Save changes'}</Text>
               </Pressable>
             </>
           ) : (
             <>
               <Row label="Email" value={user?.email} />
               <Row label="Phone" value={user?.phone} />
-              <Row label="Address" value={user?.address} />
+              <Row label="Address" value={td(user?.address)} />
               <Row label="Pincode" value={user?.pincode} />
-              <Row label="Country" value={user?.country} />
+              <Row label="Country" value={userCountry(user)} />
             </>
           )}
         </Panel>
-          <Pressable onPress={() => navigation.navigate('Messages')} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
-            <MessageCircle size={16} color={COLORS.brand[700]} />
-            <Text className="flex-1 text-[14px] font-extrabold text-graphite">Messages</Text>
-          </Pressable>
         <Panel title="Settings">
+            <Pressable onPress={() => navigation.navigate('Messages')} style={styles.pressable5}>
+              <MessageCircle size={16} color={COLORS.brand[700]} />
+              <Text style={styles.text8}>Messages</Text>
+            </Pressable>
                     {(user?.role === 'OWNER' || user?.role === 'ENGINEER') && (
-            <Pressable onPress={() => navigation.navigate('BookTechnician')} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
+            <Pressable onPress={() => navigation.navigate('BookTechnician')} style={styles.pressable5}>
               <Wrench size={16} color={COLORS.brand[700]} />
-              <Text className="flex-1 text-[14px] font-extrabold text-graphite">Book a technician</Text>
+              <Text style={styles.text8}>Book a technician</Text>
             </Pressable>
           )}
-          <Pressable onPress={() => setLanguageOpen(true)} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
+          <Pressable onPress={() => setLanguageOpen(true)} style={styles.pressable5}>
             <Globe size={16} color={COLORS.brand[700]} />
-            <Text className="flex-1 text-[14px] font-extrabold text-graphite">Language</Text>
+            <Text style={styles.text8}>Language</Text>
           </Pressable>
-          <Pressable onPress={() => Linking.openURL('mailto:support@octabuild.com')} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
+          <Pressable onPress={() => Linking.openURL('mailto:support@octabuild.com')} style={styles.pressable5}>
             <LifeBuoy size={16} color={COLORS.brand[700]} />
-            <Text className="flex-1 text-[14px] font-extrabold text-graphite">Help & feedback</Text>
+            <Text style={styles.text8}>Help & feedback</Text>
           </Pressable>
-          <Pressable onPress={confirmLogout} className="flex-row items-center gap-3 py-3">
+          <Pressable onPress={confirmLogout} style={styles.pressable6}>
             <LogOut size={16} color="#e11d48" />
-            <Text className="flex-1 text-[14px] font-extrabold text-rose-600">Sign out</Text>
+            <Text style={styles.text9}>Sign out</Text>
           </Pressable>
         </Panel>
       </DashboardShell>
@@ -177,3 +188,29 @@ export default function ProfileScreen({ navigation }) {
             </>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text: { fontSize: 10.5, lineHeight: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: c.textFaint },
+  text2: { marginLeft: 10.5, flex: 1, textAlign: 'right', fontSize: 13, fontWeight: '800', color: c.text },
+  view2: { marginTop: 10.5 },
+  textInput: { marginTop: 5.25, height: 38.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
+  view3: { marginBottom: 14, alignItems: 'center', borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 21 },
+  pressable: { position: 'relative' },
+  view4: { height: 70, width: 70, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.brandSoftStrong },
+  pressable2: { opacity: 0.5 },
+  view5: { height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' },
+  text3: { fontSize: 21, lineHeight: 28, fontWeight: '800', color: c.brandTextStrong },
+  view6: { position: 'absolute', bottom: -3.5, right: -3.5, height: 24.5, width: 24.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#1a5038', borderWidth: 2, borderColor: '#ffffff' },
+  text4: { marginTop: 10.5, fontSize: 15.75, lineHeight: 24.5, fontWeight: '800', color: c.text },
+  view7: { marginTop: 5.25, borderRadius: 9999, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 3.5 },
+  text5: { fontSize: 11, fontWeight: '800', color: c.brandTextStrong },
+  pressable3: { flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text6: { fontSize: 10.5, lineHeight: 14, fontWeight: '800', color: c.brandText },
+  pressable4: { marginTop: 14, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
+  text7: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+  pressable5: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text8: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  pressable6: { flexDirection: 'row', alignItems: 'center', gap: 10.5, paddingVertical: 10.5 },
+  text9: { flex: 1, fontSize: 14, fontWeight: '800', color: c.roseTextSoft },
+}))

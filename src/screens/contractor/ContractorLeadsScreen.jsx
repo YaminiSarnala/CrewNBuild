@@ -10,6 +10,8 @@ import DashboardShell, { Panel, PanelState, useAsyncData } from '../../component
 import { fetchNearbyProjects, fetchNearbySuppliers } from '../../api/projects'
 import { sendProjectRequest } from '../../api/requests'
 import { COLORS } from '../../theme/tokens'
+import { userCountry } from '../../utils/countryConfig'
+import { createStyles } from '../../theme/createStyles'
 
 export default function ContractorLeadsScreen({ navigation }) {
   const user = useSelector((state) => state.auth.user)
@@ -18,8 +20,8 @@ export default function ContractorLeadsScreen({ navigation }) {
   const [sentKeys, setSentKeys] = useState(new Set())
   const [sendingKey, setSendingKey] = useState(null)
 
-  const owners = useAsyncData(() => fetchNearbyProjects(user?.country), [user?.country])
-  const suppliers = useAsyncData(() => fetchNearbySuppliers(user?.pincode, user?.country), [user?.pincode, user?.country])
+  const owners = useAsyncData(() => fetchNearbyProjects(userCountry(user)), [userCountry(user)])
+  const suppliers = useAsyncData(() => fetchNearbySuppliers(user?.pincode, userCountry(user)), [user?.pincode, userCountry(user)])
 
   const ownerList = Array.isArray(owners.data) ? owners.data : []
   const supplierList = Array.isArray(suppliers.data) ? suppliers.data : []
@@ -50,21 +52,21 @@ export default function ContractorLeadsScreen({ navigation }) {
 
   function LeadCard({ title, subtitle, footer, sent, sending, onSend }) {
     return (
-      <View className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-        <View className="flex-row items-center gap-1.5">
+      <View style={styles.view}>
+        <View style={styles.view2}>
          < CircleCheckBig size={13}color={COLORS.brand[600]} />
-          <Text className="text-[10px] font-extrabold uppercase tracking-wide text-brand-700">Verified lead</Text>
+          <Text style={styles.text}>Verified lead</Text>
         </View>
-        <Text className="mt-1.5 text-[15px] font-extrabold text-graphite" numberOfLines={1}>{title}</Text>
-        {!!subtitle && <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>{subtitle}</Text>}
-        {!!footer && <Text className="mt-1 text-[11px] font-semibold text-slate-400" numberOfLines={1}>{footer}</Text>}
+        <Text style={styles.text2} numberOfLines={1}>{title}</Text>
+        {!!subtitle && <Text style={styles.text3} numberOfLines={1}>{subtitle}</Text>}
+        {!!footer && <Text style={styles.text4} numberOfLines={1}>{footer}</Text>}
         <Pressable
           onPress={onSend}
           disabled={sent || sending}
-          className={`mt-3 h-10 flex-row items-center justify-center gap-1.5 rounded-full ${sent ? 'bg-brand-50' : 'bg-brand-700'} ${sending ? 'opacity-60' : ''}`}
+          style={[styles.pressable, sent ? styles.pressable2 : styles.pressable3, sending ? styles.pressable4 : null]}
         >
           <Send size={13} color={sent ? COLORS.brand[700] : '#fff'} />
-          <Text className={`text-xs font-extrabold ${sent ? 'text-brand-700' : 'text-white'}`}>
+          <Text style={[styles.text5, sent ? styles.text6 : styles.text7]}>
             {sent ? 'Request sent' : sending ? 'Sending…' : 'Send request'}
           </Text>
         </Pressable>
@@ -79,13 +81,13 @@ export default function ContractorLeadsScreen({ navigation }) {
 
   return (
     <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
-      <View className="mb-4 flex-row gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5">
+      <View style={styles.view3}>
         {tabs.map(({ id, label, icon: Icon }) => {
           const active = activeTab === id
           return (
-            <Pressable key={id} onPress={() => setActiveTab(id)} className={`h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl ${active ? 'bg-brand-700' : ''}`}>
+            <Pressable key={id} onPress={() => setActiveTab(id)} style={[styles.pressable5, active ? styles.pressable3 : null]}>
               <Icon size={13} color={active ? '#fff' : COLORS.slate[400]} />
-              <Text className={`text-[11px] font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>{label}</Text>
+              <Text style={[styles.text8, active ? styles.text7 : styles.text9]}>{label}</Text>
             </Pressable>
           )
         })}
@@ -131,3 +133,23 @@ export default function ContractorLeadsScreen({ navigation }) {
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view2: { flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, color: c.brandText },
+  text2: { marginTop: 5.25, fontSize: 15, fontWeight: '800', color: c.text },
+  text3: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  text4: { marginTop: 3.5, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  pressable: { marginTop: 10.5, height: 35, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5.25, borderRadius: 9999 },
+  pressable2: { backgroundColor: c.brandSoft },
+  pressable3: { backgroundColor: '#1a5038' },
+  pressable4: { opacity: 0.6 },
+  text5: { fontSize: 10.5, lineHeight: 14, fontWeight: '800' },
+  text6: { color: c.brandText },
+  text7: { color: '#ffffff' },
+  view3: { marginBottom: 14, flexDirection: 'row', gap: 5.25, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 5.25 },
+  pressable5: { height: 35, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5.25, borderRadius: 10.5 },
+  text8: { fontSize: 11, fontWeight: '800' },
+  text9: { color: c.textMuted },
+}))

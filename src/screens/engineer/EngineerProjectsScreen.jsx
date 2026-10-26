@@ -8,6 +8,7 @@ import DashboardShell, { Panel, PanelState, useAsyncData } from '../../component
 import { fetchEngineerProjects } from '../../api/engineers'
 import { fetchProjectTimelineEntries, updateProjectProgress, saveDailyWorkflow } from '../../api/projects'
 import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 
 function DailyLogPanel({ projectId, onSaved }) {
@@ -70,7 +71,7 @@ function DailyLogPanel({ projectId, onSaved }) {
         value={workType}
         onChangeText={setWorkType}
         placeholder="Work done today (e.g. Slab casting, 2nd floor)"
-        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-[14px] font-semibold text-graphite"
+        style={styles.textInput}
         placeholderTextColor={COLORS.slate[400]}
       />
       <TextInput
@@ -78,16 +79,16 @@ function DailyLogPanel({ projectId, onSaved }) {
         onChangeText={setWorkers}
         placeholder="Workers on site"
         keyboardType="number-pad"
-        className="mt-2 h-11 rounded-xl border border-slate-200 bg-white px-3 text-[14px] font-semibold text-graphite"
+        style={styles.textInput2}
         placeholderTextColor={COLORS.slate[400]}
       />
-      <Pressable onPress={pickPhotos} className="mt-2 h-11 items-center justify-center rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/50">
-        <Text className="text-[13px] font-extrabold text-brand-700">
+      <Pressable onPress={pickPhotos} style={styles.pressable}>
+        <Text style={styles.text}>
           {photos.length ? `${photos.length} photo(s) ready — add more` : 'Add site photos'}
         </Text>
       </Pressable>
-      <Pressable onPress={submit} disabled={busy} className={`mt-3 h-11 items-center justify-center rounded-xl bg-brand-700 ${busy ? 'opacity-50' : ''}`}>
-        <Text className="text-[13px] font-extrabold text-white">{busy ? 'Saving…' : 'Save daily record'}</Text>
+      <Pressable onPress={submit} disabled={busy} style={[styles.pressable2, busy ? styles.pressable3 : null]}>
+        <Text style={styles.text2}>{busy ? 'Saving…' : 'Save daily record'}</Text>
       </Pressable>
     </Panel>
     
@@ -114,47 +115,47 @@ function ProjectDetail({ project, onBack, onProgressSaved, navigation }) {
 
   return (
     <View>
-      <Pressable onPress={onBack} className="mb-3 flex-row items-center gap-1">
+      <Pressable onPress={onBack} style={styles.pressable4}>
         <ChevronLeft size={18} color={COLORS.brand[700]} />
-        <Text className="text-sm font-extrabold text-brand-700">My projects</Text>
+        <Text style={styles.text3}>My projects</Text>
       </Pressable>
             <Pressable
         onPress={() => navigation.navigate('LiveCamera', { projectId: project.id, projectTitle: project.project_title || project.title })}
-        className="mb-1 mt-2 h-11 flex-row items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50"
+        style={styles.pressable5}
       >
-        <Text className="text-[13px] font-extrabold text-brand-800">📹 Live site camera</Text>
+        <Text style={styles.text4}>📹 Live site camera</Text>
       </Pressable>
-      <Text className="text-xl font-extrabold text-graphite">{project.project_title || project.title}</Text>
-      <Text className="mt-1 text-xs font-semibold text-slate-500">
+      <Text style={styles.text5}>{project.project_title || project.title}</Text>
+      <Text style={styles.text6}>
         {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
       </Text>
 
-      <Panel title="Site progress" className="mt-4">
-        <View className="flex-row items-center gap-3">
-          <Pressable onPress={() => setProgress((p) => Math.max(0, p - 5))} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+      <Panel title="Site progress" style={styles.panel}>
+        <View style={styles.view}>
+          <Pressable onPress={() => setProgress((p) => Math.max(0, p - 5))} style={styles.pressable6}>
             <Minus size={16} color={COLORS.graphite} />
           </Pressable>
-          <View className="flex-1 items-center">
-            <Text className="text-3xl font-extrabold text-brand-700">{progress}%</Text>
-            <View className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <View className="h-full rounded-full bg-brand-600" style={{ width: `${progress}%` }} />
+          <View style={styles.view2}>
+            <Text style={styles.text7}>{progress}%</Text>
+            <View style={styles.view3}>
+              <View style={[styles.view4, { width: `${progress}%` }]} />
             </View>
           </View>
-          <Pressable onPress={() => setProgress((p) => Math.min(100, p + 5))} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+          <Pressable onPress={() => setProgress((p) => Math.min(100, p + 5))} style={styles.pressable6}>
             <Plus size={16} color={COLORS.graphite} />
           </Pressable>
         </View>
-        <Pressable onPress={saveProgress} disabled={saving} className={`mt-4 h-11 items-center justify-center rounded-xl bg-brand-700 ${saving ? 'opacity-50' : ''}`}>
-          <Text className="text-[13px] font-extrabold text-white">{saving ? 'Saving…' : 'Save progress'}</Text>
+        <Pressable onPress={saveProgress} disabled={saving} style={[styles.pressable7, saving ? styles.pressable3 : null]}>
+          <Text style={styles.text2}>{saving ? 'Saving…' : 'Save progress'}</Text>
         </Pressable>
       </Panel>
       <DailyLogPanel projectId={project.id} onSaved={() => timeline.reload()} />
       <Panel title="Site activity">
         <PanelState loading={timeline.loading} error={timeline.error} empty={!timelineList.length} emptyText="No daily records yet. Full daily-log entry with photos arrives in the next update.">
           {timelineList.map((entry, index) => (
-            <View key={entry.id || index} className="border-b border-slate-100 py-3">
-              <Text className="text-xs font-extrabold text-brand-700">{String(entry.date || entry.work_date || '').slice(0, 10)}</Text>
-              <Text className="mt-1 text-[13px] font-semibold text-graphite">{entry.work_type || entry.description || 'Daily site record'}</Text>
+            <View key={entry.id || index} style={styles.view5}>
+              <Text style={styles.text8}>{String(entry.date || entry.work_date || '').slice(0, 10)}</Text>
+              <Text style={styles.text9}>{entry.work_type || entry.description || 'Daily site record'}</Text>
             </View>
           ))}
         </PanelState>
@@ -184,20 +185,20 @@ export default function EngineerProjectsScreen({ navigation }) {
             {projectList.map((project) => {
               const completion = Math.min(Number(project.completion_percentage || 0), 100)
               return (
-                <Pressable key={project.id} onPress={() => setSelected(project)} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                  <View className="flex-row items-center gap-2">
+                <Pressable key={project.id} onPress={() => setSelected(project)} style={styles.pressable8}>
+                  <View style={styles.view6}>
                     <HardHat size={16} color={COLORS.brand[700]} />
-                    <Text className="flex-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>{project.project_title || project.title || 'Project'}</Text>
-                    <Text className="text-xs font-extrabold text-brand-700">{completion}%</Text>
+                    <Text style={styles.text10} numberOfLines={1}>{project.project_title || project.title || 'Project'}</Text>
+                    <Text style={styles.text8}>{completion}%</Text>
                   </View>
-                  <View className="mt-2 flex-row items-center gap-1.5">
+                  <View style={styles.view7}>
                     <MapPin size={12} color={COLORS.slate[400]} />
-                    <Text className="flex-1 text-xs font-semibold text-slate-500" numberOfLines={1}>
+                    <Text style={styles.text11} numberOfLines={1}>
                       {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
                     </Text>
                   </View>
-                  <View className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <View className="h-full rounded-full bg-brand-600" style={{ width: `${completion}%` }} />
+                  <View style={styles.view8}>
+                    <View style={[styles.view4, { width: `${completion}%` }]} />
                   </View>
                 </Pressable>
               )
@@ -209,3 +210,36 @@ export default function EngineerProjectsScreen({ navigation }) {
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  textInput: { height: 38.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
+  textInput2: { marginTop: 7, height: 38.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
+  pressable: { marginTop: 7, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, borderWidth: 2, borderStyle: 'dashed', borderColor: '#9dc5af', backgroundColor: c.brandSoft50 },
+  text: { fontSize: 13, fontWeight: '800', color: c.brandText },
+  pressable2: { marginTop: 10.5, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
+  pressable3: { opacity: 0.5 },
+  text2: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+  pressable4: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text3: { fontSize: 12.25, lineHeight: 17.5, fontWeight: '800', color: c.brandText },
+  pressable5: { marginBottom: 3.5, marginTop: 7, height: 38.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 10.5, borderWidth: 1, borderColor: c.brandBorderStrong, backgroundColor: c.brandSoft },
+  text4: { fontSize: 13, fontWeight: '800', color: c.brandTextStrong },
+  text5: { fontSize: 17.5, lineHeight: 24.5, fontWeight: '800', color: c.text },
+  text6: { marginTop: 3.5, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  panel: { marginTop: 14 },
+  view: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  pressable6: { height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.muted },
+  view2: { flex: 1, alignItems: 'center' },
+  text7: { fontSize: 26.25, lineHeight: 31.5, fontWeight: '800', color: c.brandText },
+  view3: { marginTop: 7, height: 5.25, width: '100%', overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
+  view4: { height: '100%', borderRadius: 9999, backgroundColor: '#236645' },
+  pressable7: { marginTop: 14, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
+  view5: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text8: { fontSize: 10.5, lineHeight: 14, fontWeight: '800', color: c.brandText },
+  text9: { marginTop: 3.5, fontSize: 13, fontWeight: '600', color: c.text },
+  pressable8: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view6: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text10: { flex: 1, fontSize: 15, fontWeight: '800', color: c.text },
+  view7: { marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text11: { flex: 1, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  view8: { marginTop: 10.5, height: 5.25, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
+}))

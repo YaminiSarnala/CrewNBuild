@@ -13,6 +13,8 @@ import {
 } from '../../api/engineers'
 import { fetchNearbyContractors } from '../../api/projects'
 import { COLORS } from '../../theme/tokens'
+import { userCountry } from '../../utils/countryConfig'
+import { createStyles } from '../../theme/createStyles'
 
 const inr = (value) => (Number(value || 0) ? `₹${Number(value).toLocaleString('en-IN')}` : '')
 
@@ -26,9 +28,9 @@ export default function EngineerJobsScreen({ navigation }) {
   const [inviteCode, setInviteCode] = useState('')
   const [joining, setJoining] = useState(false)
 
-  const opportunities = useAsyncData(() => fetchEngineerOpportunities(user?.country), [user?.country])
+  const opportunities = useAsyncData(() => fetchEngineerOpportunities(userCountry(user)), [userCountry(user)])
   const team = useAsyncData(fetchEngineerTeam, [])
-  const builders = useAsyncData(() => fetchNearbyContractors(user?.pincode, user?.country), [user?.pincode, user?.country])
+  const builders = useAsyncData(() => fetchNearbyContractors(user?.pincode, userCountry(user)), [user?.pincode, userCountry(user)])
 
   const opportunityList = Array.isArray(opportunities.data) ? opportunities.data : []
   const incomingRequests = team.data?.incoming_requests || []
@@ -99,13 +101,13 @@ export default function EngineerJobsScreen({ navigation }) {
 
   return (
     <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4" contentContainerStyle={{ gap: 6 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 6 }}>
         {tabs.map(({ id, label, icon: Icon, count }) => {
           const active = activeTab === id
           return (
-            <Pressable key={id} onPress={() => setActiveTab(id)} className={`h-10 flex-row items-center gap-1.5 rounded-xl px-4 ${active ? 'bg-brand-700' : 'bg-white border border-slate-200'}`}>
+            <Pressable key={id} onPress={() => setActiveTab(id)} style={[styles.pressable, active ? styles.pressable2 : styles.pressable3]}>
               <Icon size={13} color={active ? '#fff' : COLORS.slate[400]} />
-              <Text className={`text-[11px] font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>
+              <Text style={[styles.text, active ? styles.text2 : styles.text3]}>
                 {label}{count ? ` (${count})` : ''}
               </Text>
             </Pressable>
@@ -118,24 +120,24 @@ export default function EngineerJobsScreen({ navigation }) {
           {opportunityList.map((opportunity) => {
             const applied = appliedIds.has(opportunity.project_id)
             return (
-              <View key={opportunity.project_id} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{opportunity.title}</Text>
+              <View key={opportunity.project_id} style={styles.view}>
+                <Text style={styles.text4} numberOfLines={1}>{opportunity.title}</Text>
                 {!!opportunity.company_name && (
-                  <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>{opportunity.company_name}</Text>
+                  <Text style={styles.text5} numberOfLines={1}>{opportunity.company_name}</Text>
                 )}
-                <View className="mt-1.5 flex-row items-center gap-1.5">
+                <View style={styles.view2}>
                   <MapPin size={11} color={COLORS.slate[400]} />
-                  <Text className="flex-1 text-[11px] font-semibold text-slate-400" numberOfLines={1}>
+                  <Text style={styles.text6} numberOfLines={1}>
                     {opportunity.address || 'Nearby'}{opportunity.pincode ? ` · ${opportunity.pincode}` : ''}
                   </Text>
-                  {!!inr(opportunity.budget) && <Text className="text-[11px] font-extrabold text-slate-600">{inr(opportunity.budget)}</Text>}
+                  {!!inr(opportunity.budget) && <Text style={styles.text7}>{inr(opportunity.budget)}</Text>}
                 </View>
                 <Pressable
                   onPress={() => apply(opportunity)}
                   disabled={applied || busyId === opportunity.project_id}
-                  className={`mt-3 h-10 items-center justify-center rounded-full ${applied ? 'bg-brand-50' : 'bg-brand-700'} ${busyId === opportunity.project_id ? 'opacity-60' : ''}`}
+                  style={[styles.pressable4, applied ? styles.pressable5 : styles.pressable2, busyId === opportunity.project_id ? styles.pressable6 : null]}
                 >
-                  <Text className={`text-xs font-extrabold ${applied ? 'text-brand-700' : 'text-white'}`}>
+                  <Text style={[styles.text8, applied ? styles.text9 : styles.text2]}>
                     {applied ? 'Applied' : 'Apply'}
                   </Text>
                 </Pressable>
@@ -151,20 +153,20 @@ export default function EngineerJobsScreen({ navigation }) {
             const id = builder.user_id || builder.id
             const sent = sentBuilderIds.has(id)
             return (
-              <View key={id} className="mb-3 flex-row items-center gap-3 rounded-3xl border border-slate-200 bg-white p-4">
-                <View className="flex-1">
-                  <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{builder.name || builder.business_name || 'Builder'}</Text>
-                  <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>
+              <View key={id} style={styles.view3}>
+                <View style={styles.view4}>
+                  <Text style={styles.text10} numberOfLines={1}>{builder.name || builder.business_name || 'Builder'}</Text>
+                  <Text style={styles.text5} numberOfLines={1}>
                     {builder.company_name || builder.address || 'Nearby'}
                   </Text>
                 </View>
                 <Pressable
                   onPress={() => requestJoin(builder)}
                   disabled={sent || busyId === id}
-                  className={`flex-row items-center gap-1.5 rounded-full px-3.5 py-2 ${sent ? 'bg-brand-50' : 'bg-brand-700'}`}
+                  style={[styles.pressable7, sent ? styles.pressable5 : styles.pressable2]}
                 >
                   <Send size={12} color={sent ? COLORS.brand[700] : '#fff'} />
-                  <Text className={`text-[11px] font-extrabold ${sent ? 'text-brand-700' : 'text-white'}`}>{sent ? 'Sent' : 'Join'}</Text>
+                  <Text style={[styles.text, sent ? styles.text9 : styles.text2]}>{sent ? 'Sent' : 'Join'}</Text>
                 </Pressable>
               </View>
             )
@@ -175,17 +177,17 @@ export default function EngineerJobsScreen({ navigation }) {
       {activeTab === 'requests' && (
         <PanelState loading={team.loading} error={team.error} empty={!incomingRequests.length} emptyText="No builder requests waiting on you.">
           {incomingRequests.map((request) => (
-            <View key={request.relationship_id || request.id} className="mb-3 flex-row items-center gap-3 rounded-3xl border border-slate-200 bg-white p-4">
-              <View className="flex-1">
-                <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>
+            <View key={request.relationship_id || request.id} style={styles.view3}>
+              <View style={styles.view4}>
+                <Text style={styles.text10} numberOfLines={1}>
                   {request.contractor_name || request.name || 'Builder'}
                 </Text>
-                <Text className="mt-0.5 text-xs font-semibold text-slate-500">wants you on their team</Text>
+                <Text style={styles.text5}>wants you on their team</Text>
               </View>
-              <Pressable onPress={() => respond(request.relationship_id || request.id, 'ACCEPT')} className="h-9 w-9 items-center justify-center rounded-full bg-brand-50">
+              <Pressable onPress={() => respond(request.relationship_id || request.id, 'ACCEPT')} style={styles.pressable8}>
                 <Check size={16} color={COLORS.brand[700]} />
               </Pressable>
-              <Pressable onPress={() => respond(request.relationship_id || request.id, 'REJECT')} className="h-9 w-9 items-center justify-center rounded-full bg-rose-50">
+              <Pressable onPress={() => respond(request.relationship_id || request.id, 'REJECT')} style={styles.pressable9}>
                 <X size={16} color="#e11d48" />
               </Pressable>
             </View>
@@ -195,20 +197,52 @@ export default function EngineerJobsScreen({ navigation }) {
 
       {activeTab === 'joincode' && (
         <Panel title="Join with an invite code">
-          <Text className="text-xs font-semibold text-slate-500">Got an invitation code from a builder? Enter it below to join their team instantly.</Text>
+          <Text style={styles.text11}>Got an invitation code from a builder? Enter it below to join their team instantly.</Text>
           <TextInput
             value={inviteCode}
             onChangeText={setInviteCode}
             placeholder="Invite code"
             autoCapitalize="characters"
-            className="mt-3 h-11 rounded-xl border border-slate-200 bg-white px-3 text-[15px] font-extrabold tracking-widest text-graphite"
+            style={styles.textInput}
             placeholderTextColor={COLORS.slate[400]}
           />
-          <Pressable onPress={joinByCode} disabled={joining || !inviteCode.trim()} className={`mt-3 h-11 items-center justify-center rounded-xl bg-brand-700 ${joining || !inviteCode.trim() ? 'opacity-50' : ''}`}>
-            <Text className="text-[13px] font-extrabold text-white">{joining ? 'Joining…' : 'Join team'}</Text>
+          <Pressable onPress={joinByCode} disabled={joining || !inviteCode.trim()} style={[styles.pressable10, styles[joining || !inviteCode.trim() ? 'pressable11' : '']]}>
+            <Text style={styles.text12}>{joining ? 'Joining…' : 'Join team'}</Text>
           </Pressable>
         </Panel>
       )}
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  scrollView: { marginBottom: 14 },
+  pressable: { height: 35, flexDirection: 'row', alignItems: 'center', gap: 5.25, borderRadius: 10.5, paddingHorizontal: 14 },
+  pressable2: { backgroundColor: '#1a5038' },
+  pressable3: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border },
+  text: { fontSize: 11, fontWeight: '800' },
+  text2: { color: '#ffffff' },
+  text3: { color: c.textMuted },
+  view: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  text4: { fontSize: 15, fontWeight: '800', color: c.text },
+  text5: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  view2: { marginTop: 5.25, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text6: { flex: 1, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  text7: { fontSize: 11, fontWeight: '800', color: c.textSecondary },
+  pressable4: { marginTop: 10.5, height: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 9999 },
+  pressable5: { backgroundColor: c.brandSoft },
+  pressable6: { opacity: 0.6 },
+  text8: { fontSize: 10.5, lineHeight: 14, fontWeight: '800' },
+  text9: { color: c.brandText },
+  view3: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', gap: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view4: { flex: 1 },
+  text10: { fontSize: 14, fontWeight: '800', color: c.text },
+  pressable7: { flexDirection: 'row', alignItems: 'center', gap: 5.25, borderRadius: 9999, paddingHorizontal: 12.25, paddingVertical: 7 },
+  pressable8: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.brandSoft },
+  pressable9: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.roseSoft },
+  text11: { fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  textInput: { marginTop: 10.5, height: 38.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 15, fontWeight: '800', letterSpacing: 1.6, color: c.text },
+  pressable10: { marginTop: 10.5, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
+  pressable11: { opacity: 0.5 },
+  text12: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+}))

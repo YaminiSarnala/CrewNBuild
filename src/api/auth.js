@@ -1,28 +1,16 @@
-import { apiClient } from './client'
+import { apiClient, sessionTokens } from './client'
 
 export async function loginUser(credentials) {
-  try {
-    const response = await apiClient.post('/api/auth/login', {
-      email: credentials.email.trim().toLowerCase(),
-      password: credentials.password,
-    });
-
-    console.log('LOGIN STATUS:', response.status);
-    console.log('LOGIN RESPONSE:', response.data);
-
-    return response.data;
-  } catch (error) {
-    console.log('LOGIN ERROR STATUS:', error.response?.status);
-    console.log('LOGIN ERROR DATA:', error.response?.data);
-    console.log('LOGIN ERROR MESSAGE:', error.message);
-
-    throw error;
-  }
+  const response = await apiClient.post('/auth/login', {
+    email: credentials.email.trim().toLowerCase(),
+    password: credentials.password,
+  })
+  return { ...response.data, ...sessionTokens(response) }
 }
 
 export async function signupUser(profileDetails) {
   const response = await apiClient.post('/auth/signup', profileDetails)
-  return response.data
+  return { ...response.data, ...sessionTokens(response) }
 }
 
 export async function completeUserProfile(profileDetails) {
@@ -46,3 +34,5 @@ export async function updateProfileImage(profileImageUrl) {
   const response = await apiClient.patch('/auth/profile-image', { profile_image_url: profileImageUrl })
   return response.data
 }
+
+export const deleteOwnAccount = async () => (await apiClient.delete('/account')).data

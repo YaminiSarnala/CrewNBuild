@@ -2,16 +2,17 @@
 // Same dark auth shell (index.css .auth-shell used #0d0b14), same background
 // artwork, same OAuth buttons, same translated error handling.
 import { useState } from 'react'
-import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform, Alert } from 'react-native'
+import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Alert } from 'react-native'
 import { Image } from 'expo-image'
 import { useDispatch, useSelector } from 'react-redux'
-import { ArrowLeft, ArrowRight } from 'lucide-react-native'
+import { ArrowRight } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Field, ErrorBanner } from '../../components/Field'
 import { PrimaryButton } from '../../components/ui'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { loginWithCredentials, clearAuthError, setAuthenticatedUser } from '../../store/authSlice'
 import { startGoogleOAuth, startMicrosoftOAuth } from '../../api/oauth'
+import { createStyles } from '../../theme/createStyles'
 
 // ---------------------------------------------------------------------------
 // Google / Microsoft sign-in is OFF by default.
@@ -62,7 +63,7 @@ export default function LoginScreen({ navigation }) {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: '#0d0b14' }}>
+    <View style={[styles.view, { backgroundColor: '#0d0b14' }]}>
       <Image
         source={require('../../../assets/auth-architecture-bg.png')}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.35 }}
@@ -70,7 +71,7 @@ export default function LoginScreen({ navigation }) {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         style={{ flex: 1 }}
       >
         <ScrollView
@@ -78,42 +79,30 @@ export default function LoginScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* <Pressable
-            onPress={() => navigation.navigate('Landing')}
-            accessibilityRole="button"
-            className="ml-4 mt-2 flex-row items-center self-start rounded-full bg-white/10 px-3.5 py-2"
-            style={{ gap: 6 }}
-          >
-            <ArrowLeft size={15} color="#ffffff" />
-            <Text className="font-sansSemi text-white" style={{ fontSize: 12.5 }}>
-              {t('shared.backHome')}
-            </Text>
-          </Pressable> */}
-
-          <View className="px-6 pt-10">
+          <View style={styles.view2}>
             <Image
               source={require('../../../assets/logo.png')}
               style={{ width: 44, height: 49 }}
               contentFit="contain"
             />
-            <Text className="mt-5 font-display text-white" style={{ fontSize: 30, letterSpacing: -1 }}>
+            <Text style={[styles.text, { fontSize: 30, letterSpacing: -1 }]}>
               {t('shared.buildTitle')}
             </Text>
-            <Text className="font-display text-brand-400" style={{ fontSize: 30, letterSpacing: -1 }}>
+            <Text style={[styles.text2, { fontSize: 30, letterSpacing: -1 }]}>
               {t('shared.buildSubtitle')}
             </Text>
-            <Text className="mt-3 font-sans text-slate-300" style={{ fontSize: 14, lineHeight: 21 }}>
+            <Text style={[styles.text3, { fontSize: 14, lineHeight: 21 }]}>
               {t('shared.platform')}
             </Text>
           </View>
 
-          <View className="mt-8 self-center w-full rounded-3xl bg-white p-6" style={{ maxWidth: 520, marginHorizontal: 20 }}>
+          <View style={[styles.view3, { maxWidth: 520, marginHorizontal: 20 }]}>
             <ErrorBanner message={translateMessage(errorMessage)} />
 
-            <Text className="font-display text-graphite" style={{ fontSize: 20, letterSpacing: -0.5 }}>
+            <Text style={[styles.text4, { fontSize: 20, letterSpacing: -0.5 }]}>
               {t('login.welcome')}
             </Text>
-            <Text className="mb-5 mt-1.5 font-sans text-slate-500" style={{ fontSize: 13, lineHeight: 19 }}>
+            <Text style={[styles.text5, { fontSize: 13, lineHeight: 19 }]}>
               {t('login.intro')}
             </Text>
 
@@ -150,19 +139,19 @@ export default function LoginScreen({ navigation }) {
               full
             />
 
-            <Pressable onPress={() => navigation.navigate('ForgotPassword')} className="mt-3 items-center">
-              <Text className="font-sansSemi text-brand-700" style={{ fontSize: 13 }}>
+            <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.pressable}>
+              <Text style={[styles.text6, { fontSize: 13 }]}>
                 Forgot password?
               </Text>
             </Pressable>
             {SHOW_OAUTH ? (
               <>
-                <View className="my-5 flex-row items-center" style={{ gap: 12 }}>
-                  <View className="h-px flex-1 bg-slate-200" />
-                  <Text className="font-sans text-slate-400" style={{ fontSize: 12 }}>
+                <View style={[styles.view4, { gap: 12 }]}>
+                  <View style={styles.view5} />
+                  <Text style={[styles.text7, { fontSize: 12 }]}>
                     {t('shared.orContinue')}
                   </Text>
-                  <View className="h-px flex-1 bg-slate-200" />
+                  <View style={styles.view5} />
                 </View>
 
                 <View style={{ gap: 10 }}>
@@ -170,9 +159,9 @@ export default function LoginScreen({ navigation }) {
                     onPress={() => runOAuth(startGoogleOAuth)}
                     disabled={oauthBusy}
                     accessibilityRole="button"
-                    className="items-center rounded-full border border-slate-200 bg-white py-3.5 active:bg-slate-50"
+                    style={styles.pressable2}
                   >
-                    <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
+                    <Text style={[styles.text8, { fontSize: 14 }]}>
                       Google
                     </Text>
                   </Pressable>
@@ -180,9 +169,9 @@ export default function LoginScreen({ navigation }) {
                     onPress={() => runOAuth(startMicrosoftOAuth)}
                     disabled={oauthBusy}
                     accessibilityRole="button"
-                    className="items-center rounded-full border border-slate-200 bg-white py-3.5 active:bg-slate-50"
+                    style={styles.pressable2}
                   >
-                    <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
+                    <Text style={[styles.text8, { fontSize: 14 }]}>
                       Microsoft
                     </Text>
                   </Pressable>
@@ -190,13 +179,13 @@ export default function LoginScreen({ navigation }) {
               </>
             ) : null}
 
-            <Pressable onPress={() => navigation.navigate('Signup')} className="mt-6 items-center">
-              <Text className="font-sansSemi text-brand-700" style={{ fontSize: 13.5 }}>
+            <Pressable onPress={() => navigation.navigate('Signup')} style={styles.pressable3}>
+              <Text style={[styles.text6, { fontSize: 13.5 }]}>
                 {t('login.new')} {t('site.nav.signup')}
               </Text>
             </Pressable>
 
-            <Text className="mt-5 text-center font-sans text-slate-400" style={{ fontSize: 11.5, lineHeight: 17 }}>
+            <Text style={[styles.text9, { fontSize: 11.5, lineHeight: 17 }]}>
               {t('shared.security')}
             </Text>
           </View>
@@ -205,3 +194,23 @@ export default function LoginScreen({ navigation }) {
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flex: 1 },
+  view2: { paddingHorizontal: 21, paddingTop: 35 },
+  text: { marginTop: 17.5, fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },
+  text2: { fontFamily: 'Manrope_800ExtraBold', color: '#6ba88a' },
+  text3: { marginTop: 10.5, fontFamily: 'Inter_400Regular', color: '#cbd5e1' },
+  view3: { marginTop: 28, alignSelf: 'center', width: '100%', borderRadius: 21, backgroundColor: c.card, padding: 21 },
+  text4: { fontFamily: 'Manrope_800ExtraBold', color: c.text },
+  text5: { marginBottom: 17.5, marginTop: 5.25, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  pressable: { marginTop: 10.5, alignItems: 'center' },
+  text6: { fontFamily: 'Inter_600SemiBold', color: c.brandText },
+  view4: { marginVertical: 17.5, flexDirection: 'row', alignItems: 'center' },
+  view5: { height: 0.88, flex: 1, backgroundColor: c.mutedStrong },
+  text7: { fontFamily: 'Inter_400Regular', color: c.textFaint },
+  pressable2: { alignItems: 'center', borderRadius: 9999, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingVertical: 12.25 },
+  text8: { fontFamily: 'Inter_700Bold', color: c.text },
+  pressable3: { marginTop: 21, alignItems: 'center' },
+  text9: { marginTop: 17.5, textAlign: 'center', fontFamily: 'Inter_400Regular', color: c.textFaint },
+}))

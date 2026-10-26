@@ -15,6 +15,7 @@ import {
   assignSupplierToProject, unassignSupplierFromProject,
 } from '../../api/engineers'
 import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 const TABS = [
   { id: 'details', label: 'Overview' },
@@ -30,11 +31,11 @@ function inr(value) {
 }
 
 function StatusChip({ label, tone = 'brand' }) {
-  const bg = tone === 'positive' ? 'bg-brand-100' : tone === 'muted' ? 'bg-slate-100' : 'bg-brand-50'
-  const fg = tone === 'muted' ? 'text-slate-500' : 'text-brand-800'
+  const bg = tone === 'positive' ? 'tone' : tone === 'muted' ? 'tone2' : 'tone3'
+  const fg = tone === 'muted' ? 'text' : 'tone4'
   return (
-    <View className={`self-start rounded-full px-3 py-1 ${bg}`}>
-      <Text className={`text-[11px] font-extrabold ${fg}`}>{label}</Text>
+    <View style={[styles.view, styles[bg]]}>
+      <Text style={[styles.text2, styles[fg]]}>{label}</Text>
     </View>
   )
 }
@@ -42,22 +43,22 @@ function StatusChip({ label, tone = 'brand' }) {
 function ProjectCard({ project, onPress }) {
   const completion = Math.min(Number(project.completion_percentage || 0), 100)
   return (
-    <Pressable onPress={onPress} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-      <View className="flex-row items-center gap-2">
+    <Pressable onPress={onPress} style={styles.pressable}>
+      <View style={styles.view2}>
         <HardHat size={16} color={COLORS.brand[700]} />
-        <Text className="flex-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>
+        <Text style={styles.text3} numberOfLines={1}>
           {project.project_title || project.title || 'Project'}
         </Text>
         <StatusChip label={`${completion}%`} />
       </View>
-      <View className="mt-2 flex-row items-center gap-1.5">
+      <View style={styles.view3}>
         <MapPin size={12} color={COLORS.slate[400]} />
-        <Text className="flex-1 text-xs font-semibold text-slate-500" numberOfLines={1}>
+        <Text style={styles.text4} numberOfLines={1}>
           {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
         </Text>
       </View>
-      <View className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <View className="h-full rounded-full bg-brand-600" style={{ width: `${completion}%` }} />
+      <View style={styles.view4}>
+        <View style={[styles.view5, { width: `${completion}%` }]} />
       </View>
     </Pressable>
   )
@@ -65,9 +66,9 @@ function ProjectCard({ project, onPress }) {
 
 function DetailField({ label, value }) {
   return (
-    <View className="w-[48%] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-      <Text className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</Text>
-      <Text className="mt-0.5 text-xs font-bold text-graphite" numberOfLines={1}>{value || 'Not set'}</Text>
+    <View style={styles.view6}>
+      <Text style={styles.text5}>{label}</Text>
+      <Text style={styles.text6} numberOfLines={1}>{value || 'Not set'}</Text>
     </View>
   )
 }
@@ -108,35 +109,35 @@ function ProjectDetail({ project, onBack }) {
 
   return (
     <View>
-      <Pressable onPress={onBack} className="mb-3 flex-row items-center gap-1">
+      <Pressable onPress={onBack} style={styles.pressable2}>
         <ChevronLeft size={18} color={COLORS.brand[700]} />
-        <Text className="text-sm font-extrabold text-brand-700">All projects</Text>
+        <Text style={styles.text7}>All projects</Text>
       </Pressable>
 
-      <Text className="text-xl font-extrabold text-graphite">{project.project_title || project.title}</Text>
-      <Text className="mt-1 text-xs font-semibold text-slate-500">
+      <Text style={styles.text8}>{project.project_title || project.title}</Text>
+      <Text style={styles.text9}>
         {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
       </Text>
 
       {/* Sub-tab strip — same 4 tabs as web ContractorProjectDetail */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4" contentContainerStyle={{ gap: 6 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.view7} contentContainerStyle={{ gap: 6 }}>
         {TABS.map((tab) => {
           const active = activeTab === tab.id
           return (
             <Pressable
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
-              className={`rounded-xl px-4 py-2 ${active ? 'bg-brand-700' : 'bg-white border border-slate-200'}`}
+              style={[styles.pressable3, active ? styles.pressable4 : styles.pressable5]}
             >
-              <Text className={`text-xs font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>{tab.label}</Text>
+              <Text style={[styles.text10, active ? styles.text11 : styles.text]}>{tab.label}</Text>
             </Pressable>
           )
         })}
       </ScrollView>
 
-      <View className="mt-4">
+      <View style={styles.view7}>
         {activeTab === 'details' && (
-          <View className="flex-row flex-wrap justify-between gap-y-2.5">
+          <View style={styles.view8}>
             <DetailField label="Construction" value={project.construction_type} />
             <DetailField label="Building type" value={project.building_type} />
             <DetailField label="Land area" value={project.land_area ? `${project.land_area} Sq.ft` : null} />
@@ -150,15 +151,15 @@ function ProjectDetail({ project, onBack }) {
           <Panel title="Site activity">
             <PanelState loading={timeline.loading} error={timeline.error} empty={!timelineList.length} emptyText="No site updates logged yet.">
               {timelineList.map((entry, index) => (
-                <View key={entry.id || index} className="border-b border-slate-100 py-3">
-                  <Text className="text-xs font-extrabold text-brand-700">
+                <View key={entry.id || index} style={styles.view9}>
+                  <Text style={styles.text12}>
                     {String(entry.date || entry.work_date || '').slice(0, 10)}
                   </Text>
-                  <Text className="mt-1 text-[13px] font-semibold text-graphite">
+                  <Text style={styles.text13}>
                     {entry.work_type || entry.description || 'Daily site record'}
                   </Text>
                   {!!(entry.images || []).length && (
-                    <Text className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                    <Text style={styles.text14}>
                       {(entry.images || []).length} photo(s)
                     </Text>
                   )}
@@ -174,8 +175,8 @@ function ProjectDetail({ project, onBack }) {
               <PanelState loading={engineer.loading} error={engineer.error} empty={!assignedEngineer} emptyText="No engineer assigned yet. Assign one from the Engineers tab.">
                 {assignedEngineer && (
                   <View>
-                    <Text className="text-[15px] font-extrabold text-graphite">{assignedEngineer.name || assignedEngineer.full_name}</Text>
-                    <Text className="mt-0.5 text-xs font-semibold text-slate-500">{assignedEngineer.category || 'Site Engineer'}</Text>
+                    <Text style={styles.text15}>{assignedEngineer.name || assignedEngineer.full_name}</Text>
+                    <Text style={styles.text16}>{assignedEngineer.category || 'Site Engineer'}</Text>
                   </View>
                 )}
               </PanelState>
@@ -185,15 +186,15 @@ function ProjectDetail({ project, onBack }) {
                 {supplierList.map((supplier, index) => {
                   const id = supplier.user_id || supplier.id
                   return (
-                    <View key={id || index} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
-                      <View className="flex-1">
-                        <Text className="text-[14px] font-extrabold text-graphite">{supplier.business_name || supplier.name}</Text>
+                    <View key={id || index} style={styles.view10}>
+                      <View style={styles.view11}>
+                        <Text style={styles.text17}>{supplier.business_name || supplier.name}</Text>
                         {!!supplier.material_types && (
-                          <Text className="mt-0.5 text-xs font-semibold text-slate-500">{String(supplier.material_types)}</Text>
+                          <Text style={styles.text16}>{String(supplier.material_types)}</Text>
                         )}
                       </View>
-                      <Pressable onPress={() => changeSupplier(supplier, false)} disabled={supplierBusyId === id} className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5">
-                        <Text className="text-[10px] font-extrabold text-rose-700">Remove</Text>
+                      <Pressable onPress={() => changeSupplier(supplier, false)} disabled={supplierBusyId === id} style={styles.pressable6}>
+                        <Text style={styles.text18}>Remove</Text>
                       </Pressable>
                     </View>
                   )
@@ -207,12 +208,12 @@ function ProjectDetail({ project, onBack }) {
                   .map((supplier) => {
                     const id = supplier.user_id || supplier.id
                     return (
-                      <View key={id} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
-                        <View className="flex-1">
-                          <Text className="text-[14px] font-extrabold text-graphite">{supplier.business_name || supplier.name}</Text>
+                      <View key={id} style={styles.view10}>
+                        <View style={styles.view11}>
+                          <Text style={styles.text17}>{supplier.business_name || supplier.name}</Text>
                         </View>
-                        <Pressable onPress={() => changeSupplier(supplier, true)} disabled={supplierBusyId === id} className="rounded-lg bg-brand-700 px-3 py-1.5">
-                          <Text className="text-[10px] font-extrabold text-white">Assign</Text>
+                        <Pressable onPress={() => changeSupplier(supplier, true)} disabled={supplierBusyId === id} style={styles.pressable7}>
+                          <Text style={styles.text19}>Assign</Text>
                         </Pressable>
                       </View>
                     )
@@ -226,10 +227,10 @@ function ProjectDetail({ project, onBack }) {
           <Panel title="Escrow milestones">
             <PanelState empty={!milestones.length} emptyText="No milestones set up for this project yet.">
               {milestones.map((milestone) => (
-                <View key={milestone.id} className="flex-row items-center justify-between border-b border-slate-100 py-3">
-                  <Text className="flex-1 text-[14px] font-extrabold text-graphite">{milestone.name}</Text>
-                  <View className="items-end">
-                    <Text className="text-[15px] font-extrabold text-brand-700">{inr(milestone.amount)}</Text>
+                <View key={milestone.id} style={styles.view12}>
+                  <Text style={styles.text20}>{milestone.name}</Text>
+                  <View style={styles.view13}>
+                    <Text style={styles.text21}>{inr(milestone.amount)}</Text>
                     <StatusChip label={milestone.status || 'PENDING'} tone={milestone.status === 'RELEASED' ? 'positive' : 'muted'} />
                   </View>
                 </View>
@@ -270,3 +271,51 @@ export default function ContractorProjectsScreen({ navigation }) {
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  tone: { backgroundColor: c.brandSoftStrong },
+  tone2: { backgroundColor: c.muted },
+  tone3: { backgroundColor: c.brandSoft },
+  text: { color: c.textMuted },
+  tone4: { color: c.brandTextStrong },
+  view: { alignSelf: 'flex-start', borderRadius: 9999, paddingHorizontal: 10.5, paddingVertical: 3.5 },
+  text2: { fontSize: 11, fontWeight: '800' },
+  pressable: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view2: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text3: { flex: 1, fontSize: 15, fontWeight: '800', color: c.text },
+  view3: { marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text4: { flex: 1, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  view4: { marginTop: 10.5, height: 5.25, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
+  view5: { height: '100%', borderRadius: 9999, backgroundColor: '#236645' },
+  view6: { width: '48%', borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text5: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: c.textFaint },
+  text6: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '700', color: c.text },
+  pressable2: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text7: { fontSize: 12.25, lineHeight: 17.5, fontWeight: '800', color: c.brandText },
+  text8: { fontSize: 17.5, lineHeight: 24.5, fontWeight: '800', color: c.text },
+  text9: { marginTop: 3.5, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  view7: { marginTop: 14 },
+  pressable3: { borderRadius: 10.5, paddingHorizontal: 14, paddingVertical: 7 },
+  pressable4: { backgroundColor: '#1a5038' },
+  pressable5: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border },
+  text10: { fontSize: 10.5, lineHeight: 14, fontWeight: '800' },
+  text11: { color: '#ffffff' },
+  view8: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8.75 },
+  view9: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text12: { fontSize: 10.5, lineHeight: 14, fontWeight: '800', color: c.brandText },
+  text13: { marginTop: 3.5, fontSize: 13, fontWeight: '600', color: c.text },
+  text14: { marginTop: 1.75, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  text15: { fontSize: 15, fontWeight: '800', color: c.text },
+  text16: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  view10: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
+  view11: { flex: 1 },
+  text17: { fontSize: 14, fontWeight: '800', color: c.text },
+  pressable6: { borderRadius: 7, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 8.75, paddingVertical: 5.25 },
+  text18: { fontSize: 10, fontWeight: '800', color: c.roseText },
+  pressable7: { borderRadius: 7, backgroundColor: '#1a5038', paddingHorizontal: 10.5, paddingVertical: 5.25 },
+  text19: { fontSize: 10, fontWeight: '800', color: '#ffffff' },
+  view12: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text20: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  view13: { alignItems: 'flex-end' },
+  text21: { fontSize: 15, fontWeight: '800', color: c.brandText },
+}))

@@ -36,10 +36,10 @@ const soon = (title, phase) => (props) => (
 
 export const TAB_CONFIGS = {
    OWNER: [
-    { name: 'OwnerHomeTab', label: 'Home', icon: Home, component: OwnerDashboard },
-    { name: 'OwnerProjectsTab', label: 'Projects', icon: HardHat, component: OwnerProjectsScreen },
-    { name: 'OwnerShopTab', label: 'Buy & Sell', icon: Truck, component: OwnerShopScreen },
-    { name: 'OwnerProfileTab', label: 'Profile', icon: CircleUser, component: ProfileScreen },
+    { name: 'OwnerHomeTab', label: 'Home', labelKey: 'site.nav.home', icon: Home, component: OwnerDashboard },
+    { name: 'OwnerProjectsTab', label: 'Projects', labelKey: 'ui.projects', badgeSections: ['projects', 'estimates'], icon: HardHat, component: OwnerProjectsScreen },
+    { name: 'OwnerShopTab', label: 'Buy & Sell', labelKey: 'ui.buySell', icon: Truck, component: OwnerShopScreen },
+    { name: 'OwnerProfileTab', label: 'Profile', labelKey: 'ui.profile', badgeSections: ['profile'], icon: CircleUser, component: ProfileScreen },
   ],
   CONTRACTOR: [
     { name: 'ContractorHomeTab', label: 'Home', icon: LayoutDashboard, component: ContractorDashboard },

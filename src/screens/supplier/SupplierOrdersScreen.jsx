@@ -5,14 +5,15 @@ import { useState } from 'react'
 import { View, Text, Pressable, Alert } from 'react-native'
 import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
 import { fetchSupplierMaterialRequests, respondMaterialRequest } from '../../api/materialRequests'
+import { createStyles } from '../../theme/createStyles'
 
 const inr = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`
 
 const STATUS_TONE = {
-  PENDING: 'bg-amber-50 text-amber-700',
-  ACCEPTED: 'bg-brand-50 text-brand-800',
-  FULFILLED: 'bg-blue-50 text-blue-700',
-  REJECTED: 'bg-rose-50 text-rose-700',
+  PENDING: 'tone',
+  ACCEPTED: 'tone2',
+  FULFILLED: 'tone3',
+  REJECTED: 'tone4',
 }
 
 export default function SupplierOrdersScreen({ navigation }) {
@@ -40,13 +41,11 @@ export default function SupplierOrdersScreen({ navigation }) {
   }
 
   function ActionButton({ label, onPress, tone = 'brand', disabled }) {
-    const styles = tone === 'danger'
-      ? 'border border-rose-200 bg-rose-50'
-      : 'bg-brand-700'
-    const textStyles = tone === 'danger' ? 'text-rose-700' : 'text-white'
+    const boxTone = tone === 'danger' ? styles.tone5 : styles.tone6
+    const textTone = tone === 'danger' ? styles.tone7 : styles.tone8
     return (
-      <Pressable onPress={onPress} disabled={disabled} className={`h-9 flex-1 items-center justify-center rounded-lg ${styles} ${disabled ? 'opacity-50' : ''}`}>
-        <Text className={`text-xs font-extrabold ${textStyles}`}>{label}</Text>
+      <Pressable onPress={onPress} disabled={disabled} style={[styles.pressable, boxTone, disabled ? styles.pressable2 : null]}>
+        <Text style={[styles.text, textTone]}>{label}</Text>
       </Pressable>
     )
   }
@@ -59,33 +58,33 @@ export default function SupplierOrdersScreen({ navigation }) {
             const status = String(order.status || 'PENDING').toUpperCase()
             const items = Array.isArray(order.items) ? order.items : []
             return (
-              <View key={order.id} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                <View className="flex-row items-center justify-between">
-                  <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={1}>
+              <View key={order.id} style={styles.view}>
+                <View style={styles.view2}>
+                  <Text style={styles.text2} numberOfLines={1}>
                     {order.request_code || `Request #${order.id}`}
                   </Text>
-                  <View className={`rounded-full px-2.5 py-1 ${STATUS_TONE[status] || 'bg-slate-100 text-slate-500'}`}>
-                    <Text className={`text-[10px] font-extrabold ${(STATUS_TONE[status] || '').split(' ')[1] || 'text-slate-500'}`}>{status}</Text>
+                  <View style={[styles.view3, styles[STATUS_TONE[status] || 'view4']]}>
+                    <Text style={[styles.text3, STATUS_TONE[status] ? { color: styles[STATUS_TONE[status]].color } : styles.text4]}>{status}</Text>
                   </View>
                 </View>
-                <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>
+                <Text style={styles.text5} numberOfLines={1}>
                   {order.buyer_name || order.owner_name || 'Buyer'}{order.project_title ? ` · ${order.project_title}` : ''}
                 </Text>
                 {items.map((item, index) => (
-                  <Text key={item.id || index} className="mt-1 text-[12px] font-semibold text-slate-500" numberOfLines={1}>
+                  <Text key={item.id || index} style={styles.text6} numberOfLines={1}>
                     {item.product_name || item.name} × {item.quantity}{item.unit ? ` ${item.unit}` : ''}
                   </Text>
                 ))}
-                {!!order.total && <Text className="mt-2 text-[15px] font-extrabold text-brand-700">{inr(order.total)}</Text>}
+                {!!order.total && <Text style={styles.text7}>{inr(order.total)}</Text>}
 
                 {status === 'PENDING' && (
-                  <View className="mt-3 flex-row gap-2">
+                  <View style={styles.view5}>
                     <ActionButton label="Reject" tone="danger" disabled={busyId === order.id} onPress={() => respond(order.id, 'REJECT')} />
                     <ActionButton label="Accept" disabled={busyId === order.id} onPress={() => respond(order.id, 'ACCEPT')} />
                   </View>
                 )}
                 {status === 'ACCEPTED' && (
-                  <View className="mt-3">
+                  <View style={styles.view6}>
                     <ActionButton label="Mark fulfilled" disabled={busyId === order.id} onPress={() => respond(order.id, 'FULFILL')} />
                   </View>
                 )}
@@ -97,3 +96,29 @@ export default function SupplierOrdersScreen({ navigation }) {
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  tone: { backgroundColor: c.amberSoft, color: c.amberText },
+  tone2: { backgroundColor: c.brandSoft, color: c.brandTextStrong },
+  tone3: { backgroundColor: c.blueSoft, color: c.blueText },
+  tone4: { backgroundColor: c.roseSoft, color: c.roseText },
+  tone5: { borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft },
+  tone6: { backgroundColor: '#1a5038' },
+  tone7: { color: c.roseText },
+  tone8: { color: '#ffffff' },
+  pressable: { height: 31.5, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 7 },
+  pressable2: { opacity: 0.5 },
+  text: { fontSize: 10.5, lineHeight: 14, fontWeight: '800' },
+  view: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text2: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  view3: { borderRadius: 9999, paddingHorizontal: 8.75, paddingVertical: 3.5 },
+  view4: { backgroundColor: c.muted, color: c.textMuted },
+  text3: { fontSize: 10, fontWeight: '800' },
+  text4: { color: c.textMuted },
+  text5: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
+  text6: { marginTop: 3.5, fontSize: 12, fontWeight: '600', color: c.textMuted },
+  text7: { marginTop: 7, fontSize: 15, fontWeight: '800', color: c.brandText },
+  view5: { marginTop: 10.5, flexDirection: 'row', gap: 7 },
+  view6: { marginTop: 10.5 },
+}))

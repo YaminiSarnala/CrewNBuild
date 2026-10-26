@@ -10,6 +10,8 @@ import { fetchSupplierProducts } from '../../api/supplierProducts'
 import { fetchSupplierMaterialRequests, respondMaterialRequest } from '../../api/materialRequests'
 import { fetchSupplierClients } from '../../api/profiles'
 import { fetchSupplierMyProjects } from '../../api/projects'
+import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 export default function SupplierDashboard({ navigation }) {
   const [languageOpen, setLanguageOpen] = useState(false)
@@ -71,32 +73,30 @@ export default function SupplierDashboard({ navigation }) {
             emptyText="No incoming material requests."
           >
             {requestList.map((request) => (
-              <View key={request.id} className="mb-4 rounded-2xl bg-slate-50 p-4">
-                <Text className="font-sansBold text-graphite" style={{ fontSize: 14.5 }}>
+              <View key={request.id} style={styles.view}>
+                <Text style={[styles.text, { fontSize: 14.5 }]}>
                   {request.material_name || request.title || `Request #${request.id}`}
                 </Text>
-                <Text className="mt-1 font-sans text-slate-500" style={{ fontSize: 12.5 }}>
+                <Text style={[styles.text2, { fontSize: 12.5 }]}>
                   {request.quantity ? `${request.quantity} ${request.unit || ''}` : ''}
                   {request.status ? ` · ${request.status}` : ''}
                 </Text>
-                <View className="mt-3 flex-row" style={{ gap: 10 }}>
+                <View style={[styles.view2, { gap: 10 }]}>
                   <Pressable
                     onPress={() => respond(request.id, 'ACCEPT')}
-                    className="flex-1 flex-row items-center justify-center rounded-full bg-brand-800 py-2.5 active:bg-brand-700"
-                    style={{ gap: 6 }}
+                    style={[styles.pressable, { gap: 6 }]}
                   >
                     <Check size={14} color="#ffffff" />
-                    <Text className="font-sansBold text-white" style={{ fontSize: 13 }}>
+                    <Text style={[styles.text3, { fontSize: 13 }]}>
                       Accept
                     </Text>
                   </Pressable>
                   <Pressable
                     onPress={() => respond(request.id, 'REJECT')}
-                    className="flex-1 flex-row items-center justify-center rounded-full border border-slate-300 bg-white py-2.5 active:bg-slate-100"
-                    style={{ gap: 6 }}
+                    style={[styles.pressable2, { gap: 6 }]}
                   >
                     <X size={14} color="#dc2626" />
-                    <Text className="font-sansBold text-warm" style={{ fontSize: 13 }}>
+                    <Text style={[styles.text4, { fontSize: 13 }]}>
                       Decline
                     </Text>
                   </Pressable>
@@ -112,11 +112,10 @@ export default function SupplierDashboard({ navigation }) {
             <Pressable
               onPress={() => navigation.navigate('AddProduct')}
               accessibilityRole="button"
-              className="flex-row items-center rounded-full bg-brand-50 px-3 py-1.5"
-              style={{ gap: 4 }}
+              style={[styles.pressable3, { gap: 4 }]}
             >
-              <Plus size={13} color="#134127" />
-              <Text className="font-sansBold text-brand-800" style={{ fontSize: 12 }}>
+              <Plus size={13} color={COLORS.brand[800]} />
+              <Text style={[styles.text5, { fontSize: 12 }]}>
                 Add
               </Text>
             </Pressable>
@@ -129,19 +128,19 @@ export default function SupplierDashboard({ navigation }) {
             emptyText="No products listed yet."
           >
             {productList.map((product) => (
-              <View key={product.id} className="mb-3 flex-row items-center" style={{ gap: 10 }}>
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-brand-50">
-                  <Package size={16} color="#134127" />
+              <View key={product.id} style={[styles.view3, { gap: 10 }]}>
+                <View style={styles.view4}>
+                  <Package size={16} color={COLORS.brand[800]} />
                 </View>
-                <View className="flex-1">
-                  <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
+                <View style={styles.view5}>
+                  <Text style={[styles.text, { fontSize: 14 }]}>
                     {product.name}
                   </Text>
-                  <Text className="font-sans text-slate-500" style={{ fontSize: 12 }}>
+                  <Text style={[styles.text6, { fontSize: 12 }]}>
                     {product.category || '—'}
                   </Text>
                 </View>
-                <Text className="font-display text-brand-800" style={{ fontSize: 14 }}>
+                <Text style={[styles.text7, { fontSize: 14 }]}>
                   ₹{Number(product.price || 0).toLocaleString('en-IN')}
                 </Text>
               </View>
@@ -154,31 +153,31 @@ export default function SupplierDashboard({ navigation }) {
               const projectId = project.id || project.project_id
               const projectOrders = requestList.filter((order) => order.project_id === projectId)
               return (
-                <View key={projectId} className="mb-3 rounded-2xl border border-slate-200 bg-white p-4">
-                  <View className="flex-row items-center gap-2">
+                <View key={projectId} style={styles.view6}>
+                  <View style={styles.view7}>
                     <HardHat size={15} color="#166534" />
-                    <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={1}>
+                    <Text style={styles.text8} numberOfLines={1}>
                       {project.project_title || project.title || 'Project'}
                     </Text>
                     {!!projectOrders.length && (
-                      <View className="rounded-full bg-brand-100 px-2 py-0.5">
-                        <Text className="text-[10px] font-extrabold text-brand-800">{projectOrders.length} orders</Text>
+                      <View style={styles.view8}>
+                        <Text style={styles.text9}>{projectOrders.length} orders</Text>
                       </View>
                     )}
                   </View>
-                  <View className="mt-1.5 flex-row items-center gap-1.5">
+                  <View style={styles.view9}>
                     <MapPin size={11} color="#94a3b8" />
-                    <Text className="flex-1 text-[11px] font-semibold text-slate-400" numberOfLines={1}>
+                    <Text style={styles.text10} numberOfLines={1}>
                       {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
                     </Text>
                   </View>
                   {!!(project.contractor_name || project.engineer_name) && (
-                    <Text className="mt-1 text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+                    <Text style={styles.text11} numberOfLines={1}>
                       {[project.contractor_name && `Builder: ${project.contractor_name}`, project.engineer_name && `Engineer: ${project.engineer_name}`].filter(Boolean).join(' · ')}
                     </Text>
                   )}
                   {projectOrders.slice(0, 3).map((order) => (
-                    <Text key={order.id} className="mt-1.5 text-[12px] font-semibold text-slate-500" numberOfLines={1}>
+                    <Text key={order.id} style={styles.text12} numberOfLines={1}>
                       • {order.request_code || `Order #${order.id}`} · {order.status || 'PENDING'}
                     </Text>
                   ))}
@@ -195,11 +194,11 @@ export default function SupplierDashboard({ navigation }) {
             emptyText="No clients found in your delivery area yet."
           >
             {clientList.slice(0, 8).map((client) => (
-              <View key={client.id} className="mb-3">
-                <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
+              <View key={client.id} style={styles.view10}>
+                <Text style={[styles.text, { fontSize: 14 }]}>
                   {client.name || client.company_name}
                 </Text>
-                <Text className="font-sans text-slate-500" style={{ fontSize: 12 }}>
+                <Text style={[styles.text6, { fontSize: 12 }]}>
                   {client.pincode || '—'}
                 </Text>
               </View>
@@ -211,3 +210,31 @@ export default function SupplierDashboard({ navigation }) {
     </>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 14, borderRadius: 14, backgroundColor: c.subtle, padding: 14 },
+  text: { fontFamily: 'Inter_700Bold', color: c.text },
+  text2: { marginTop: 3.5, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view2: { marginTop: 10.5, flexDirection: 'row' },
+  pressable: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#134127', paddingVertical: 8.75 },
+  text3: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
+  pressable2: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.card, paddingVertical: 8.75 },
+  text4: { fontFamily: 'Inter_700Bold', color: '#dc2626' },
+  pressable3: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 5.25 },
+  text5: { fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
+  view3: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center' },
+  view4: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: c.brandSoft },
+  view5: { flex: 1 },
+  text6: { fontFamily: 'Inter_400Regular', color: c.textMuted },
+  text7: { fontFamily: 'Manrope_800ExtraBold', color: c.brandTextStrong },
+  view6: { marginBottom: 10.5, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view7: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text8: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  view8: { borderRadius: 9999, backgroundColor: c.brandSoftStrong, paddingHorizontal: 7, paddingVertical: 1.75 },
+  text9: { fontSize: 10, fontWeight: '800', color: c.brandTextStrong },
+  view9: { marginTop: 5.25, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text10: { flex: 1, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  text11: { marginTop: 3.5, fontSize: 11, fontWeight: '600', color: c.textMuted },
+  text12: { marginTop: 5.25, fontSize: 12, fontWeight: '600', color: c.textMuted },
+  view10: { marginBottom: 10.5 },
+}))

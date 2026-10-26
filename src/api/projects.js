@@ -14,18 +14,20 @@ export async function createProjectRequest(projectDetails) {
   return response.data
 }
 
-export async function fetchNearbyContractors(pincode, country) {
+export async function fetchNearbyContractors(pincode, country, projectId) {
   const params = {}
   if (pincode) params.pincode = pincode
   if (country) params.country = country
+  if (projectId) params.project_id = projectId
   const response = await apiClient.get('/contractors/nearby', { params })
   return response.data
 }
 
-export async function fetchNearbySuppliers(pincode, country) {
+export async function fetchNearbySuppliers(pincode, country, projectId) {
   const params = {}
   if (pincode) params.pincode = pincode
   if (country) params.country = country
+  if (projectId) params.project_id = projectId
   const response = await apiClient.get('/suppliers/nearby', { params })
   return response.data
 }
@@ -82,7 +84,11 @@ export async function deleteOwnerProject(projectId) {
   return response.data
 }
 
-// Supplier v2: projects this supplier is assigned to (web SupplierMyProjects)
+export async function updateProjectRequirement(projectId, requirementData) {
+  const response = await apiClient.patch(`/projects/${projectId}/requirement`, requirementData)
+  return response.data
+}
+
 export async function fetchSupplierMyProjects() {
   const response = await apiClient.get('/suppliers/my-projects')
   return response.data

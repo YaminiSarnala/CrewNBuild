@@ -1,7 +1,7 @@
 // Port of the web src/pages/site/EstimateCalculator.jsx.
 // Wired to POST /estimates/calculate — the one public endpoint that needs no auth.
 import { useState } from 'react'
-import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, ScrollView, Pressable, KeyboardAvoidingView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeft, Calculator } from 'lucide-react-native'
 import { Field, ErrorBanner } from '../components/Field'
@@ -9,6 +9,7 @@ import { PrimaryButton, Eyebrow } from '../components/ui'
 import { useLanguage } from '../i18n/LanguageContext'
 import { calculatePublicEstimate } from '../api/estimates'
 import { SHADOW, TYPE } from '../theme/tokens'
+import { createStyles } from '../theme/createStyles'
 
 export default function EstimateScreen({ navigation }) {
   const insets = useSafeAreaInsets()
@@ -51,19 +52,17 @@ export default function EstimateScreen({ navigation }) {
 
   function Choice({ options, value, onChange }) {
     return (
-      <View className="mb-4 flex-row rounded-2xl bg-slate-100 p-1" style={{ gap: 4 }}>
+      <View style={[styles.view, { gap: 4 }]}>
         {options.map((option) => {
           const active = option.value === value
           return (
             <Pressable
               key={option.value}
               onPress={() => onChange(option.value)}
-              className={`flex-1 items-center rounded-xl py-2.5 ${active ? 'bg-white' : ''}`}
-              style={active ? SHADOW.card : undefined}
+              style={[styles.pressable, active ? styles.pressable2 : null, active ? SHADOW.card : undefined]}
             >
               <Text
-                className={active ? 'font-sansBold text-brand-800' : 'font-sansMedium text-slate-500'}
-                style={{ fontSize: 13 }}
+                style={[active ? styles.text : styles.text2, { fontSize: 13 }]}
               >
                 {option.label}
               </Text>
@@ -75,29 +74,29 @@ export default function EstimateScreen({ navigation }) {
   }
 
   return (
-    <View className="flex-1 bg-paper">
-      <View style={{ paddingTop: insets.top }} className="bg-brand-800 pb-4">
-        <View className="flex-row items-center px-4 pt-2" style={{ gap: 10 }}>
-          <Pressable onPress={() => navigation.goBack()} accessibilityLabel="Back" className="p-2">
+    <View style={styles.view2}>
+      <View style={[styles.view3, { paddingTop: insets.top }]}>
+        <View style={[styles.view4, { gap: 10 }]}>
+          <Pressable onPress={() => navigation.goBack()} accessibilityLabel="Back" style={styles.pressable3}>
             <ArrowLeft size={20} color="#ffffff" />
           </Pressable>
-          <Text className="flex-1 font-display text-white" style={{ fontSize: 18, letterSpacing: -0.4 }}>
+          <Text style={[styles.text3, { fontSize: 18, letterSpacing: -0.4 }]}>
             {t('site.estimate.title')}
           </Text>
         </View>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 640, alignSelf: 'center' }}
           keyboardShouldPersistTaps="handled"
         >
           <Eyebrow>{t('site.estimate.badge')}</Eyebrow>
-          <Text className="mt-3 font-sans text-slate-600" style={{ fontSize: 14, lineHeight: 21 }}>
+          <Text style={[styles.text4, { fontSize: 14, lineHeight: 21 }]}>
             {t('site.estimate.sub')}
           </Text>
 
-          <View className="mt-6 rounded-3xl border border-slate-200 bg-white p-5" style={SHADOW.card}>
+          <View style={[styles.view5, SHADOW.card]}>
             <ErrorBanner message={error} />
 
             <Field
@@ -107,7 +106,7 @@ export default function EstimateScreen({ navigation }) {
               placeholder={t('site.estimate.areaPh')}
               keyboardType="numeric"
             />
-            <Text className="-mt-2 mb-3 font-sans text-slate-400" style={{ fontSize: 12 }}>
+            <Text style={[styles.text5, { fontSize: 12 }]}>
               {t('site.estimate.areaHint')}
             </Text>
 
@@ -133,7 +132,7 @@ export default function EstimateScreen({ navigation }) {
               maxLength={6}
             />
 
-            <Text className="mb-1.5 font-sansSemi text-slate-600" style={{ fontSize: 13 }}>
+            <Text style={[styles.text6, { fontSize: 13 }]}>
               {t('site.estimate.buildingType')}
             </Text>
             <Choice
@@ -145,7 +144,7 @@ export default function EstimateScreen({ navigation }) {
               ]}
             />
 
-            <Text className="mb-1.5 font-sansSemi text-slate-600" style={{ fontSize: 13 }}>
+            <Text style={[styles.text6, { fontSize: 13 }]}>
               {t('site.estimate.finishing')}
             </Text>
             <Choice
@@ -167,22 +166,22 @@ export default function EstimateScreen({ navigation }) {
           </View>
 
           {result ? (
-            <View className="mt-5 rounded-3xl bg-brand-800 p-6" style={SHADOW.float}>
+            <View style={[styles.view6, SHADOW.float]}>
               <Eyebrow dark>{t('site.estimate.result.badge')}</Eyebrow>
-              <Text className="mt-3 font-sansMedium text-brand-200" style={{ fontSize: 13 }}>
+              <Text style={[styles.text7, { fontSize: 13 }]}>
                 {t('site.estimate.result.approx')}
               </Text>
-              <Text className="mt-1 font-display text-white" style={{ fontSize: 32, letterSpacing: -1.2 }}>
+              <Text style={[styles.text8, { fontSize: 32, letterSpacing: -1.2 }]}>
                 ₹{Number(result.total_cost || result.total || 0).toLocaleString('en-IN')}
               </Text>
               {result.min_cost && result.max_cost ? (
-                <Text className="mt-1 font-sans text-brand-300" style={{ fontSize: 13 }}>
+                <Text style={[styles.text9, { fontSize: 13 }]}>
                   {t('site.estimate.result.range')}: ₹{Number(result.min_cost).toLocaleString('en-IN')} – ₹
                   {Number(result.max_cost).toLocaleString('en-IN')}
                 </Text>
               ) : null}
 
-              <View className="mt-5" style={{ gap: 10 }}>
+              <View style={[styles.view7, { gap: 10 }]}>
                 {[
                   ['site.estimate.result.builtUp', result.built_up_area],
                   ['site.estimate.result.rateUsed', result.rate_used],
@@ -193,11 +192,11 @@ export default function EstimateScreen({ navigation }) {
                 ]
                   .filter(([, value]) => value !== undefined && value !== null)
                   .map(([key, value]) => (
-                    <View key={key} className="flex-row justify-between">
-                      <Text className="font-sans text-brand-200" style={{ fontSize: 13 }}>
+                    <View key={key} style={styles.view8}>
+                      <Text style={[styles.text10, { fontSize: 13 }]}>
                         {t(key)}
                       </Text>
-                      <Text className="font-sansBold text-white" style={{ fontSize: 13 }}>
+                      <Text style={[styles.text11, { fontSize: 13 }]}>
                         {typeof value === 'number' ? value.toLocaleString('en-IN') : String(value)}
                       </Text>
                     </View>
@@ -210,3 +209,28 @@ export default function EstimateScreen({ navigation }) {
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 14, flexDirection: 'row', borderRadius: 14, backgroundColor: c.muted, padding: 3.5 },
+  pressable: { flex: 1, alignItems: 'center', borderRadius: 10.5, paddingVertical: 8.75 },
+  pressable2: { backgroundColor: c.card },
+  text: { fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
+  text2: { fontFamily: 'Inter_500Medium', color: c.textMuted },
+  view2: { flex: 1, backgroundColor: c.paper },
+  view3: { backgroundColor: '#134127', paddingBottom: 14 },
+  view4: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 7 },
+  pressable3: { padding: 7 },
+  text3: { flex: 1, fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },
+  text4: { marginTop: 10.5, fontFamily: 'Inter_400Regular', color: c.textSecondary },
+  view5: { marginTop: 21, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 17.5 },
+  text5: { marginTop: -7, marginBottom: 10.5, fontFamily: 'Inter_400Regular', color: c.textFaint },
+  text6: { marginBottom: 5.25, fontFamily: 'Inter_600SemiBold', color: c.textSecondary },
+  view6: { marginTop: 17.5, borderRadius: 21, backgroundColor: '#134127', padding: 21 },
+  text7: { marginTop: 10.5, fontFamily: 'Inter_500Medium', color: '#c3dccd' },
+  text8: { marginTop: 3.5, fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },
+  text9: { marginTop: 3.5, fontFamily: 'Inter_400Regular', color: '#9dc5af' },
+  view7: { marginTop: 17.5 },
+  view8: { flexDirection: 'row', justifyContent: 'space-between' },
+  text10: { fontFamily: 'Inter_400Regular', color: '#c3dccd' },
+  text11: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
+}))

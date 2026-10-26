@@ -29,11 +29,11 @@ function cartThunk(name, run, fallbackMessage) {
   })
 }
 
-export const loadCart = cartThunk('loadCart', () => fetchCart(), 'Unable to load your cart.')
+export const loadCart = cartThunk('loadCart', (projectId) => fetchCart(projectId), 'Unable to load your cart.')
 
 export const addProductToCart = cartThunk(
   'addProductToCart',
-  ({ productId, quantity }) => addCartItem(productId, quantity),
+  ({ projectId, productId, quantity }) => addCartItem(projectId, productId, quantity),
   'Unable to add this product to your cart.',
 )
 
@@ -49,7 +49,7 @@ export const removeProductFromCart = cartThunk(
   'Unable to remove this item.',
 )
 
-export const emptyCart = cartThunk('emptyCart', () => clearCart(), 'Unable to clear your cart.')
+export const emptyCart = cartThunk('emptyCart', (projectId) => clearCart(projectId), 'Unable to clear your cart.')
 
 export const sendBuyRequest = createAsyncThunk(
   'cart/sendBuyRequest',

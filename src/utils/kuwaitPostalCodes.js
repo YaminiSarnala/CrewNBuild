@@ -103,16 +103,74 @@ export function lookupKuwaitPostalArea(postalCode) {
   const code = String(postalCode || '').replace(/\D/g, '')
   if (code.length !== 5) return null
   const numericCode = Number(code)
+  // Exact or range match first.
   const match = KUWAIT_POSTAL_AREAS.find(([from, to]) => numericCode >= from && numericCode <= to)
-  if (!match) return null
-  const [, , area, governorate] = match
+  if (match) {
+    const [, , area, governorate] = match
+    return {
+      pincode: code,
+      area,
+      city: area,
+      district: governorate,
+      state: governorate,
+      country: 'Kuwait',
+      display: `${area}, ${governorate}, Kuwait`,
+    }
+  }
+  // Fallback: prefix match (first 2 digits) to resolve the governorate.
+  const prefix = code.slice(0, 2)
+  const prefixFallback = {
+    '15': { area: 'Al Asimah (Kuwait City)', governorate: 'Al Asimah (Kuwait City)' },
+    '20': { area: 'Hawalli', governorate: 'Hawalli' },
+    '25': { area: 'Hawalli', governorate: 'Hawalli' },
+    '30': { area: 'Hawalli', governorate: 'Hawalli' },
+    '35': { area: 'Al Asimah (Kuwait City)', governorate: 'Al Asimah (Kuwait City)' },
+    '36': { area: 'Al Asimah (Kuwait City)', governorate: 'Al Asimah (Kuwait City)' },
+    '40': { area: 'Hawalli', governorate: 'Hawalli' },
+    '43': { area: 'Hawalli', governorate: 'Hawalli' },
+    '44': { area: 'Mubarak Al-Kabeer', governorate: 'Mubarak Al-Kabeer' },
+    '46': { area: 'Mubarak Al-Kabeer', governorate: 'Mubarak Al-Kabeer' },
+    '47': { area: 'Mubarak Al-Kabeer', governorate: 'Mubarak Al-Kabeer' },
+    '50': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '51': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '52': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '53': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '54': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '55': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '60': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '63': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '65': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '66': { area: 'Al Ahmadi', governorate: 'Al Ahmadi' },
+    '70': { area: 'Farwaniya', governorate: 'Farwaniya' },
+    '71': { area: 'Al Asimah (Kuwait City)', governorate: 'Al Asimah (Kuwait City)' },
+    '72': { area: 'Al Asimah (Kuwait City)', governorate: 'Al Asimah (Kuwait City)' },
+    '73': { area: 'Al Asimah (Kuwait City)', governorate: 'Al Asimah (Kuwait City)' },
+    '83': { area: 'Farwaniya', governorate: 'Farwaniya' },
+    '85': { area: 'Farwaniya', governorate: 'Farwaniya' },
+    '86': { area: 'Farwaniya', governorate: 'Farwaniya' },
+    '91': { area: 'Al Jahra', governorate: 'Al Jahra' },
+    '92': { area: 'Farwaniya', governorate: 'Farwaniya' },
+  }
+  const fallback = prefixFallback[prefix]
+  if (fallback) {
+    return {
+      pincode: code,
+      area: fallback.area,
+      city: fallback.area,
+      district: fallback.governorate,
+      state: fallback.governorate,
+      country: 'Kuwait',
+      display: `${fallback.area}, ${fallback.governorate}, Kuwait`,
+    }
+  }
+  // No match at all — still return a valid object so the form can proceed.
   return {
     pincode: code,
-    area,
-    city: area,
-    district: governorate,
-    state: governorate,
+    area: 'Kuwait',
+    city: 'Kuwait',
+    district: 'Kuwait',
+    state: 'Kuwait',
     country: 'Kuwait',
-    display: `${area}, ${governorate}, Kuwait`,
+    display: `Kuwait`,
   }
 }

@@ -8,6 +8,8 @@ import DashboardShell, { Panel, PanelState, MetricRow, useAsyncData } from '../.
 import LanguageSheet from '../../components/LanguageSheet'
 import { fetchEngineerProjects, fetchEngineerOpportunities, applyEngineerOpportunity } from '../../api/engineers'
 import { fetchMyMaterialRequests } from '../../api/materialRequests'
+import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 export default function EngineerDashboard({ navigation }) {
   const [languageOpen, setLanguageOpen] = useState(false)
@@ -64,17 +66,16 @@ export default function EngineerDashboard({ navigation }) {
               <Pressable
                 key={project.id}
                 onPress={() => navigation.navigate('ProjectDetail', { projectId: project.id })}
-                className="mb-3 flex-row items-center active:opacity-70"
-                style={{ gap: 10 }}
+                style={[styles.view, { gap: 10 }]}
               >
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-brand-50">
-                  <HardHat size={16} color="#134127" />
+                <View style={styles.view2}>
+                  <HardHat size={16} color={COLORS.brand[800]} />
                 </View>
-                <View className="flex-1">
-                  <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }} numberOfLines={1}>
+                <View style={styles.view3}>
+                  <Text style={[styles.text, { fontSize: 14 }]} numberOfLines={1}>
                     {project.title}
                   </Text>
-                  <Text className="font-sans text-slate-500" style={{ fontSize: 12 }}>
+                  <Text style={[styles.text2, { fontSize: 12 }]}>
                     {Number(project.completion_percentage || 0)}% complete
                   </Text>
                 </View>
@@ -91,20 +92,19 @@ export default function EngineerDashboard({ navigation }) {
             emptyText="No open positions right now."
           >
             {opportunityList.map((item) => (
-              <View key={item.id} className="mb-4 rounded-2xl bg-slate-50 p-4">
-                <Text className="font-sansBold text-graphite" style={{ fontSize: 14.5 }}>
+              <View key={item.id} style={styles.view4}>
+                <Text style={[styles.text, { fontSize: 14.5 }]}>
                   {item.title}
                 </Text>
-                <Text className="mt-1 font-sans text-slate-500" style={{ fontSize: 12.5 }}>
+                <Text style={[styles.text3, { fontSize: 12.5 }]}>
                   {item.pincode || '—'} {item.building_type ? `· ${item.building_type}` : ''}
                 </Text>
                 <Pressable
                   onPress={() => apply(item.id)}
-                  className="mt-3 flex-row items-center justify-center rounded-full bg-brand-800 py-2.5 active:bg-brand-700"
-                  style={{ gap: 6 }}
+                  style={[styles.pressable, { gap: 6 }]}
                 >
                   <Send size={14} color="#ffffff" />
-                  <Text className="font-sansBold text-white" style={{ fontSize: 13 }}>
+                  <Text style={[styles.text4, { fontSize: 13 }]}>
                     Apply
                   </Text>
                 </Pressable>
@@ -121,15 +121,15 @@ export default function EngineerDashboard({ navigation }) {
             emptyText="You have not raised any material requests."
           >
             {materialList.map((request) => (
-              <View key={request.id} className="mb-3 flex-row items-center" style={{ gap: 10 }}>
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
+              <View key={request.id} style={[styles.view, { gap: 10 }]}>
+                <View style={styles.view5}>
                   <ClipboardList size={16} color="#475569" />
                 </View>
-                <View className="flex-1">
-                  <Text className="font-sansBold text-graphite" style={{ fontSize: 14 }}>
+                <View style={styles.view3}>
+                  <Text style={[styles.text, { fontSize: 14 }]}>
                     {request.material_name || `Request #${request.id}`}
                   </Text>
-                  <Text className="font-sans text-slate-500" style={{ fontSize: 12 }}>
+                  <Text style={[styles.text2, { fontSize: 12 }]}>
                     {request.status || 'Pending'}
                   </Text>
                 </View>
@@ -142,3 +142,16 @@ export default function EngineerDashboard({ navigation }) {
     </>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center' },
+  view2: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: c.brandSoft },
+  view3: { flex: 1 },
+  text: { fontFamily: 'Inter_700Bold', color: c.text },
+  text2: { fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view4: { marginBottom: 14, borderRadius: 14, backgroundColor: c.subtle, padding: 14 },
+  text3: { marginTop: 3.5, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  pressable: { marginTop: 10.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#134127', paddingVertical: 8.75 },
+  text4: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
+  view5: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: c.muted },
+}))

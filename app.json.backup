@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "OctaBuild",
+    "slug": "octabuild",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "scheme": "octabuild",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#134127"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.octabuild.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "OctaBuild needs photo access so you can attach site photos to project timelines.",
+        "NSCameraUsageDescription": "OctaBuild uses the camera to capture site progress photos.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#134127"
+      },
+      "package": "com.octabuild.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow OctaBuild to access your photos to upload site progress images."
+        }
+      ],
+      "expo-video",
+      "expo-image",
+      "expo-splash-screen",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "89f7fbfb-6aa1-4a43-80a5-46ead5507524"
+      }
+    },
+    "owner": "naveenshan"
+  }
+}

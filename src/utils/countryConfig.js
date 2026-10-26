@@ -59,3 +59,14 @@ export function formatMoney(value, country) {
 export function currencyCode(country) {
   return countryCurrency(country).code
 }
+
+// The signed-in account's country. The API names it country_of_residence (the
+// web reads only that); `country` is kept as a fallback for older sessions.
+export function userCountry(user) {
+  return user?.country_of_residence || user?.country || 'India'
+}
+
+// A project's own country decides its currency, falling back to the owner's.
+export function projectCountry(project, user) {
+  return project?.project_country || userCountry(user)
+}

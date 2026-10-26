@@ -57,7 +57,54 @@ export const SUPPLIER_CATEGORY_KEYS = {
   Furnitures: 'opt.category.furnitures',
   Interior: 'opt.category.interior',
   Machines: 'opt.category.machines',
+  // The remaining material trades the listing form offers. Plumbing,
+  // Electrical, Paint and Tiles above are shared with the profile category
+  // list, so they are not repeated here.
+  'Steel/TMT': 'opt.category.steelTmt',
+  Aggregates: 'opt.category.aggregates',
+  Concrete: 'opt.category.concrete',
+  Blocks: 'opt.category.blocks',
+  'Lighting & Fans': 'opt.category.lightingFans',
+  Waterproofing: 'opt.category.waterproofing',
+  Stone: 'opt.category.stone',
+  Roofing: 'opt.category.roofing',
+  Hardware: 'opt.category.hardware',
+  Safety: 'opt.category.safety',
+  'Glass & Boards': 'opt.category.glassBoards',
+  // The stored value stays "Other Construction Materials" — this only
+  // shortens what the category button and filter chip display, which the
+  // full name was too long to fit on.
+  'Other Construction Materials': 'opt.category.otherMaterials',
 }
+
+export const SUPPLIER_TYPE_KEYS = {
+  'Material Supplier': 'opt.supplierType.material',
+  'Labor Supplier': 'opt.supplierType.labor',
+  'Equipment Supplier': 'opt.supplierType.equipment',
+}
+
+// What a supplier of each category publishes. The buyer UI is shared by all
+// three categories, so the wording around a supplier's catalogue follows the
+// supplier's own saved category instead of calling everything "materials".
+// Keyed by the same values as SUPPLIER_TYPE_KEYS above - one vocabulary.
+export const SUPPLIER_OFFERING_KEYS = {
+  'Material Supplier': {
+    none: 'dash.engineer.suppliers.noMaterials',
+    empty: 'dash.engineer.suppliers.noPublishedMaterials',
+  },
+  'Labor Supplier': {
+    none: 'dash.engineer.suppliers.noServices',
+    empty: 'dash.engineer.suppliers.noPublishedServices',
+  },
+  'Equipment Supplier': {
+    none: 'dash.engineer.suppliers.noEquipment',
+    empty: 'dash.engineer.suppliers.noPublishedEquipment',
+  },
+}
+
+// A supplier who has not chosen a category yet keeps the wording the screen
+// has always used.
+export const DEFAULT_SUPPLIER_OFFERING_KEYS = SUPPLIER_OFFERING_KEYS['Material Supplier']
 
 export const BUSINESS_TYPE_KEYS = {
   Proprietorship: 'opt.business.proprietorship',
@@ -81,6 +128,9 @@ export const FLOOR_TYPE_KEYS = {
   'G+1': 'opt.floor.g1',
   'G+2': 'opt.floor.g2',
   'G+3': 'opt.floor.g3',
+  // Kuwait offers a fifth level; without this the option rendered as the raw
+  // stored code "G+4" in all seven languages.
+  'G+4': 'opt.floor.g4',
   'G-1': 'opt.floor.gm1',
   'G-2': 'opt.floor.gm2',
   'G-3': 'opt.floor.gm3',

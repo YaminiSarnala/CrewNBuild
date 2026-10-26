@@ -1,6 +1,4 @@
-import './global.css'
-import { useCallback, useEffect, useState } from 'react'
-import { View } from 'react-native'
+import { useCallback } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { Provider } from 'react-redux'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -52,7 +50,8 @@ export default function App() {
         <ThemeProvider>
           <LanguageProvider>
             <SafeAreaProvider>
-              <StatusBar style="auto" />
+              {/* Every screen has the green header behind the status bar, so its icons stay light. */}
+              <StatusBar style="light" />
               <RootNavigator />
             </SafeAreaProvider>
           </LanguageProvider>

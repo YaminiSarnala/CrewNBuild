@@ -1,18 +1,22 @@
 // Shared chrome for the four role dashboards: greeting header with the user's
 // name and role, a notification bell wired to GET /notifications, pull-to-
 // refresh, and consistent loading / error / empty states.
-import { useCallback, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, Pressable, ActivityIndicator } from 'react-native'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Bell, LogOut, Globe } from 'lucide-react-native'
+import { Bell, LogOut, Globe, MessageCircle, Moon, Sun } from 'lucide-react-native'
+import { useTheme } from '../theme/ThemeContext'
+import { useNavigation } from '@react-navigation/native'
+import { useNotifications } from '../notifications/NotificationsContext'
 import { useDispatch, useSelector } from 'react-redux'
 import { logoutUser } from '../store/authSlice'
 import { useLanguage } from '../i18n/LanguageContext'
-import { imageUrl } from '../api/client'
+import { imageSource } from '../api/client'
 import { useResponsive } from '../hooks/useResponsive'
 import { ContentWrap } from './Responsive'
-import { SHADOW } from '../theme/tokens'
+import { SHADOW, COLORS } from '../theme/tokens'
+import { createStyles } from '../theme/createStyles'
 
 /**
  * Small async-data hook so every dashboard panel handles loading/error/refresh
@@ -43,15 +47,22 @@ export function useAsyncData(loader, deps = []) {
   return { data, loading, error, reload: run, setData }
 }
 
-export function Panel({ title, action, children, className = '' }) {
+// Set by screens whose scroll content already carries the side gutter, so a
+// Panel inside them does not add a second one.
+const InsetContext = createContext(false)
+export function InsetArea({ children }) {
+  return <InsetContext.Provider value>{children}</InsetContext.Provider>
+}
+
+export function Panel({ title, action, children, style }) {
   const { gutter } = useResponsive()
+  const inset = useContext(InsetContext)
   return (
     <View
-      className={`mb-4 rounded-3xl border border-slate-200 bg-white p-5 ${className}`}
-      style={[SHADOW.card, { marginHorizontal: gutter }]}
+      style={[styles.view, SHADOW.card, { marginHorizontal: inset ? 0 : gutter }, style]}
     >
-      <View className="mb-3 flex-row items-center justify-between">
-        <Text className="font-display text-graphite" style={{ fontSize: 16, letterSpacing: -0.4 }}>
+      <View style={styles.view2}>
+        <Text style={[styles.text, { fontSize: 16, letterSpacing: -0.4 }]}>
           {title}
         </Text>
         {action}
@@ -64,21 +75,21 @@ export function Panel({ title, action, children, className = '' }) {
 export function PanelState({ loading, error, empty, emptyText, children }) {
   if (loading) {
     return (
-      <View className="items-center py-8">
-        <ActivityIndicator color="#134127" />
+      <View style={styles.view3}>
+        <ActivityIndicator color={COLORS.brand[800]} />
       </View>
     )
   }
   if (error) {
     return (
-      <Text className="py-4 font-sans text-warm" style={{ fontSize: 13, lineHeight: 19 }}>
+      <Text style={[styles.text2, { fontSize: 13, lineHeight: 19 }]}>
         {error}
       </Text>
     )
   }
   if (empty) {
     return (
-      <Text className="py-4 font-sans text-slate-400" style={{ fontSize: 13.5 }}>
+      <Text style={[styles.text3, { fontSize: 13.5 }]}>
         {emptyText}
       </Text>
     )
@@ -89,17 +100,16 @@ export function PanelState({ loading, error, empty, emptyText, children }) {
 export function MetricRow({ items }) {
   const { gutter } = useResponsive()
   return (
-    <View className="mb-4 flex-row" style={{ gap: 10, marginHorizontal: gutter }}>
+    <View style={[styles.view4, { gap: 10, marginHorizontal: gutter }]}>
       {items.map((item) => (
         <View
           key={item.label}
-          className="flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-4"
-          style={SHADOW.card}
+          style={[styles.view5, SHADOW.card]}
         >
-          <Text className="font-display text-brand-800" style={{ fontSize: 21 }}>
+          <Text style={[styles.text4, { fontSize: 21 }]}>
             {item.value}
           </Text>
-          <Text className="mt-0.5 font-sansSemi text-slate-500" style={{ fontSize: 11, lineHeight: 14 }}>
+          <Text style={[styles.text5, { fontSize: 11, lineHeight: 14 }]}>
             {item.label}
           </Text>
         </View>
@@ -108,12 +118,25 @@ export function MetricRow({ items }) {
   )
 }
 
+// A small red count on a header icon, "9+" past nine (as the web's bell).
+function CountBadge({ count }) {
+  if (!count) return null
+  return (
+    <View style={styles.view6}>
+      <Text style={[styles.text6, { fontSize: 9 }]}>{count > 9 ? '9+' : count}</Text>
+    </View>
+  )
+}
+
 export default function DashboardShell({ children, refreshing, onRefresh, onOpenNotifications, onOpenLanguage }) {
   const insets = useSafeAreaInsets()
   const dispatch = useDispatch()
-  const { t } = useLanguage()
+  const { t, td } = useLanguage()
   const user = useSelector((state) => state.auth.user)
   const { gutter } = useResponsive()
+  const navigation = useNavigation()
+  const { unreadCount, unreadMessages } = useNotifications()
+  const { isDark, toggleTheme } = useTheme()
 
   const roleLabelKey =
     {
@@ -124,36 +147,54 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
     }[user?.role] || 'role.owner'
 
   return (
-    <View className="flex-1 bg-surface-deep">
-      <View style={{ paddingTop: insets.top }} className="bg-brand-800 pb-5">
+    <View style={styles.view7}>
+      <View style={[styles.view8, { paddingTop: insets.top }]}>
         <ContentWrap>
-        <View className="flex-row items-center pt-3" style={{ gap: 12, paddingHorizontal: gutter }}>
-          <View className="h-11 w-11 overflow-hidden rounded-full bg-brand-600">
+        <View style={[styles.view9, { gap: 4, paddingHorizontal: gutter }]}>
+          <View style={styles.view10}>
             {user?.profile_image_url ? (
-              <Image source={{ uri: imageUrl(user.profile_image_url) }} style={{ width: 44, height: 44 }} />
+              <Image source={imageSource(user.profile_image_url)} style={{ width: 44, height: 44 }} />
             ) : (
-              <View className="h-full w-full items-center justify-center">
-                <Text className="font-display text-white" style={{ fontSize: 16 }}>
+              <View style={styles.view11}>
+                <Text style={[styles.text7, { fontSize: 16 }]}>
                   {(user?.name || '?').charAt(0).toUpperCase()}
                 </Text>
               </View>
             )}
           </View>
-          <View className="flex-1">
-            <Text className="font-display text-white" style={{ fontSize: 17, letterSpacing: -0.4 }} numberOfLines={1}>
-              {user?.name || '—'}
+          <View style={styles.scrollView}>
+            <Text style={[styles.text7, { fontSize: 17, letterSpacing: -0.4 }]} numberOfLines={1}>
+              {td(user?.name) || '—'}
             </Text>
-            <Text className="font-sansMedium text-brand-300" style={{ fontSize: 12 }}>
+            <Text style={[styles.text8, { fontSize: 12 }]}>
               {t(roleLabelKey)}
             </Text>
           </View>
-          <Pressable onPress={onOpenLanguage} accessibilityLabel={t('language.label')} className="p-2">
+          {/* Light / dark, as the web's header toggle: the icon shows the theme you switch to. */}
+          <Pressable
+            onPress={toggleTheme}
+            accessibilityRole="button"
+            accessibilityLabel={isDark ? t('ui.shared.switchToLightTheme') : t('ui.shared.switchToDarkTheme')}
+            style={styles.pressable}
+          >
+            {isDark ? <Sun size={19} color="#c3dccd" /> : <Moon size={19} color="#c3dccd" />}
+          </Pressable>
+          <Pressable onPress={onOpenLanguage} accessibilityLabel={t('language.label')} style={styles.pressable}>
             <Globe size={19} color="#c3dccd" />
           </Pressable>
-          <Pressable onPress={onOpenNotifications} accessibilityLabel="Notifications" className="p-2">
-            <Bell size={19} color="#c3dccd" />
+          <Pressable onPress={() => navigation.navigate('Messages')} accessibilityLabel={t('dash.common.messages')} style={styles.pressable}>
+            <MessageCircle size={19} color="#c3dccd" />
+            <CountBadge count={unreadMessages} />
           </Pressable>
-          <Pressable onPress={() => dispatch(logoutUser())} accessibilityLabel="Sign out" className="p-2">
+          <Pressable
+            onPress={onOpenNotifications || (() => navigation.navigate('Notifications'))}
+            accessibilityLabel={t('dash.common.notifications')}
+            style={styles.pressable}
+          >
+            <Bell size={19} color="#c3dccd" />
+            <CountBadge count={unreadCount} />
+          </Pressable>
+          <Pressable onPress={() => dispatch(logoutUser())} accessibilityLabel="Sign out" style={styles.pressable}>
             <LogOut size={19} color="#c3dccd" />
           </Pressable>
         </View>
@@ -161,12 +202,12 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
       </View>
 
       <ScrollView
-        className="flex-1"
+        style={styles.scrollView}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 28 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor="#134127" colors={['#134127']} />
+            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={COLORS.brand[700]} colors={[COLORS.brand[700]]} />
           ) : undefined
         }
       >
@@ -175,3 +216,27 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 14, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 17.5 },
+  view2: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text: { fontFamily: 'Manrope_800ExtraBold', color: c.text },
+  view3: { alignItems: 'center', paddingVertical: 28 },
+  text2: { paddingVertical: 14, fontFamily: 'Inter_400Regular', color: '#dc2626' },
+  text3: { paddingVertical: 14, fontFamily: 'Inter_400Regular', color: c.textFaint },
+  view4: { marginBottom: 14, flexDirection: 'row' },
+  view5: { flex: 1, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 14 },
+  text4: { fontFamily: 'Manrope_800ExtraBold', color: c.brandTextStrong },
+  text5: { marginTop: 1.75, fontFamily: 'Inter_600SemiBold', color: c.textMuted },
+  view6: { position: 'absolute', right: 1.75, top: 1.75, height: 14, minWidth: 14, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#dc2626', paddingHorizontal: 3.5 },
+  text6: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
+  view7: { flex: 1, backgroundColor: c.canvas },
+  view8: { backgroundColor: '#134127', paddingBottom: 17.5 },
+  view9: { flexDirection: 'row', alignItems: 'center', paddingTop: 10.5 },
+  view10: { height: 38.5, width: 38.5, overflow: 'hidden', borderRadius: 9999, backgroundColor: '#236645' },
+  view11: { height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' },
+  text7: { fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },
+  scrollView: { flex: 1 },
+  text8: { fontFamily: 'Inter_500Medium', color: '#9dc5af' },
+  pressable: { padding: 7 },
+}))

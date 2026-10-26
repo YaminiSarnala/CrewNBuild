@@ -3,7 +3,7 @@
 // role must be one of OWNER / CONTRACTOR / SUPPLIER / ENGINEER, and the
 // backend requires name, email, phone, password, address, pincode.
 import { useState } from 'react'
-import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, ScrollView, Pressable, KeyboardAvoidingView } from 'react-native'
 import { Image } from 'expo-image'
 import { useDispatch, useSelector } from 'react-redux'
 import { ArrowLeft, ArrowRight, House as Home, HardHat, Package, Ruler } from 'lucide-react-native'
@@ -13,6 +13,7 @@ import { PrimaryButton } from '../../components/ui'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { signupWithProfile, clearAuthError } from '../../store/authSlice'
 import { lookupPincodeArea } from '../../api/location'
+import { createStyles } from '../../theme/createStyles'
 
 const ROLES = [
   { value: 'OWNER', labelKey: 'role.owner', descKey: 'role.ownerDesc', Icon: Home },
@@ -73,13 +74,13 @@ export default function SignupScreen({ navigation }) {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: '#0d0b14' }}>
+    <View style={[styles.view, { backgroundColor: '#0d0b14' }]}>
       <Image
         source={require('../../../assets/auth-architecture-bg.png')}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.35 }}
         contentFit="cover"
       />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }}
           keyboardShouldPersistTaps="handled"
@@ -88,28 +89,27 @@ export default function SignupScreen({ navigation }) {
           {/* <Pressable
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            className="ml-4 mt-2 flex-row items-center self-start rounded-full bg-white/10 px-3.5 py-2"
-            style={{ gap: 6 }}
+            style={[styles.pressable, { gap: 6 }]}
           >
             <ArrowLeft size={15} color="#ffffff" />
-            <Text className="font-sansSemi text-white" style={{ fontSize: 12.5 }}>
+            <Text style={[styles.text, { fontSize: 12.5 }]}>
               {t('shared.backHome')}
             </Text>
           </Pressable> */}
 
-          <View className="px-6 pt-8">
-            <Text className="font-display text-white" style={{ fontSize: 26, letterSpacing: -0.9 }}>
+          <View style={styles.view2}>
+            <Text style={[styles.text2, { fontSize: 26, letterSpacing: -0.9 }]}>
               {t('shared.tagline')}
             </Text>
-            <Text className="mt-2 font-sans text-slate-300" style={{ fontSize: 13.5, lineHeight: 20 }}>
+            <Text style={[styles.text3, { fontSize: 13.5, lineHeight: 20 }]}>
               {t('shared.joinPlatform')}
             </Text>
           </View>
 
-          <View className="mt-7 self-center w-full rounded-3xl bg-white p-6" style={{ maxWidth: 560, marginHorizontal: 20 }}>
+          <View style={[styles.view3, { maxWidth: 560, marginHorizontal: 20 }]}>
             <ErrorBanner message={translateMessage(errorMessage)} />
 
-            <Text className="mb-3 font-sansSemi text-slate-600" style={{ fontSize: 13 }}>
+            <Text style={[styles.text4, { fontSize: 13 }]}>
               {t('role.owner') ? 'I am a…' : 'Role'}
             </Text>
             {ROLES.map(({ value, labelKey, descKey, Icon }) => (
@@ -123,7 +123,7 @@ export default function SignupScreen({ navigation }) {
               />
             ))}
 
-            <View className="mt-4">
+            <View style={styles.view4}>
               <Field label="Full name" value={form.name} onChangeText={set('name')} placeholder="Your name" />
               <Field
                 label="Email"
@@ -158,7 +158,7 @@ export default function SignupScreen({ navigation }) {
                 maxLength={6}
               />
               {pincodeArea ? (
-                <Text className="-mt-2 mb-3 font-sans text-brand-700" style={{ fontSize: 12.5 }}>
+                <Text style={[styles.text5, { fontSize: 12.5 }]}>
                   {pincodeArea}
                 </Text>
               ) : null}
@@ -173,8 +173,8 @@ export default function SignupScreen({ navigation }) {
               full
             />
 
-            <Pressable onPress={() => navigation.navigate('Login')} className="mt-5 items-center">
-              <Text className="font-sansSemi text-brand-700" style={{ fontSize: 13.5 }}>
+            <Pressable onPress={() => navigation.navigate('Login')} style={styles.pressable2}>
+              <Text style={[styles.text6, { fontSize: 13.5 }]}>
                 {t('site.nav.login')}
               </Text>
             </Pressable>
@@ -184,3 +184,18 @@ export default function SignupScreen({ navigation }) {
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flex: 1 },
+  pressable: { marginLeft: 14, marginTop: 7, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderRadius: 9999, backgroundColor: 'rgba(255, 255, 255, 0.1)', paddingHorizontal: 12.25, paddingVertical: 7 },
+  text: { fontFamily: 'Inter_600SemiBold', color: '#ffffff' },
+  view2: { paddingHorizontal: 21, paddingTop: 28 },
+  text2: { fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },
+  text3: { marginTop: 7, fontFamily: 'Inter_400Regular', color: '#cbd5e1' },
+  view3: { marginTop: 24.5, alignSelf: 'center', width: '100%', borderRadius: 21, backgroundColor: c.card, padding: 21 },
+  text4: { marginBottom: 10.5, fontFamily: 'Inter_600SemiBold', color: c.textSecondary },
+  view4: { marginTop: 14 },
+  text5: { marginTop: -7, marginBottom: 10.5, fontFamily: 'Inter_400Regular', color: c.brandText },
+  pressable2: { marginTop: 17.5, alignItems: 'center' },
+  text6: { fontFamily: 'Inter_600SemiBold', color: c.brandText },
+}))

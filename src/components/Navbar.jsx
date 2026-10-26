@@ -6,43 +6,43 @@ import { BlurWrap } from './BlurWrap'
 import { Globe } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLanguage } from '../i18n/LanguageContext'
+import { createStyles } from '../theme/createStyles'
 
 export default function Navbar({ onLogin, onOpenLanguage }) {
   const insets = useSafeAreaInsets()
   const { t, language } = useLanguage()
   return (
-    <View style={{ paddingTop: insets.top }} className="absolute left-0 right-0 top-0 z-50">
+    <View style={[styles.view, { paddingTop: insets.top }]}>
       <BlurWrap>
-        <View className="flex-row items-center justify-between px-5 py-3">
-          <View className="flex-row items-center" style={{ gap: 8 }}>
+        <View style={styles.view2}>
+          <View style={[styles.view3, { gap: 8 }]}>
             <Image
               source={require('../../assets/logo.png')}
               style={{ width: 28, height: 31 }}
               contentFit="contain"
             />
-            <Text className="font-display text-brand-800" style={{ fontSize: 17, letterSpacing: -0.5 }}>
+            <Text style={[styles.text, { fontSize: 17, letterSpacing: -0.5 }]}>
               OctaBuild
             </Text>
           </View>
-          <View className="flex-row items-center" style={{ gap: 10 }}>
+          <View style={[styles.view3, { gap: 10 }]}>
             <Pressable
               onPress={onOpenLanguage}
               accessibilityRole="button"
               accessibilityLabel={t('language.label')}
-              className="flex-row items-center rounded-full border border-slate-200 bg-white px-3 py-2 active:bg-slate-50"
-              style={{ gap: 5 }}
+              style={[styles.pressable, { gap: 5 }]}
             >
               <Globe size={14} color="#236645" />
-              <Text className="font-sansBold uppercase text-graphite" style={{ fontSize: 11 }}>
+              <Text style={[styles.text2, { fontSize: 11 }]}>
                 {language}
               </Text>
             </Pressable>
             <Pressable
               onPress={onLogin}
               accessibilityRole="button"
-              className="rounded-full bg-brand-800 px-4 py-2 active:bg-brand-700"
+              style={styles.pressable2}
             >
-              <Text className="font-sansBold text-white" style={{ fontSize: 12 }}>
+              <Text style={[styles.text3, { fontSize: 12 }]}>
                 {t('site.nav.login')}
               </Text>
             </Pressable>
@@ -52,3 +52,14 @@ export default function Navbar({ onLogin, onOpenLanguage }) {
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 50 },
+  view2: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 17.5, paddingVertical: 10.5 },
+  view3: { flexDirection: 'row', alignItems: 'center' },
+  text: { fontFamily: 'Manrope_800ExtraBold', color: c.brandTextStrong },
+  pressable: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text2: { fontFamily: 'Inter_700Bold', textTransform: 'uppercase', color: c.text },
+  pressable2: { borderRadius: 9999, backgroundColor: '#134127', paddingHorizontal: 14, paddingVertical: 7 },
+  text3: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
+}))

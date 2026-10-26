@@ -1,356 +1,414 @@
-// Port of web OwnerProjectWorkspace.jsx + ownerSections: each project opens as
-// its own workspace with a section strip. Sections follow the web rule:
-//   builder-managed project   -> Overview / Requests / Builders / Escrow
-//   self-construction project -> Overview / Requests / Engineer / Suppliers / Escrow
-import { useState } from 'react'
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native'
-import { useSelector } from 'react-redux'
-import {
-  ChevronLeft, House as Home, MapPin, LayoutDashboard, FileText,
-  HardHat, Truck, Wallet, Send, Check, X,
-} from 'lucide-react-native'
-import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
-import { fetchOwnerProjects, fetchProjectTimelineEntries, fetchNearbyContractors } from '../../api/projects'
-import {
-  fetchIncomingRequests, acceptProjectRequest, rejectProjectRequest,
-  assignProjectToContractor, sendProjectRequest,
-} from '../../api/requests'
-import { fetchProjectEngineer, assignEngineerToProject } from '../../api/engineers'
+// Port of the web Projects page (ProjectListTable in ownerProjectViews.jsx):
+// one card per project with its builder, size, progress and active amount,
+// and the card's own actions -- Edit requirement, Delete, Assign Builder.
+// Tapping a card opens the project as a page of its own (OwnerProjectScreen).
+//
+// The web also lists estimate drafts saved in the browser; the app has no
+// drafts yet, so every card here is a real project.
+import { useCallback, useEffect, useState } from 'react'
+import { View, Text, Pressable, Alert } from 'react-native'
+import { useFocusEffect } from '@react-navigation/native'
+import { Image } from 'expo-image'
+import { HardHat, MapPin, Pencil, Plus, Save, Trash2, X } from 'lucide-react-native'
+import DashboardShell, { PanelState } from '../../components/DashboardShell'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
+import { useNotifications } from '../../notifications/NotificationsContext'
+import { BudgetInWords, FormNotice, SelectField, TextField } from '../../components/form'
+import { useLanguage } from '../../i18n/LanguageContext'
+import { useResponsive } from '../../hooks/useResponsive'
+import { deleteOwnerProject, fetchOwnerProjects, updateProjectRequirement } from '../../api/projects'
+import { imageSource } from '../../api/client'
+import { floorCountFor, floorOptionsForCountry, floorTypeForCount, floorTypeLabel } from '../../utils/floorOptions'
+import { FLOOR_TYPE_KEYS, optionLabel } from '../../i18n/optionKeys'
 import { COLORS } from '../../theme/tokens'
+import {
+  apiDetail, buildingTypeText, clampPercent, constructionTypeText, defaultProjectImage, money,
+  normalizeEstimateText, projectBuilderContext,
+} from './ownerHelpers'
+import { createStyles } from '../../theme/createStyles'
 
-const inr = (value) => (Number(value || 0) ? `₹${Number(value).toLocaleString('en-IN')}` : '—')
-
-// Same conditional section list as web projectSectionIds()
-function sectionsFor(project) {
-  const self = project?.construction_type === 'SELF_CONSTRUCTION'
-  return [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'requests', label: 'Requests', icon: FileText },
-    ...(self
-      ? [{ id: 'engineer', label: 'Engineer', icon: HardHat }, { id: 'suppliers', label: 'Suppliers', icon: Truck }]
-      : [{ id: 'builders', label: 'Builders', icon: HardHat }]),
-    { id: 'escrow', label: 'Escrow', icon: Wallet },
-  ]
+const numericText = (value) => {
+  const cleaned = String(value).replace(/[^0-9.]/g, '')
+  const [whole, ...rest] = cleaned.split('.')
+  return rest.length ? `${whole}.${rest.join('')}` : whole
 }
 
-function DetailField({ label, value }) {
+const PILL_TONES = {
+  positive: 'tone',
+  info: 'tone2',
+  accent: 'tone3',
+}
+
+function CardPill({ text, tone, icon: Icon }) {
+  // One tone style: its background on the pill, its colour on the label.
+  const look = styles[PILL_TONES[tone]]
   return (
-    <View className="w-[48%] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-      <Text className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</Text>
-      <Text className="mt-0.5 text-xs font-bold text-graphite" numberOfLines={1}>{value || 'Not set'}</Text>
+    <View style={[styles.view, look, { gap: 4, maxWidth: '100%' }]}>
+      {Icon ? <Icon size={11} color={COLORS.brand[700]} /> : null}
+      <Text style={[styles.text, { color: look.color, fontSize: 10.5 }]} numberOfLines={1}>{text}</Text>
     </View>
   )
 }
 
-function OverviewSection({ project }) {
-  const timeline = useAsyncData(() => fetchProjectTimelineEntries(project.id), [project.id])
-  const timelineList = Array.isArray(timeline.data) ? timeline.data : []
-  const completion = Math.min(Number(project.completion_percentage || 0), 100)
-  return (
-    <View>
-      <Panel title={`Progress · ${completion}%`}>
-        <View className="h-2 overflow-hidden rounded-full bg-slate-100">
-          <View className="h-full rounded-full bg-brand-600" style={{ width: `${completion}%` }} />
-        </View>
-      </Panel>
-      <View className="mb-4 flex-row flex-wrap justify-between gap-y-2.5">
-        <DetailField label="Construction" value={project.construction_type} />
-        <DetailField label="Building type" value={project.building_type} />
-        <DetailField label="Land area" value={project.land_area ? `${project.land_area} Sq.ft` : null} />
-        <DetailField label="Floors" value={project.floors != null ? String(project.floors) : null} />
-        <DetailField label="Budget" value={inr(project.budget)} />
-        <DetailField label="Builder" value={project.contractor_name || (project.contractor_id ? 'Appointed' : 'Not appointed')} />
-      </View>
-      <Panel title="Site activity">
-        <PanelState loading={timeline.loading} error={timeline.error} empty={!timelineList.length} emptyText="No site updates yet.">
-          {timelineList.map((entry, index) => (
-            <View key={entry.id || index} className="border-b border-slate-100 py-3">
-              <Text className="text-xs font-extrabold text-brand-700">{String(entry.date || entry.work_date || '').slice(0, 10)}</Text>
-              <Text className="mt-1 text-[13px] font-semibold text-graphite">{entry.work_type || entry.description || 'Daily site record'}</Text>
-            </View>
-          ))}
-        </PanelState>
-      </Panel>
-    </View>
-  )
-}
+// Edit Requirement on the card: title, budget, land area and floors. Every
+// other field is sent back exactly as saved, because the endpoint replaces the
+// whole requirement and resets an omitted budget, land area or floors.
+function EditRequirement({ project, onSaved, onCancel }) {
+  const { t } = useLanguage()
+  const country = project.project_country || ''
+  const [form, setForm] = useState(() => ({
+    title: project.title || '',
+    budget: project.budget ? String(project.budget) : '',
+    land_area: project.land_area ? String(project.land_area) : '',
+    floors: project.floors || 1,
+    // What the save sends: the code actually stored, untouched unless changed.
+    floor_type: project.floor_type || '',
+    // What the dropdown shows: the stored code, or the option matching the
+    // floor count of a project that predates floor_type.
+    floor_type_shown: project.floor_type || floorTypeForCount(country, project.floors),
+  }))
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState({ text: '', tone: 'info' })
 
-function RequestsSection({ project, onChanged }) {
-  const [busyId, setBusyId] = useState(null)
-  const requests = useAsyncData(fetchIncomingRequests, [])
-  const list = (Array.isArray(requests.data) ? requests.data : []).filter((r) => r.project_id === project.id)
-  const pending = list.filter((r) => String(r.status).toLowerCase() === 'pending')
-  const quotes = list.filter((r) => String(r.status).toLowerCase() === 'accepted' && Number(r.quotation_amount || 0) > 0)
-
-  async function run(action, id) {
-    setBusyId(id)
+  const save = async () => {
+    setSaving(true)
+    setMessage({ text: '', tone: 'info' })
     try {
-      await action()
-      await requests.reload()
-      onChanged?.()
+      // Saved to the project record, so the fallback title stays English.
+      await updateProjectRequirement(project.id, {
+        title: form.title.trim() || project.title || 'Untitled project',
+        description: project.description || '',
+        address: project.address || '',
+        pincode: project.pincode || '',
+        building_type: project.building_type || 'RESIDENTIAL',
+        construction_type: project.construction_type || 'CONTRACTOR',
+        budget: Number(form.budget || 0),
+        land_area: Number(form.land_area || 0),
+        floors: Number(form.floors || 1),
+        floor_type: form.floor_type || null,
+      })
+      setMessage({ text: t('dash.owner.estimates.editSaved'), tone: 'success' })
+      await onSaved()
     } catch (error) {
-      Alert.alert('Could not update', error?.response?.data?.detail || 'Please try again.')
+      setMessage({ text: apiDetail(error, t('ui.owner.updateRequirementFailed')), tone: 'error' })
     } finally {
-      setBusyId(null)
+      setSaving(false)
     }
   }
 
   return (
-    <View>
-      <Panel title="Incoming requests">
-        <PanelState loading={requests.loading} error={requests.error} empty={!pending.length} emptyText="No pending requests on this project.">
-          {pending.map((request) => (
-            <View key={request.id} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
-              <View className="flex-1">
-                <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{request.sender_name || 'Request'}</Text>
-                <Text className="mt-0.5 text-xs font-semibold text-slate-500">{String(request.request_type || '').replace(/_/g, ' ')}</Text>
-              </View>
-              <Pressable onPress={() => run(() => acceptProjectRequest(request.id), request.id)} disabled={busyId === request.id} className="h-9 w-9 items-center justify-center rounded-full bg-brand-50">
-                <Check size={16} color={COLORS.brand[700]} />
-              </Pressable>
-              <Pressable onPress={() => run(() => rejectProjectRequest(request.id), request.id)} disabled={busyId === request.id} className="h-9 w-9 items-center justify-center rounded-full bg-rose-50">
-                <X size={16} color="#e11d48" />
-              </Pressable>
-            </View>
-          ))}
-        </PanelState>
-      </Panel>
-
-      <Panel title="Quotations received">
-        <PanelState empty={!quotes.length} emptyText="No builder quotations yet.">
-          {quotes.map((request) => (
-            <View key={request.id} className="border-b border-slate-100 py-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={1}>{request.sender_name || 'Builder'}</Text>
-                <Text className="text-[15px] font-extrabold text-brand-700">{inr(request.quotation_amount)}</Text>
-              </View>
-              {!project.contractor_id && (
-                <Pressable
-                  onPress={() => run(() => assignProjectToContractor(request.id), request.id)}
-                  disabled={busyId === request.id}
-                  className={`mt-2 h-10 items-center justify-center rounded-full bg-brand-700 ${busyId === request.id ? 'opacity-60' : ''}`}
-                >
-                  <Text className="text-xs font-extrabold text-white">Appoint this builder</Text>
-                </Pressable>
-              )}
-            </View>
-          ))}
-        </PanelState>
-      </Panel>
-    </View>
-  )
-}
-
-function BuildersSection({ project }) {
-  const user = useSelector((state) => state.auth.user)
-  const [sentIds, setSentIds] = useState(new Set())
-  const [sendingId, setSendingId] = useState(null)
-  const contractors = useAsyncData(() => fetchNearbyContractors(user?.pincode, user?.country), [user?.pincode, user?.country])
-  const list = Array.isArray(contractors.data) ? contractors.data : []
-
-  async function sendRequest(contractor) {
-    const id = contractor.user_id || contractor.id
-    setSendingId(id)
-    try {
-      await sendProjectRequest({ receiver_id: id, project_id: project.id, request_type: 'OWNER_TO_CONTRACTOR' })
-      setSentIds((prev) => new Set(prev).add(id))
-    } catch (error) {
-      Alert.alert('Could not send', error?.response?.data?.detail || 'Please try again.')
-    } finally {
-      setSendingId(null)
-    }
-  }
-
-  return (
-    <Panel title="Builders near you">
-      <PanelState loading={contractors.loading} error={contractors.error} empty={!list.length} emptyText="No builders found near your pincode.">
-        {list.map((contractor) => {
-          const id = contractor.user_id || contractor.id
-          const sent = sentIds.has(id)
-          return (
-            <View key={id} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
-              <View className="flex-1">
-                <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{contractor.name || contractor.company_name || 'Builder'}</Text>
-                <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>{contractor.company_name || contractor.address || 'Nearby'}</Text>
-              </View>
-              <Pressable onPress={() => sendRequest(contractor)} disabled={sent || sendingId === id} className={`flex-row items-center gap-1.5 rounded-full px-3.5 py-2 ${sent ? 'bg-brand-50' : 'bg-brand-700'}`}>
-                <Send size={12} color={sent ? COLORS.brand[700] : '#fff'} />
-                <Text className={`text-[11px] font-extrabold ${sent ? 'text-brand-700' : 'text-white'}`}>{sent ? 'Sent' : 'Request'}</Text>
-              </Pressable>
-            </View>
-          )
-        })}
-      </PanelState>
-    </Panel>
-  )
-}
-
-function EngineerSection({ project }) {
-  const [busyId, setBusyId] = useState(null)
-  const engineer = useAsyncData(() => fetchProjectEngineer(project.id).catch(() => ({ engineer: null })), [project.id])
-  const requests = useAsyncData(fetchIncomingRequests, [])
-  const assigned = engineer.data?.engineer || null
-  // Engineers the owner may appoint: accepted OWNER_TO_ENGINEER requests on this project
-  const candidates = (Array.isArray(requests.data) ? requests.data : []).filter(
-    (r) => r.project_id === project.id && String(r.request_type).includes('ENGINEER') && String(r.status).toLowerCase() === 'accepted',
-  )
-
-  async function appoint(request) {
-    const engineerId = request.receiver_id
-    setBusyId(request.id)
-    try {
-      await assignEngineerToProject(project.id, engineerId)
-      await engineer.reload()
-      Alert.alert('Assigned', 'Site engineer assigned to this project.')
-    } catch (error) {
-      Alert.alert('Could not assign', error?.response?.data?.detail || 'Please try again.')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  return (
-    <View>
-      <Panel title="Site engineer">
-        <PanelState loading={engineer.loading} empty={!assigned} emptyText="No engineer assigned yet.">
-          {assigned && (
-            <View>
-              <Text className="text-[15px] font-extrabold text-graphite">{assigned.name || assigned.full_name}</Text>
-              <Text className="mt-0.5 text-xs font-semibold text-slate-500">{assigned.category || 'Site Engineer'}</Text>
-            </View>
-          )}
-        </PanelState>
-      </Panel>
-      {!assigned && (
-        <Panel title="Ready to appoint">
-          <PanelState loading={requests.loading} empty={!candidates.length} emptyText="Send a request to an engineer first — accepted engineers appear here.">
-            {candidates.map((request) => (
-              <View key={request.id} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
-                <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={1}>{request.receiver_name || request.sender_name || 'Engineer'}</Text>
-                <Pressable onPress={() => appoint(request)} disabled={busyId === request.id} className="rounded-full bg-brand-700 px-3.5 py-2">
-                  <Text className="text-[11px] font-extrabold text-white">Assign</Text>
-                </Pressable>
-              </View>
-            ))}
-          </PanelState>
-        </Panel>
-      )}
-    </View>
-  )
-}
-
-function EscrowSection({ project }) {
-  const milestones = Array.isArray(project.escrow_milestones) ? project.escrow_milestones : []
-  return (
-    <Panel title="Escrow milestones">
-      <PanelState empty={!milestones.length} emptyText="No milestones on this project.">
-        {milestones.map((milestone) => (
-          <View key={milestone.id} className="flex-row items-center justify-between border-b border-slate-100 py-3">
-            <Text className="flex-1 text-[14px] font-extrabold text-graphite">{milestone.name}</Text>
-            <View className="items-end">
-              <Text className="text-[15px] font-extrabold text-brand-700">{inr(milestone.amount)}</Text>
-              <Text className="mt-0.5 text-[10px] font-extrabold text-slate-400">{milestone.status || 'PENDING'}</Text>
-            </View>
-          </View>
-        ))}
-      </PanelState>
-    </Panel>
-  )
-}
-
-function ProjectWorkspace({ project, onBack, navigation, onChanged }) {
-  const sections = sectionsFor(project)
-  const [section, setSection] = useState('overview')
-
-  return (
-    <View>
-      <Pressable onPress={onBack} className="mb-3 flex-row items-center gap-1">
-        <ChevronLeft size={18} color={COLORS.brand[700]} />
-        <Text className="text-sm font-extrabold text-brand-700">All projects</Text>
-      </Pressable>
-      <Text className="text-xl font-extrabold text-graphite">{project.project_title || project.title}</Text>
-      <Text className="mt-1 text-xs font-semibold text-slate-500">
-        {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
+    // Claims its own touches, so tapping inside the form does not open the project.
+    <View style={styles.view2} onStartShouldSetResponder={() => true}>
+      <Text style={[styles.text2, { fontSize: 10, letterSpacing: 1.4 }]}>
+        {t('dash.owner.estimates.editRequirement')}
       </Text>
-
-      {/* The project's own navigation — same strip as web OwnerProjectWorkspace */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4 mb-4" contentContainerStyle={{ gap: 6 }}>
-        {sections.map(({ id, label, icon: Icon }) => {
-          const active = section === id
-          return (
-            <Pressable key={id} onPress={() => setSection(id)} className={`h-9 flex-row items-center gap-1.5 rounded-xl px-3.5 ${active ? 'bg-brand-700' : 'bg-white border border-slate-200'}`}>
-              <Icon size={13} color={active ? '#fff' : COLORS.slate[400]} />
-              <Text className={`text-xs font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>{label}</Text>
-            </Pressable>
-          )
-        })}
-      </ScrollView>
-
-      {section === 'overview' && <OverviewSection project={project} />}
-      {section === 'requests' && <RequestsSection project={project} onChanged={onChanged} />}
-      {section === 'builders' && <BuildersSection project={project} />}
-      {section === 'engineer' && <EngineerSection project={project} />}
-      {section === 'suppliers' && (
-        <Panel title="Suppliers & materials">
-          <Text className="text-xs font-semibold text-slate-500">Browse approved suppliers, build your cart, and send buy requests for this project from the Buy & Sell tab.</Text>
-          <Pressable onPress={() => navigation.navigate('OwnerShopTab')} className="mt-3 h-11 items-center justify-center rounded-xl bg-brand-700">
-            <Text className="text-[13px] font-extrabold text-white">Open Buy & Sell</Text>
-          </Pressable>
-        </Panel>
-      )}
-      {section === 'escrow' && <EscrowSection project={project} />}
+      <TextField label={t('dash.owner.estimates.editTitle')} value={form.title} onChangeText={(title) => setForm((current) => ({ ...current, title }))} />
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TextField
+          containerStyle={{ flex: 1 }}
+          label={t('dash.owner.estimates.editBudget')}
+          value={form.budget}
+          onChangeText={(value) => setForm((current) => ({ ...current, budget: numericText(value) }))}
+          keyboardType="decimal-pad"
+        />
+        <TextField
+          containerStyle={{ flex: 1 }}
+          label={t('dash.owner.estimates.editLandArea')}
+          value={form.land_area}
+          onChangeText={(value) => setForm((current) => ({ ...current, land_area: numericText(value) }))}
+          keyboardType="decimal-pad"
+        />
+      </View>
+      <BudgetInWords value={form.budget} country={country || 'India'} />
+      <SelectField
+        label={t('dash.owner.estimates.editFloors')}
+        value={form.floor_type_shown || ''}
+        onChange={(value) => setForm((current) => ({
+          ...current,
+          floor_type: value,
+          floor_type_shown: value,
+          // Keep the count in step with the chosen code; the save posts `floors`.
+          floors: floorCountFor(country, value, current.floors),
+        }))}
+        placeholder={t('cps.selectField', { label: t('dash.common.floors') })}
+        options={floorOptionsForCountry(country).map((option) => ({ value: option.value, label: floorTypeLabel(option.value) }))}
+      />
+      <FormNotice message={message.text} tone={message.tone} style={{ marginBottom: 10 }} />
+      <View style={[styles.view3, { gap: 8 }]}>
+        <Pressable
+          onPress={save}
+          disabled={saving}
+          style={[styles.pressable, saving ? styles.pressable2 : null, { gap: 6 }]}
+        >
+          <Save size={13} color="#ffffff" />
+          <Text style={[styles.text3, { fontSize: 12 }]}>
+            {saving ? t('dash.common.saving') : t('dash.common.save')}
+          </Text>
+        </Pressable>
+        <Pressable onPress={onCancel} style={[styles.pressable3, { gap: 6 }]}>
+          <X size={13} color={COLORS.slate[500]} />
+          <Text style={[styles.text4, { fontSize: 12 }]}>{t('dash.common.cancel')}</Text>
+        </Pressable>
+      </View>
     </View>
   )
 }
 
-export default function OwnerProjectsScreen({ navigation }) {
-  const [selected, setSelected] = useState(null)
+function ProjectCard({ project, width, editing, deleting, onOpen, onEdit, onCancelEdit, onSaved, onDelete, onAssignBuilder }) {
+  const { t, td } = useLanguage()
+  const completion = clampPercent(project.completion_percentage)
+  const builderContext = projectBuilderContext(project)
+  const country = project.project_country || 'India'
+  // The finalized contract once confirmed, else the awarded quotation, else the
+  // stored budget, or "Not set". Never an invented amount.
+  const activeBudget = project.contract_amount ?? project.awarded_amount ?? project.budget
+  const budgetLabel = Number(activeBudget) > 0 ? money(activeBudget, country) : t('dash.common.notSet')
+  // Many projects repeat the title as the description; only a description
+  // that says something new gets a line.
+  const describes = project.description && normalizeEstimateText(project.description) !== normalizeEstimateText(project.title)
+  const builderText = builderContext.kind === 'self'
+    ? constructionTypeText(project.construction_type, t)
+    : builderContext.kind === 'builder'
+      ? `${t('dash.common.builder')}: ${td(builderContext.name)}`
+      : t('dash.owner.estimates.lookingForBuilder')
+  const title = td(project.title)
+  const buildText = (project.floor_type ? optionLabel(t, FLOOR_TYPE_KEYS, project.floor_type) : '')
+    || buildingTypeText(project.building_type, t)
+    || t('dash.owner.floorsCount', { floors: project.floors || 1 })
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole="button"
+      style={[styles.pressable4, { width }]}
+    >
+      <View style={[styles.view4, { gap: 12 }]}>
+        <Image
+          source={project.cover_image_url ? imageSource(project.cover_image_url) : { uri: defaultProjectImage }}
+          style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: COLORS.brand[50] }}
+          contentFit="cover"
+        />
+        <View style={styles.view5}>
+          <Text style={[styles.text5, { fontSize: 15 }]} numberOfLines={2}>{title}</Text>
+          <View style={[styles.view6, { gap: 4 }]}>
+            <MapPin size={11} color={COLORS.slate[400]} />
+            <Text style={[styles.text6, { fontSize: 11.5 }]} numberOfLines={1}>
+              {`${td(project.address) || t('dash.owner.estimates.locationNotSet')} ${project.pincode || ''}`.trim()}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={[styles.view7, { gap: 6 }]}>
+        <CardPill text={builderText} tone="positive" icon={HardHat} />
+        <CardPill text={t('dash.owner.sqft', { area: project.land_area ?? 0 })} tone="info" />
+        <CardPill text={buildText} tone="accent" />
+      </View>
+
+      {describes ? (
+        <Text style={[styles.text7, { fontSize: 11.5 }]} numberOfLines={1}>{td(project.description)}</Text>
+      ) : null}
+
+      <View style={[styles.view8, { gap: 8 }]}>
+        <Text style={[styles.text8, { fontSize: 11.5 }]}>
+          {`${completion}% ${t('dash.owner.projectList.completion')}`}
+        </Text>
+        <Text style={[styles.text9, { fontSize: 14 }]}>{budgetLabel}</Text>
+      </View>
+      <View style={styles.view9}>
+        <View style={[styles.view10, { width: `${completion}%` }]} />
+      </View>
+
+      <View style={[styles.view11, { gap: 8 }]}>
+        {!editing ? (
+          <Pressable onPress={onEdit} style={[styles.pressable5, { gap: 5 }]}>
+            <Pencil size={12} color={COLORS.graphite} />
+            <Text style={[styles.text5, { fontSize: 11.5 }]}>{t('dash.owner.estimates.edit')}</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={onDelete}
+          disabled={deleting}
+          style={[styles.pressable6, deleting ? styles.pressable2 : null, { gap: 5 }]}
+        >
+          <Trash2 size={12} color="#dc2626" />
+          <Text style={[styles.text10, { fontSize: 11.5 }]}>
+            {deleting ? t('dash.common.deleting') : t('dash.common.delete')}
+          </Text>
+        </Pressable>
+        {/* Assigned means awarded (projects.contractor_id), not merely an accepted quotation. */}
+        {project.construction_type !== 'SELF_CONSTRUCTION' ? (
+          <Pressable
+            onPress={onAssignBuilder}
+            style={[styles.pressable7, { gap: 5 }]}
+          >
+            <HardHat size={12} color={COLORS.brand[800]} />
+            <Text style={[styles.text11, { fontSize: 11.5 }]}>
+              {project.contractor_id ? t('quote.builderAssignedButton') : t('quote.assignBuilder')}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {editing ? <EditRequirement project={project} onSaved={onSaved} onCancel={onCancelEdit} /> : null}
+    </Pressable>
+  )
+}
+
+export default function OwnerProjectsScreen({ navigation, route }) {
+  const { t, td } = useLanguage()
+  const { columns, gutter } = useResponsive()
+  const [projects, setProjects] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
-  const projects = useAsyncData(fetchOwnerProjects, [])
-  const projectList = Array.isArray(projects.data) ? projects.data : []
+  const [editingId, setEditingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [deleteMessage, setDeleteMessage] = useState({ text: '', tone: 'success' })
+
+  const load = useCallback(async () => {
+    try {
+      const list = await fetchOwnerProjects()
+      setProjects(Array.isArray(list) ? list : [])
+      setError('')
+    } catch (loadError) {
+      setError(apiDetail(loadError, t('dash.err.loadProjects')))
+    } finally {
+      setLoading(false)
+    }
+  }, [t])
+
+  const { markSectionRead } = useNotifications()
+  // Opening Projects clears its project / estimate notifications, as on the web.
+  useFocusEffect(useCallback(() => {
+    load()
+    markSectionRead('projects')
+  }, [load, markSectionRead]))
+  useLiveRefresh(load)
+
+  // Older links into this tab carried a project to open; it is a page of its own now.
+  useEffect(() => {
+    const projectId = route?.params?.projectId
+    if (!projectId) return
+    const tab = route?.params?.section || route?.params?.tab
+    navigation.setParams({ projectId: undefined, section: undefined, tab: undefined })
+    navigation.navigate('OwnerProject', { projectId, ...(tab ? { tab } : {}) })
+  }, [route?.params?.projectId, route?.params?.section, route?.params?.tab, navigation])
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await projects.reload()
+    await load()
     setRefreshing(false)
   }
 
+  const confirmDelete = (project) => {
+    Alert.alert(
+      t('dash.owner.estimates.deleteTitle'),
+      `${t('dash.owner.estimates.deleteBody')}\n\n${td(project.title) || t('dash.common.untitledEstimate')}`,
+      [
+        { text: t('dash.common.cancel'), style: 'cancel' },
+        { text: t('dash.common.delete'), style: 'destructive', onPress: () => deleteProject(project) },
+      ],
+    )
+  }
+
+  const deleteProject = async (project) => {
+    setDeleteMessage({ text: '', tone: 'success' })
+    setDeletingId(project.id)
+    try {
+      await deleteOwnerProject(project.id)
+      await load()
+      setDeleteMessage({ text: t('dash.msg.projectDeleted'), tone: 'success' })
+    } catch (deleteError) {
+      // The server refuses a project that has started or has a live award, and says why.
+      setDeleteMessage({ text: apiDetail(deleteError, t('dash.err.deleteProject')), tone: 'error' })
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const cardWidth = columns > 1 ? `${(100 - (columns - 1) * 2) / columns}%` : '100%'
+
   return (
     <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
-      {selected ? (
-        <ProjectWorkspace
-          project={projectList.find((p) => p.id === selected.id) || selected}
-          onBack={() => setSelected(null)}
-          navigation={navigation}
-          onChanged={() => projects.reload()}
-        />
-      ) : (
-        <Panel title="My projects">
-          <PanelState loading={projects.loading} error={projects.error} empty={!projectList.length} emptyText="No projects yet. Create one from the estimate calculator.">
-            {projectList.map((project) => {
-              const completion = Math.min(Number(project.completion_percentage || 0), 100)
-              return (
-                <Pressable key={project.id} onPress={() => setSelected(project)} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                  <View className="flex-row items-center gap-2">
-                    <Home size={16} color={COLORS.brand[700]} />
-                    <Text className="flex-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>{project.project_title || project.title || 'Project'}</Text>
-                    <Text className="text-xs font-extrabold text-brand-700">{completion}%</Text>
-                  </View>
-                  <View className="mt-2 flex-row items-center gap-1.5">
-                    <MapPin size={12} color={COLORS.slate[400]} />
-                    <Text className="flex-1 text-xs font-semibold text-slate-500" numberOfLines={1}>
-                      {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
-                    </Text>
-                  </View>
-                  <View className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <View className="h-full rounded-full bg-brand-600" style={{ width: `${completion}%` }} />
-                  </View>
-                </Pressable>
-              )
-            })}
-          </PanelState>
-        </Panel>
-      )}
+      <View style={{ paddingHorizontal: gutter }}>
+      <View style={[styles.view12, { gap: 12 }]}>
+        <Text style={[styles.text9, { fontSize: 19, letterSpacing: -0.4 }]}>{t('ui.projects')}</Text>
+        <Pressable
+          onPress={() => navigation.navigate('CreateProject')}
+          accessibilityRole="button"
+          style={[styles.pressable8, { gap: 6 }]}
+        >
+          <Plus size={15} color="#ffffff" />
+          <Text style={[styles.text3, { fontSize: 12.5 }]}>{t('ui.createProject')}</Text>
+        </Pressable>
+      </View>
+
+      <FormNotice message={deleteMessage.text} tone={deleteMessage.tone} style={{ marginBottom: 12 }} />
+
+      <PanelState
+        loading={loading}
+        error={error}
+        empty={!projects.length}
+        emptyText={`${t('dash.owner.projects.emptyTitle')}. ${t('dash.owner.projects.emptySub')}`}
+      >
+        <View style={styles.view13}>
+          {projects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              width={cardWidth}
+              editing={editingId === project.id}
+              deleting={deletingId === project.id}
+              onOpen={() => navigation.navigate('OwnerProject', { projectId: project.id })}
+              onEdit={() => setEditingId(project.id)}
+              onCancelEdit={() => setEditingId(null)}
+              onSaved={load}
+              onDelete={() => confirmDelete(project)}
+              onAssignBuilder={() => navigation.navigate('OwnerProject', { projectId: project.id, tab: 'assignBuilder' })}
+            />
+          ))}
+        </View>
+      </PanelState>
+      </View>
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  tone: { backgroundColor: c.emeraldSoft, color: c.emeraldTextStrong },
+  tone2: { backgroundColor: c.skySoft, color: c.skyTextStrong },
+  tone3: { backgroundColor: c.amberSoft, color: c.amberTextStrong },
+  view: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, paddingHorizontal: 8.75, paddingVertical: 3.5 },
+  text: { fontFamily: 'Inter_700Bold' },
+  view2: { marginTop: 10.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft40, padding: 10.5 },
+  text2: { marginBottom: 7, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', color: c.brandTextStrong },
+  view3: { flexDirection: 'row' },
+  pressable: { height: 31.5, flexDirection: 'row', alignItems: 'center', borderRadius: 7, backgroundColor: '#134127', paddingHorizontal: 10.5 },
+  pressable2: { opacity: 0.6 },
+  text3: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
+  pressable3: { height: 31.5, flexDirection: 'row', alignItems: 'center', borderRadius: 7, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5 },
+  text4: { fontFamily: 'Inter_700Bold', color: c.textMuted },
+  pressable4: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view4: { flexDirection: 'row', alignItems: 'flex-start' },
+  view5: { flex: 1 },
+  text5: { fontFamily: 'Inter_700Bold', color: c.text },
+  view6: { marginTop: 1.75, flexDirection: 'row', alignItems: 'center' },
+  text6: { flex: 1, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view7: { marginTop: 10.5, flexDirection: 'row', flexWrap: 'wrap' },
+  text7: { marginTop: 7, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view8: { marginTop: 8.75, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text8: { fontFamily: 'Inter_600SemiBold', color: c.textMuted },
+  text9: { fontFamily: 'Manrope_800ExtraBold', color: c.text },
+  view9: { marginTop: 5.25, height: 5.25, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.mutedStrong },
+  view10: { height: '100%', borderRadius: 9999, backgroundColor: '#10b981' },
+  view11: { marginTop: 10.5, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  pressable5: { height: 28, flexDirection: 'row', alignItems: 'center', borderRadius: 7, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 8.75 },
+  pressable6: { height: 28, flexDirection: 'row', alignItems: 'center', borderRadius: 7, borderWidth: 1, borderColor: c.redBorderSoft, backgroundColor: c.redSoft, paddingHorizontal: 8.75 },
+  text10: { fontFamily: 'Inter_700Bold', color: c.redTextSoft },
+  pressable7: { marginLeft: 'auto', height: 28, flexDirection: 'row', alignItems: 'center', borderRadius: 7, borderWidth: 1, borderColor: c.emeraldBorderSoft, backgroundColor: c.emeraldSoft, paddingHorizontal: 8.75 },
+  text11: { fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
+  view12: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pressable8: { height: 31.5, flexDirection: 'row', alignItems: 'center', borderRadius: 10.5, backgroundColor: '#1a5038', paddingHorizontal: 10.5 },
+  view13: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+}))

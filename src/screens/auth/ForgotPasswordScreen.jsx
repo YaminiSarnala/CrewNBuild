@@ -1,17 +1,18 @@
 // Port of the web password-recovery flow: request code → verify 6-digit
 // code → set new password, using the existing api/passwordReset.js.
 import { useState } from 'react'
-import { View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, Text, Pressable, TextInput, KeyboardAvoidingView, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft } from 'lucide-react-native'
 import { sendResetCode, verifyResetCode, resetPassword } from '../../api/passwordReset'
 import { COLORS } from '../../theme/tokens'
+import { createStyles } from '../../theme/createStyles'
 
 function Input(props) {
   return (
     <TextInput
       {...props}
-      className="mt-2 h-12 rounded-xl border border-slate-200 bg-white px-3 text-[15px] font-semibold text-graphite"
+      style={styles.textInput}
       placeholderTextColor={COLORS.slate[400]}
     />
   )
@@ -59,39 +60,39 @@ export default function ForgotPasswordScreen({ navigation }) {
     : true
 
   return (
-    <View className="flex-1 bg-brand-800" style={{ paddingTop: insets.top }}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+    <View style={[styles.view, { paddingTop: insets.top }]}>
+      <KeyboardAvoidingView behavior="padding" style={styles.keyboardAvoidingView}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }} keyboardShouldPersistTaps="handled">
-          <Pressable onPress={() => navigation.goBack()} className="mb-4 flex-row items-center gap-1 self-start">
+          <Pressable onPress={() => navigation.goBack()} style={styles.pressable}>
             <ChevronLeft size={18} color={COLORS.brand[200]} />
-            <Text className="text-sm font-extrabold text-brand-200">Back to sign in</Text>
+            <Text style={styles.text}>Back to sign in</Text>
           </Pressable>
 
-          <View className="w-full self-center rounded-3xl bg-white p-6" style={{ maxWidth: 520 }}>
-            <Text className="text-xl font-extrabold text-graphite">Reset your password</Text>
+          <View style={[styles.view2, { maxWidth: 520 }]}>
+            <Text style={styles.text2}>Reset your password</Text>
             {!!message && !error && (
-              <View className="mt-3 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2">
-                <Text className="text-[13px] font-semibold text-brand-800">{message}</Text>
+              <View style={styles.view3}>
+                <Text style={styles.text3}>{message}</Text>
               </View>
             )}
             {!!error && (
-              <View className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2">
-                <Text className="text-[13px] font-semibold text-rose-700">{error}</Text>
+              <View style={styles.view4}>
+                <Text style={styles.text4}>{error}</Text>
               </View>
             )}
 
             {step === 'email' && (
               <>
-                <Text className="mt-2 text-[13px] font-semibold text-slate-500">Enter the email you signed up with and we'll send a verification code.</Text>
+                <Text style={styles.text5}>Enter the email you signed up with and we'll send a verification code.</Text>
                 <Input value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoFocus />
               </>
             )}
             {step === 'code' && (
               <>
-                <Text className="mt-2 text-[13px] font-semibold text-slate-500">Enter the 6-digit code sent to {email.trim()}.</Text>
+                <Text style={styles.text5}>Enter the 6-digit code sent to {email.trim()}.</Text>
                 <Input value={code} onChangeText={setCode} placeholder="6-digit code" keyboardType="number-pad" maxLength={6} autoFocus style={{ letterSpacing: 8, textAlign: 'center', fontWeight: '800' }} />
-                <Pressable onPress={submitEmail} disabled={busy} className="mt-2 self-center">
-                  <Text className="text-xs font-extrabold text-brand-700">Resend code</Text>
+                <Pressable onPress={submitEmail} disabled={busy} style={styles.pressable2}>
+                  <Text style={styles.text6}>Resend code</Text>
                 </Pressable>
               </>
             )}
@@ -106,15 +107,15 @@ export default function ForgotPasswordScreen({ navigation }) {
               <Pressable
                 onPress={step === 'email' ? submitEmail : step === 'code' ? submitCode : submitPassword}
                 disabled={busy || !canContinue}
-                className={`mt-4 h-12 items-center justify-center rounded-full bg-brand-700 ${busy || !canContinue ? 'opacity-50' : ''}`}
+                style={[styles.pressable3, busy || !canContinue ? styles.pressable4 : null]}
               >
-                <Text className="text-[14px] font-extrabold text-white">
+                <Text style={styles.text7}>
                   {busy ? 'Please wait…' : step === 'email' ? 'Send code' : step === 'code' ? 'Verify code' : 'Set new password'}
                 </Text>
               </Pressable>
             ) : (
-              <Pressable onPress={() => navigation.navigate('Login')} className="mt-4 h-12 items-center justify-center rounded-full bg-brand-700">
-                <Text className="text-[14px] font-extrabold text-white">Go to sign in</Text>
+              <Pressable onPress={() => navigation.navigate('Login')} style={styles.pressable3}>
+                <Text style={styles.text7}>Go to sign in</Text>
               </Pressable>
             )}
           </View>
@@ -123,3 +124,23 @@ export default function ForgotPasswordScreen({ navigation }) {
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  textInput: { marginTop: 7, height: 42, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 15, fontWeight: '600', color: c.text },
+  view: { flex: 1, backgroundColor: '#134127' },
+  keyboardAvoidingView: { flex: 1 },
+  pressable: { marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 3.5, alignSelf: 'flex-start' },
+  text: { fontSize: 12.25, lineHeight: 17.5, fontWeight: '800', color: '#c3dccd' },
+  view2: { width: '100%', alignSelf: 'center', borderRadius: 21, backgroundColor: c.card, padding: 21 },
+  text2: { fontSize: 17.5, lineHeight: 24.5, fontWeight: '800', color: c.text },
+  view3: { marginTop: 10.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text3: { fontSize: 13, fontWeight: '600', color: c.brandTextStrong },
+  view4: { marginTop: 10.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.roseBorderSoft, backgroundColor: c.roseSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text4: { fontSize: 13, fontWeight: '600', color: c.roseText },
+  text5: { marginTop: 7, fontSize: 13, fontWeight: '600', color: c.textMuted },
+  pressable2: { marginTop: 7, alignSelf: 'center' },
+  text6: { fontSize: 10.5, lineHeight: 14, fontWeight: '800', color: c.brandText },
+  pressable3: { marginTop: 14, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#1a5038' },
+  pressable4: { opacity: 0.5 },
+  text7: { fontSize: 14, fontWeight: '800', color: '#ffffff' },
+}))
