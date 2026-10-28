@@ -1,4 +1,4 @@
-package com.octabuild.app
+package com.crewnbuild.app
 
 import android.app.Application
 import android.content.res.Configuration

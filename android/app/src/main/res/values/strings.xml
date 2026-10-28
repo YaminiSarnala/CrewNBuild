@@ -1,3 +1,4 @@
 <resources>
-  <string name="app_name">OctaBuild</string>
+  <string name="app_name">CrewNBuild</string>
+  <string name="expo_runtime_version">file:fingerprint</string>
 </resources>
