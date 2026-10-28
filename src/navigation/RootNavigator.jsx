@@ -34,6 +34,8 @@ import CreateProjectScreen from '../screens/owner/CreateProjectScreen'
 import OwnerProjectScreen from '../screens/owner/OwnerProjectScreen'
 import BuilderProfileScreen from '../screens/owner/BuilderProfileScreen'
 import { NotificationsProvider } from '../notifications/NotificationsContext'
+import { ComingSoonProvider, ComingSoonRoleScreen } from '../components/ComingSoon'
+import { isRoleLive } from '../config/modules'
 
 import { restoreSession, sessionExpired, setAuthenticatedUser } from '../store/authSlice'
 import { onAuthExpired, onAuthRefreshed } from '../api/client'
@@ -80,10 +82,15 @@ export default function RootNavigator() {
   if (!hydrated) return <SplashGate />
 
   const signedIn = Boolean(accessToken && user)
-  const dashboard = DASHBOARD_BY_ROLE[user?.role] || DASHBOARD_BY_ROLE.OWNER
+  // Supplier / Site Engineer are not live yet: one Coming soon screen instead
+  // of their unfinished dashboards (src/config/modules.js).
+  const dashboard = isRoleLive(user?.role || 'OWNER')
+    ? DASHBOARD_BY_ROLE[user?.role] || DASHBOARD_BY_ROLE.OWNER
+    : { name: 'ComingSoonRole', component: ComingSoonRoleScreen }
 
   return (
     <NotificationsProvider signedIn={signedIn}>
+    <ComingSoonProvider>
     <NavigationContainer
       key={theme}
       initialState={navigationState.current}
@@ -116,6 +123,7 @@ export default function RootNavigator() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </ComingSoonProvider>
     </NotificationsProvider>
   )
 }

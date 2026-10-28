@@ -37,6 +37,8 @@ import {
   isProjectCompleted, money, projectBuilderContext, projectTitle, requestTypeLabel,
 } from './ownerHelpers'
 import { createStyles } from '../../theme/createStyles'
+import { useComingSoon, SoonTag } from '../../components/ComingSoon'
+import { COMING_SOON } from '../../config/modules'
 
 const HERO_ART = require('../../../assets/octabuild/heroes/owner.png')
 
@@ -140,7 +142,7 @@ function Metric({ icon: Icon, tint, label, value, onPress }) {
   )
 }
 
-function QuickAction({ id, label, hint, disabled, onPress, width }) {
+function QuickAction({ id, label, hint, disabled, soon, onPress, width }) {
   const look = QUICK_STYLE[id]
   return (
     <Pressable
@@ -153,6 +155,7 @@ function QuickAction({ id, label, hint, disabled, onPress, width }) {
       <Image source={look.image} style={{ width: '100%', height: 78 }} contentFit="contain" />
       {/* The card keeps its light pastel in both themes, so its ink stays dark. */}
       {/* Pastel card in both themes, so the ink stays dark. */}
+      {soon ? <SoonTag style={{ position: 'absolute', top: 8, right: 8 }} /> : null}
       <Text style={[styles.text7, { fontSize: 14, color: '#1f2937' }]} numberOfLines={1}>{label}</Text>
       <Text style={[styles.text9, { fontSize: 11, lineHeight: 15, color: '#475569' }]} numberOfLines={2}>{hint}</Text>
       <View style={[styles.view10, { backgroundColor: look.chip }]}>
@@ -212,6 +215,7 @@ export default function OwnerDashboard({ navigation }) {
   const { t, td } = useLanguage()
   const user = useSelector((state) => state.auth.user)
   const { requireCompleteProfile } = useProfileGate()
+  const comingSoon = useComingSoon()
   const { gutter, isTablet, isLargeTablet, width, maxContentWidth } = useResponsive()
   const [languageOpen, setLanguageOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -295,8 +299,14 @@ export default function OwnerDashboard({ navigation }) {
   // --- navigation targets --------------------------------------------------
   const openProjects = () => navigation.navigate('OwnerProjectsTab')
   const openProject = (project, tab) => navigation.navigate('OwnerProject', { projectId: project.id, ...(tab ? { tab } : {}) })
-  const bookTechnician = (trade = null) => navigation.navigate('BookTechnician', trade ? { trade } : undefined)
+  // Technicians, the materials marketplace and property buy & sell belong to
+  // modules that are not live yet (src/config/modules.js).
+  const bookTechnician = (trade = null) => {
+    if (COMING_SOON.technician) return comingSoon.show('technician')
+    navigation.navigate('BookTechnician', trade ? { trade } : undefined)
+  }
   const openOrder = () => {
+    if (COMING_SOON.marketplace) return comingSoon.show('marketplace')
     if (orderProject) openProject(orderProject, 'suppliers')
     else navigation.navigate('OwnerShopTab', { tab: 'suppliers' })
   }
@@ -308,13 +318,17 @@ export default function OwnerDashboard({ navigation }) {
 
   const quickActions = [
     { id: 'construction', label: t('owner.quick.construction'), hint: t('owner.quick.constructionSub'), onPress: startProject },
-    { id: 'buySell', label: t('ui.buySell'), hint: t('owner.quick.buySellSub'), onPress: () => navigation.navigate('OwnerShopTab', { tab: 'property' }) },
-    { id: 'technician', label: t('ui.owner.bookTechnician'), hint: t('owner.quick.technicianSub'), onPress: () => bookTechnician() },
+    {
+      id: 'buySell', label: t('ui.buySell'), hint: t('owner.quick.buySellSub'), soon: COMING_SOON.property,
+      onPress: () => (COMING_SOON.property ? comingSoon.show('property') : navigation.navigate('OwnerShopTab', { tab: 'property' })),
+    },
+    { id: 'technician', label: t('ui.owner.bookTechnician'), hint: t('owner.quick.technicianSub'), soon: COMING_SOON.technician, onPress: () => bookTechnician() },
     {
       id: 'order',
       label: t('owner.quick.order'),
-      hint: orderProject ? t('owner.quick.orderSub') : t('owner.quick.orderNeedsSelf'),
-      disabled: !orderProject,
+      hint: orderProject || COMING_SOON.marketplace ? t('owner.quick.orderSub') : t('owner.quick.orderNeedsSelf'),
+      disabled: !orderProject && !COMING_SOON.marketplace,
+      soon: COMING_SOON.marketplace,
       onPress: openOrder,
     },
   ]

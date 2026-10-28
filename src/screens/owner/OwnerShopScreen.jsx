@@ -185,10 +185,21 @@
 // Owner's supplier hub: shared shop, checkout tied to the first
 // SELF_CONSTRUCTION project — same rule as web OwnerSupplierHub.
 import ShopHubScreen from '../shared/ShopHubScreen'
+import DashboardShell from '../../components/DashboardShell'
+import { ComingSoonPanel } from '../../components/ComingSoon'
+import { COMING_SOON } from '../../config/modules'
 import { fetchOwnerProjects } from '../../api/projects'
 import { createStyles } from '../../theme/createStyles'
 
 export default function OwnerShopScreen({ navigation, route }) {
+  // Materials marketplace and property buy & sell are not live yet.
+  if (COMING_SOON.marketplace && COMING_SOON.property) {
+    return (
+      <DashboardShell onOpenNotifications={() => navigation.navigate('Notifications')}>
+        <ComingSoonPanel feature="buySell" style={{ marginTop: 8 }} />
+      </DashboardShell>
+    )
+  }
   return (
     <ShopHubScreen
       navigation={navigation}

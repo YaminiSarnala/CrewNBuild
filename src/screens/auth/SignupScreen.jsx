@@ -3,6 +3,8 @@
 // role must be one of OWNER / CONTRACTOR / SUPPLIER / ENGINEER, and the
 // backend requires name, email, phone, password, address, pincode.
 import { useState } from 'react'
+import { useComingSoon, SoonTag } from '../../components/ComingSoon'
+import { isRoleLive } from '../../config/modules'
 import { View, Text, ScrollView, Pressable, KeyboardAvoidingView } from 'react-native'
 import { Image } from 'expo-image'
 import { useDispatch, useSelector } from 'react-redux'
@@ -26,6 +28,7 @@ export default function SignupScreen({ navigation }) {
   const dispatch = useDispatch()
   const insets = useSafeAreaInsets()
   const { t, translateMessage } = useLanguage()
+  const comingSoon = useComingSoon()
   const { status, errorMessage } = useSelector((state) => state.auth)
 
   const [form, setForm] = useState({
@@ -118,7 +121,9 @@ export default function SignupScreen({ navigation }) {
                 label={t(labelKey)}
                 description={t(descKey)}
                 selected={form.role === value}
-                onPress={() => set('role')(value)}
+                // Supplier / Site Engineer are not live in the app yet.
+                onPress={() => (isRoleLive(value) ? set('role')(value) : comingSoon.show(value))}
+                badge={isRoleLive(value) ? null : <SoonTag />}
                 icon={<Icon size={18} color={form.role === value ? '#ffffff' : '#64748b'} />}
               />
             ))}

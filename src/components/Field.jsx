@@ -75,7 +75,7 @@ export function ErrorBanner({ message }) {
   )
 }
 
-export function RoleCard({ label, description, selected, onPress, icon }) {
+export function RoleCard({ label, description, selected, onPress, icon, badge }) {
   return (
     <Pressable
       onPress={onPress}
@@ -89,9 +89,12 @@ export function RoleCard({ label, description, selected, onPress, icon }) {
         {icon}
       </View>
       <View style={styles.view7}>
-        <Text style={[styles.text4, selected ? styles.text5 : styles.text6, { fontSize: 15 }]}>
-          {label}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={[styles.text4, selected ? styles.text5 : styles.text6, { fontSize: 15 }]}>
+            {label}
+          </Text>
+          {badge}
+        </View>
         <Text style={[styles.text7, { fontSize: 12.5 }]}>
           {description}
         </Text>

@@ -46,6 +46,11 @@ import CartPanel from './marketplace/CartPanel'
 import OrdersPanel from './marketplace/OrdersPanel'
 import { AssignBuilderSection, FindBuildersSection, RequestsSection, useBuilderHiring } from './ownerBuilderSections'
 import { createStyles } from '../../theme/createStyles'
+import { ComingSoonPanel, SoonTag } from '../../components/ComingSoon'
+import { COMING_SOON } from '../../config/modules'
+
+// Project tabs whose module is not live yet: the tab stays, its body says so.
+const SOON_TABS = { siteEngineer: COMING_SOON.siteEngineer && 'siteEngineer', suppliers: COMING_SOON.marketplace && 'marketplace' }
 
 function projectTabs(project, t) {
   const selfConstruction = project?.construction_type === 'SELF_CONSTRUCTION'
@@ -618,6 +623,7 @@ export default function OwnerProjectScreen({ navigation, route }) {
                 >
                   <Icon size={13} color={ink} />
                   <Text style={[styles.text19, { fontSize: 12, color: ink }]}>{label}</Text>
+                  {SOON_TABS[id] && !active ? <SoonTag /> : null}
                   {!active && TAB_SECTIONS[id] && badgeCounts[TAB_SECTIONS[id]] ? (
                     <View style={styles.view22}>
                       <Text style={[styles.text2, { fontSize: 9 }]}>
@@ -662,8 +668,9 @@ export default function OwnerProjectScreen({ navigation, route }) {
                   />
                 )}
                 {activeTab === 'assignBuilder' && <AssignBuilderSection project={project} hiring={hiring} />}
-                {activeTab === 'siteEngineer' && <OwnerSiteEngineerSection project={project} />}
-                {activeTab === 'suppliers' && <SuppliersSection project={project} user={user} />}
+                {SOON_TABS[activeTab] ? <ComingSoonPanel feature={SOON_TABS[activeTab]} /> : null}
+                {activeTab === 'siteEngineer' && !SOON_TABS.siteEngineer && <OwnerSiteEngineerSection project={project} />}
+                {activeTab === 'suppliers' && !SOON_TABS.suppliers && <SuppliersSection project={project} user={user} />}
                 {activeTab === 'siteActivity' && <SiteActivitySection project={project} user={user} />}
                 {activeTab === 'liveCamera' && <ProjectCameraPanel projectId={project.id} projectTitle={project.title} />}
               </>

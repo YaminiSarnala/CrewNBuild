@@ -19,6 +19,8 @@ import { userCountry } from '../../utils/countryConfig'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useNotifications } from '../../notifications/NotificationsContext'
 import { useResponsive } from '../../hooks/useResponsive'
+import { useComingSoon, SoonTag } from '../../components/ComingSoon'
+import { COMING_SOON } from '../../config/modules'
 import { createStyles } from '../../theme/createStyles'
 
 const ROLE_LABELS = { OWNER: 'House Owner', CONTRACTOR: 'Builder', SUPPLIER: 'Supplier', ENGINEER: 'Site Engineer' }
@@ -49,6 +51,7 @@ export default function ProfileScreen({ navigation }) {
   const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
   const { t, td } = useLanguage()
+  const comingSoon = useComingSoon()
   const { markSectionRead } = useNotifications()
   const { gutter } = useResponsive()
   // Opening Profile clears its general notifications, as on the web.
@@ -165,9 +168,10 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.text8}>Messages</Text>
             </Pressable>
                     {(user?.role === 'OWNER' || user?.role === 'ENGINEER') && (
-            <Pressable onPress={() => navigation.navigate('BookTechnician')} style={styles.pressable5}>
+            <Pressable onPress={() => (COMING_SOON.technician ? comingSoon.show('technician') : navigation.navigate('BookTechnician'))} style={styles.pressable5}>
               <Wrench size={16} color={COLORS.brand[700]} />
               <Text style={styles.text8}>Book a technician</Text>
+              {COMING_SOON.technician ? <SoonTag /> : null}
             </Pressable>
           )}
           <Pressable onPress={() => setLanguageOpen(true)} style={styles.pressable5}>
