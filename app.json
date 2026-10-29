@@ -33,7 +33,8 @@
         "NSCameraUsageDescription": "CrewNBuild uses the camera to capture site progress photos.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

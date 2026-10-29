@@ -15,6 +15,8 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { imageSource } from '../api/client'
 import { useResponsive } from '../hooks/useResponsive'
 import { ContentWrap } from './Responsive'
+import LanguageSheet from './LanguageSheet'
+import ProfilePhotoSheet from './ProfilePhotoSheet'
 import { SHADOW, COLORS } from '../theme/tokens'
 import { createStyles } from '../theme/createStyles'
 
@@ -137,6 +139,10 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
   const navigation = useNavigation()
   const { unreadCount, unreadMessages } = useNotifications()
   const { isDark, toggleTheme } = useTheme()
+  // The header opens these itself, so the globe and the photo work on every
+  // tab — not only on a Home screen that passes onOpenLanguage.
+  const [languageOpen, setLanguageOpen] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
 
   const roleLabelKey =
     {
@@ -151,9 +157,14 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
       <View style={[styles.view8, { paddingTop: insets.top }]}>
         <ContentWrap>
         <View style={[styles.view9, { gap: 4, paddingHorizontal: gutter }]}>
-          <View style={styles.view10}>
+          <Pressable
+            onPress={() => setPhotoOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('photo.title')}
+            style={styles.view10}
+          >
             {user?.profile_image_url ? (
-              <Image source={imageSource(user.profile_image_url)} style={{ width: 44, height: 44 }} />
+              <Image source={imageSource(user.profile_image_url)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             ) : (
               <View style={styles.view11}>
                 <Text style={[styles.text7, { fontSize: 16 }]}>
@@ -161,7 +172,7 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
                 </Text>
               </View>
             )}
-          </View>
+          </Pressable>
           <View style={styles.scrollView}>
             <Text style={[styles.text7, { fontSize: 17, letterSpacing: -0.4 }]} numberOfLines={1}>
               {td(user?.name) || '—'}
@@ -179,7 +190,7 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
           >
             {isDark ? <Sun size={19} color="#c3dccd" /> : <Moon size={19} color="#c3dccd" />}
           </Pressable>
-          <Pressable onPress={onOpenLanguage} accessibilityLabel={t('language.label')} style={styles.pressable}>
+          <Pressable onPress={onOpenLanguage || (() => setLanguageOpen(true))} accessibilityLabel={t('language.label')} style={styles.pressable}>
             <Globe size={19} color="#c3dccd" />
           </Pressable>
           <Pressable onPress={() => navigation.navigate('Messages')} accessibilityLabel={t('dash.common.messages')} style={styles.pressable}>
@@ -213,6 +224,8 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
       >
         <ContentWrap>{children}</ContentWrap>
       </ScrollView>
+      <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
     </View>
   )
 }

@@ -18,11 +18,8 @@ function DailyLogPanel({ projectId, onSaved }) {
   const [busy, setBusy] = useState(false)
 
   async function pickPhotos() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Permission needed', 'Allow photo access to attach site photos.')
-      return
-    }
+    // The system photo picker needs no permission; asking for one on Android
+    // 13+ requests READ_MEDIA_IMAGES, which the app does not declare.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,

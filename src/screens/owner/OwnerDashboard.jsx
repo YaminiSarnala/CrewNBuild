@@ -39,6 +39,7 @@ import {
 import { createStyles } from '../../theme/createStyles'
 import { useComingSoon, SoonTag } from '../../components/ComingSoon'
 import { COMING_SOON } from '../../config/modules'
+import { userAvatarSource } from '../../utils/avatars'
 
 const HERO_ART = require('../../../assets/octabuild/heroes/owner.png')
 
@@ -462,6 +463,10 @@ export default function OwnerDashboard({ navigation }) {
                     return (
                       <View key={request.id} style={styles.pressable5}>
                         <View style={[styles.view4, { gap: 8 }]}>
+                          {/* The other party's picture, as the web row shows it. */}
+                          <View style={styles.activityAvatar}>
+                            <Image source={userAvatarSource(request)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                          </View>
                           <View style={styles.view15}>
                             <Text style={[styles.text2, { fontSize: 13 }]} numberOfLines={1}>
                               {requestTypeLabel(request.request_type, t)}
@@ -672,6 +677,7 @@ const styles = createStyles((c) => ({
   text20: { fontFamily: 'Inter_600SemiBold', color: c.roseText },
   pressable5: { marginBottom: 7, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10.5, paddingVertical: 8.75 },
   view15: { flex: 1 },
+  activityAvatar: { width: 30, height: 30, borderRadius: 9, overflow: 'hidden', borderWidth: 1, borderColor: c.border, backgroundColor: c.brandSoft },
   view16: { marginTop: 5.25, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   text21: { fontFamily: 'Inter_600SemiBold', color: c.textFaint },
   view17: { flexDirection: 'row' },

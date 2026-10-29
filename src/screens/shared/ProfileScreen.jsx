@@ -6,12 +6,12 @@ import { useFocusEffect } from '@react-navigation/native'
 import { View, Text, Pressable, TextInput, Alert, Linking } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { Image } from 'expo-image'
-import { Globe, LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle } from 'lucide-react-native'
+import { Globe, LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle, Trash2, AlertTriangle } from 'lucide-react-native'
 import DashboardShell, { Panel } from '../../components/DashboardShell'
 import LanguageSheet from '../../components/LanguageSheet'
-import { completeUserProfile, updateProfileImage } from '../../api/auth'
-import { uploadLocalFile } from '../../api/upload'
-import * as ImagePicker from 'expo-image-picker'
+import Dialog, { DialogButton } from '../../components/Dialog'
+import { completeUserProfile, deleteOwnAccount } from '../../api/auth'
+import { useProfilePhoto } from '../../hooks/useProfilePhoto'
 import { mergeUser, logoutUser } from '../../store/authSlice'
 import { imageSource } from '../../api/client'
 import { COLORS } from '../../theme/tokens'
@@ -59,28 +59,27 @@ export default function ProfileScreen({ navigation }) {
   const [languageOpen, setLanguageOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-    const [avatarBusy, setAvatarBusy] = useState(false)
+  const { changePhoto: changeAvatar, busy: avatarBusy } = useProfilePhoto()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
-  async function changeAvatar() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Permission needed', 'Allow photo access to change your profile picture.')
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: true, aspect: [1, 1] })
-    if (result.canceled) return
-    setAvatarBusy(true)
+  // As the web's DeleteAccountSection: the server deletes the account the token
+  // belongs to; the session is only torn down once it reports success.
+  async function confirmDelete() {
+    setDeleting(true)
+    setDeleteError('')
     try {
-      const uploaded = await uploadLocalFile(result.assets[0], 'profile.jpg')
-      const fileUrl = uploaded.url || uploaded.file_url || uploaded.path
-      const updated = await updateProfileImage(fileUrl)
-      dispatch(mergeUser(updated?.user || updated || { profile_image_url: fileUrl }))
+      await deleteOwnAccount()
+      setDeleteOpen(false)
+      dispatch(logoutUser())
     } catch (error) {
-      Alert.alert('Could not update photo', error?.response?.data?.detail || 'Please try again.')
-    } finally {
-      setAvatarBusy(false)
+      const detail = error?.response?.data?.detail
+      setDeleteError((typeof detail === 'string' && td(detail)) || t('account.deleteFailed'))
+      setDeleting(false)
     }
-  } 
+  }
+
   const [draft, setDraft] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -123,7 +122,7 @@ export default function ProfileScreen({ navigation }) {
             >
             <View style={[styles.view4, avatarBusy ? styles.pressable2 : null]}>
               {user?.profile_image_url ? (
-                <Image source={imageSource(user.profile_image_url)} style={{ width: 80, height: 80 }} contentFit="cover" />
+                <Image source={imageSource(user.profile_image_url)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
               ) : (
                 <View style={styles.view5}>
                   <Text style={styles.text3}>{(user?.name || 'U').slice(0, 1).toUpperCase()}</Text>
@@ -194,9 +193,46 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.text9}>Sign out</Text>
           </Pressable>
         </Panel>
+
+        <View style={[styles.deleteCard, { marginHorizontal: gutter }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.deleteTitle}>{t('account.delete')}</Text>
+            <Text style={styles.deleteSub}>{t('account.deleteSub')}</Text>
+          </View>
+          <Pressable
+            onPress={() => { setDeleteError(''); setDeleteOpen(true) }}
+            accessibilityRole="button"
+            style={styles.deleteButton}
+          >
+            <Trash2 size={14} color="#be123c" />
+            <Text style={styles.deleteButtonText}>{t('account.delete')}</Text>
+          </Pressable>
+        </View>
       </DashboardShell>
       <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
-            </>
+      <Dialog
+        visible={deleteOpen}
+        busy={deleting}
+        onClose={() => setDeleteOpen(false)}
+        footer={
+          <>
+            <DialogButton label={t('dash.common.cancel')} look="secondary" disabled={deleting} onPress={() => setDeleteOpen(false)} />
+            <DialogButton label={deleting ? t('account.deleting') : t('account.delete')} look="danger" disabled={deleting} onPress={confirmDelete} />
+          </>
+        }
+      >
+        <View style={styles.deleteHead}>
+          <View style={styles.deleteIcon}>
+            <AlertTriangle size={20} color="#dc2626" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.deleteDialogTitle}>{t('account.deleteTitle')}</Text>
+            <Text style={styles.deleteDialogBody}>{t('account.deleteBody')}</Text>
+          </View>
+        </View>
+        {!!deleteError && <Text style={styles.deleteError}>{deleteError}</Text>}
+      </Dialog>
+    </>
   )
 }
 
@@ -224,4 +260,20 @@ const styles = createStyles((c) => ({
   text8: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
   pressable6: { flexDirection: 'row', alignItems: 'center', gap: 10.5, paddingVertical: 10.5 },
   text9: { flex: 1, fontSize: 14, fontWeight: '800', color: c.roseTextSoft },
+  deleteCard: {
+    marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1,
+    borderColor: '#fecdd3', backgroundColor: c.card, padding: 14,
+  },
+  deleteTitle: { fontSize: 14, fontWeight: '800', color: '#e11d48' },
+  deleteSub: { marginTop: 2, fontSize: 11.5, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  deleteButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, height: 34, borderRadius: 10, borderWidth: 1,
+    borderColor: '#fda4af', backgroundColor: '#fff1f2', paddingHorizontal: 12,
+  },
+  deleteButtonText: { fontSize: 12, fontWeight: '800', color: '#be123c' },
+  deleteHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  deleteIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2' },
+  deleteDialogTitle: { fontSize: 17, fontWeight: '800', color: c.text },
+  deleteDialogBody: { marginTop: 4, fontSize: 13.5, lineHeight: 19, color: c.textMuted },
+  deleteError: { marginTop: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fecdd3', backgroundColor: '#fff1f2', padding: 10, fontSize: 13, fontWeight: '700', color: '#be123c' },
 }))
