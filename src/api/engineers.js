@@ -128,11 +128,17 @@ export async function fetchProjectSpecialistTeam(projectId) {
 }
 
 export async function fetchProjectSpecialistCandidates(projectId, category) {
-  const response = await apiClient.get(`/projects/${projectId}/specialist-candidates`, { params: { category } })
+  const response = await apiClient.get(
+    `/projects/${projectId}/specialist-candidates`,
+    { params: { category } }
+  )
   return response.data
 }
 
 export async function sendProjectSpecialistRequest(projectId, engineerId) {
-  const response = await apiClient.post(`/projects/${projectId}/specialist-request`, { engineer_id: engineerId })
+  const response = await apiClient.post(
+    `/projects/${projectId}/specialist-request`,
+    { engineer_id: engineerId }
+  )
   return response.data
 }

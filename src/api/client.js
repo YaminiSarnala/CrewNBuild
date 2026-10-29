@@ -6,9 +6,8 @@
 //     SecureStore is async, so readStoredAuth() is async and the token is ALSO
 //     mirrored into a module-level cache so the axios interceptor stays sync.
 //   - window.dispatchEvent -> a tiny subscriber list (no DOM on native).
-//   - baseURL -> the deployed API (https://crewnbuild.com/api); "localhost" on
-//     a phone means the phone itself, never your PC.
-// The endpoint paths and the Bearer-token scheme are unchanged.
+//   - The app sends Bearer tokens, never cookies. The server hands the tokens
+//     out as Set-Cookie headers; they are read from there (sessionTokens).
 // ---------------------------------------------------------------------------
 import axios from 'axios'
 import * as SecureStore from 'expo-secure-store'
@@ -93,7 +92,7 @@ export async function clearStoredAuth() {
   }
 }
 
-// --- session broadcasts (replace the web's window events) -----------------
+// --- session broadcasts (replace window CustomEvents) ----------------------
 const expiryListeners = new Set()
 const refreshListeners = new Set()
 
@@ -122,6 +121,9 @@ async function endSession() {
   await clearStoredAuth()
   broadcast(expiryListeners)
 }
+
+// Requests that must never trigger a refresh of their own.
+const NO_REFRESH_PATHS = ['/auth/refresh', '/auth/login', '/auth/signup', '/auth/logout']
 
 // --- interceptors ----------------------------------------------------------
 apiClient.interceptors.request.use((config) => {
@@ -207,31 +209,22 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const request = error.config
-    // A 401 means this access token is no longer accepted. Spend the refresh
-    // token and replay the request; the session only ends when the refresh
-    // token itself is refused.
-    const canRetry =
-      error.response?.status === 401 &&
-      request &&
-      !request._retriedAfterRefresh &&
-      !String(request.url || '').includes('/auth/refresh') &&
-      Boolean(cachedAuth?.refreshToken)
+    const status = error.response?.status
+    const path = String(request?.url || '')
+    const exempt = NO_REFRESH_PATHS.some((p) => path.includes(p))
 
-    if (canRetry) {
+    // The access token expired: refresh once and replay; sign out only if the
+    // refresh itself is refused.
+    if (status === 401 && request && !request._retriedAfterRefresh && !exempt) {
       request._retriedAfterRefresh = true
       try {
         const session = await refreshSession()
         request.headers = { ...request.headers, Authorization: `Bearer ${session.accessToken}` }
         return apiClient(request)
       } catch (refreshError) {
-        // Only a refused refresh ends the session; a network blip does not.
-        if (!refreshError?.superseded && refreshError?.response) await endSession()
+        if (!refreshError?.superseded) await endSession()
         return Promise.reject(error)
       }
-    }
-
-    if (error.response?.status === 401 && !cachedAuth?.refreshToken && cachedAuth?.accessToken) {
-      await endSession()
     }
     return Promise.reject(error)
   },
@@ -239,19 +232,11 @@ apiClient.interceptors.response.use(
 
 // --- helpers ---------------------------------------------------------------
 
-/**
- * Port of the web `imageUrl()`. Turns a server-relative path into an absolute
- * URL, appending the access token for /files/ routes exactly as the web does.
- */
+/** Port of the web `imageUrl()`: a server-relative path as an absolute URL. */
 export function imageUrl(path) {
   if (!path) return ''
   if (path.startsWith('http') || path.startsWith('file:') || path.startsWith('data:')) return path
-  const base = `${API_BASE_URL}${path}`
-  if (path.startsWith('/files/') && cachedAuth?.accessToken) {
-    const joiner = base.includes('?') ? '&' : '?'
-    return `${base}${joiner}token=${encodeURIComponent(cachedAuth.accessToken)}`
-  }
-  return base
+  return `${API_BASE_URL}${path}`
 }
 
 /**

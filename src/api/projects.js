@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { fetchProjectEngineer, fetchProjectSuppliers } from './engineers'
 
 export async function fetchOwnerProjects() {
   const response = await apiClient.get('/owners/projects')
@@ -92,4 +93,23 @@ export async function updateProjectRequirement(projectId, requirementData) {
 export async function fetchSupplierMyProjects() {
   const response = await apiClient.get('/suppliers/my-projects')
   return response.data
+}
+
+// Builder: the projects with their Site Engineer and suppliers attached, the
+// way the web ContractorDashboard loads them (refreshContractorData), so the
+// Current / Upcoming / Previous split and the dashboard figures match the web.
+export async function fetchBuilderProjectsWithAssignments() {
+  const data = await fetchOwnerProjects()
+  const projects = Array.isArray(data) ? data : (data?.projects || data?.items || [])
+  return Promise.all(projects.map(async (project) => {
+    const [engineerResult, suppliersResult] = await Promise.all([
+      fetchProjectEngineer(project.id).catch(() => ({ engineer: null })),
+      fetchProjectSuppliers(project.id).catch(() => []),
+    ])
+    return {
+      ...project,
+      assigned_engineer: engineerResult?.engineer || null,
+      assigned_suppliers: Array.isArray(suppliersResult) ? suppliersResult : [],
+    }
+  }))
 }

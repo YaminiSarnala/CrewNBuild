@@ -1,5 +1,22 @@
-node_modules/
+# Environment secrets
+.env
+.env.*
+
+# Expo generated files
 .expo/
+.expo-backup/
+dist/
+
+# Dependencies and caches
+node_modules/
+*.cache
+
+# Android build output
 android/app/build/
 android/.gradle/
+
+# Logs
 *.log
+
+# Local backup files
+*.backup

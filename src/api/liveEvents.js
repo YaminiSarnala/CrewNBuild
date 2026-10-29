@@ -1,18 +1,20 @@
-// Port of the web services/liveEvents.js: the one live "something changed"
-// connection for the signed-in user (/events/ws), separate from the chat socket.
+// Port of web services/liveEvents.js — the one live "something changed"
+// connection for the signed-in user (GET /events/ws as a websocket).
 //
-// The server sends only {"event": "requests_changed"} -- no data -- and whoever
-// listens reloads through its own REST loader, so the REST API stays the only
-// source of truth. If this socket is down, screens still refresh on focus and
-// pull-to-refresh exactly as before.
+// The server sends only {"event": "requests_changed"} — no data — and every
+// listener reloads through its existing REST loader, so the REST API stays the
+// only source of truth. If the socket is down, pull-to-refresh and the timed
+// re-reads keep working exactly as before.
 //
-//   retainLiveEvents() / releaseLiveEvents()   kept open while signed in
-//   subscribeLiveEvents(listener)              called on every hint
-// Reconnects after a drop with backoff (1 s doubling to 30 s), reading the
-// current access token each time, and after a reconnect tells listeners once
-// so they catch up on anything missed.
-import { getCachedAuth, onAuthExpired, websocketUrl } from './client'
-
+// Mobile differences, and why:
+//   - The web authenticates the socket with its HttpOnly session cookie. The
+//     app holds a Bearer token instead, so it is sent both as an Authorization
+//     header (React Native's WebSocket accepts headers) and as ?token=, the
+//     same query parameter the app already uses for /files/ URLs.
+//   - window focus -> AppState: returning to the app reconnects at once and
+//     tells listeners once, to catch up on anything missed in the background.
+import { AppState } from 'react-native'
+import { WEB_ORIGIN, getCachedAuth, onAuthExpired, websocketUrl } from './client'
 const PING_MS = 25000
 const MAX_BACKOFF_MS = 30000
 const RELEASE_GRACE_MS = 1500
@@ -25,6 +27,7 @@ let retryTimer = null
 let releaseTimer = null
 let backoff = 1000
 let everOpened = false
+let appStateSubscription = null
 
 function emit(eventName) {
   listeners.forEach((listener) => {
@@ -67,13 +70,17 @@ function scheduleReconnect() {
   }, delay)
 }
 
+
+
 function open() {
   if (holders <= 0 || socket) return
-  const token = getCachedAuth()?.accessToken
-  if (!token) return
+    // Signed out: nothing to connect as. A later sign-in remounts the tabs.
+  if (!getCachedAuth()?.user) return
   let next
   try {
-    next = new WebSocket(websocketUrl(`/events/ws?token=${encodeURIComponent(token)}`))
+    // The session cookie goes with the handshake (native cookie store), as in a
+    // browser; Origin is what a browser would send for the site.
+    next = new WebSocket(websocketUrl('/events/ws'), undefined, WEB_ORIGIN ? { headers: { origin: WEB_ORIGIN } } : undefined)
   } catch {
     scheduleReconnect()
     return
@@ -87,7 +94,7 @@ function open() {
     pingTimer = setInterval(() => {
       if (next.readyState === WebSocket.OPEN) next.send(JSON.stringify({ event: 'ping' }))
     }, PING_MS)
-    // Hints sent while disconnected are gone; reload once instead.
+    // Hints sent while we were disconnected are gone; reload once instead.
     if (reconnected) emit('requests_changed')
   }
   next.onmessage = (message) => {
@@ -111,10 +118,21 @@ function open() {
   }
 }
 
+function onAppStateChange(state) {
+  if (state !== 'active' || holders <= 0) return
+  // Back in the foreground: reconnect now and catch up once.
+  clearTimeout(retryTimer)
+  retryTimer = null
+  backoff = 1000
+  if (!socket) open()
+  emit('requests_changed')
+}
+
 export function retainLiveEvents() {
   clearTimeout(releaseTimer)
   releaseTimer = null
   holders += 1
+  if (!appStateSubscription) appStateSubscription = AppState.addEventListener('change', onAppStateChange)
   open()
 }
 

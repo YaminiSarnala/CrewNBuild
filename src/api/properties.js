@@ -24,7 +24,7 @@ export async function fetchPropertyListings(filters = {}) {
   return response.data
 }
 
-/** One listing. Seller contact is included only when the backend says it may be. */
+/** One listing (gallery included). Seller contact is included only when the backend says it may be. */
 export async function fetchPropertyListing(listingId) {
   const response = await apiClient.get(`/property-listings/${listingId}`)
   return response.data
@@ -36,7 +36,8 @@ export async function fetchMyPropertyListings() {
   return response.data
 }
 
-/** Create a listing. It is stored as a DRAFT; publishing is a separate step. */
+// ---- Seller side (web PropertyBuySellHub "Sell" tab) -------------------------
+// The seller is always taken from the token on the server; nothing here sends one.
 export async function createPropertyListing(listingDetails) {
   const response = await apiClient.post('/property-listings', listingDetails)
   return response.data
@@ -47,13 +48,13 @@ export async function updatePropertyListing(listingId, changes) {
   return response.data
 }
 
-/** Publish, withdraw, mark under offer or mark sold. The backend enforces which moves are legal. */
+/** Publish, withdraw, mark under offer or mark sold. The backend enforces legal moves. */
 export async function updatePropertyListingStatus(listingId, status) {
   const response = await apiClient.patch(`/property-listings/${listingId}/status`, { status })
   return response.data
 }
 
-/** Replace the gallery with this list, in this order. URLs come from the existing /files/upload. */
+/** Replace the gallery with this ordered list of /files/upload URLs. */
 export async function updatePropertyListingImages(listingId, imageUrls) {
   const response = await apiClient.put(`/property-listings/${listingId}/images`, { image_urls: imageUrls })
   return response.data
@@ -64,14 +65,6 @@ export async function deletePropertyListing(listingId) {
   return response.data
 }
 
-/**
- * Send the seller an enquiry about one property.
- *
- * The listing is named by the URL and the seller is read off that listing on
- * the server, so neither the property nor the receiver can be set from here.
- * The row it creates is an ordinary project_requests row: the seller accepts or
- * rejects it with the existing request screens.
- */
 export async function sendPropertyRequest(listingId, offerAmount) {
   const response = await apiClient.post(`/property-listings/${listingId}/request`, {
     offer_amount: offerAmount === '' || offerAmount === undefined || offerAmount === null ? null : Number(offerAmount),

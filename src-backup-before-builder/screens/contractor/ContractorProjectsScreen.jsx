@@ -1,0 +1,1329 @@
+// Port of web contractorProjectViews.jsx (ContractorProjectsTable +
+// ContractorProjectDetail). Same data: fetchOwnerProjects (backend scopes to
+// the contractor's assigned projects), per-project engineer + suppliers,
+// timeline entries for Activity, escrow_milestones for Payments.
+// Visible text uses the web's keys (dash.*, team.*, specialist.*, se.*, owner.pa.*) via t().
+import { useCallback, useEffect, useState } from 'react'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
+import * as ImagePicker from 'expo-image-picker'
+import {
+  analysisFigures,
+  budgetRows,
+  materialRows,
+  recentExpenses,
+  spendingTrend,
+  workItemProgress,
+} from '../../utils/ownerProjectAnalysis'
+import { View, Text, Pressable, ScrollView, Alert, TextInput } from 'react-native'
+import { ChevronLeft, HardHat, MapPin, CalendarDays, UserPlus, X, Truck, Users } from 'lucide-react-native'
+import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
+import {
+  fetchBuilderProjectsWithAssignments,
+  fetchProjectTimelineEntries,
+  updateProjectProgress,
+  saveTimelineUpdate,
+  saveDailyWorkflow,
+} from '../../api/projects'
+import {
+  fetchEngineerTeam,
+  assignEngineerToProject,
+  unassignEngineerFromProject,
+  fetchProjectEngineer,
+  fetchProjectSuppliers,
+  fetchContractorSuppliers,
+  assignSupplierToProject,
+  unassignSupplierFromProject,
+  fetchProjectSpecialistTeam,
+  fetchProjectSpecialistCandidates,
+  sendProjectSpecialistRequest,
+} from '../../api/engineers'
+
+import { fetchCostToolSummary } from '../../api/costTool'
+import { COLORS } from '../../theme/tokens'
+import SiteDayRecords from '../../components/builder/SiteDayRecords'
+import { Section, SegmentTabs, Badge, ActionButton, Notice } from '../../components/builder/BuilderUi'
+import {
+  PROJECT_CATEGORY_TABS, SITE_ENGINEER_CATEGORY, SUPPLIER_CATEGORY_ORDER, apiErrorText, asList, buildingTypeText,
+  completionPercent, completionText, formatDisplayDate, groupProjectsByCategory, money, progressLabel,
+  projectStatusText, scheduleText, scheduleWidth,
+} from '../../utils/builderHelpers'
+import { constructionTypeLabel } from '../../utils/roleLabels'
+import { useLanguage } from '../../i18n/LanguageContext'
+import { optionLabel } from '../../i18n/optionKeys'
+
+// Tab labels are keys (web contractorConstants.projectDetailTabs), translated at render.
+const TABS = [
+  { id: 'details', labelKey: 'ui.overview' },
+  { id: 'activity', labelKey: 'ui.siteActivity' },
+  { id: 'team', labelKey: 'ui.team' },
+  { id: 'payments', labelKey: 'ui.payments' },
+  { id: 'analysis', labelKey: 'owner.analysis.title' },
+  { id: 'liveCamera', labelKey: 'ui.liveCamera' },
+]
+
+// Display keys for stored option values (web optionKeys SUPPLIER_TYPE_KEYS and
+// profileConstants ENGINEER_CATEGORY_LABEL_KEYS); the stored value is unchanged.
+const SUPPLIER_TYPE_KEYS = {
+  'Material Supplier': 'opt.supplierType.material',
+  'Labor Supplier': 'opt.supplierType.labor',
+  'Equipment Supplier': 'opt.supplierType.equipment',
+}
+const ENGINEER_CATEGORY_LABEL_KEYS = {
+  'Site Engineer': 'role.engineer',
+  'Soil Engineer': 'ui.profile.engCat.soilEngineer',
+  'Survey Engineer': 'ui.profile.engCat.surveyEngineer',
+  Architecture: 'ui.profile.engCat.architecture',
+  'Structural Engineer': 'ui.profile.engCat.structuralEngineer',
+  'Civil Engineer': 'ui.profile.engCat.civilEngineer',
+  'Electrical Engineer': 'ui.profile.engCat.electricalEngineer',
+  Plumbing: 'opt.category.plumbing',
+  'Mechanical Engineer': 'ui.profile.engCat.mechanicalEngineer',
+  HVAC: 'ui.profile.engCat.hvac',
+  'Quantity Surveyor': 'ui.profile.engCat.quantitySurveyor',
+  Safety: 'opt.category.safety',
+  'Construction Safety': 'ui.profile.engCat.constructionSafety',
+  'Finishing / Painter': 'ui.profile.engCat.finishingPainter',
+}
+// web utils/roleLabels CONSTRUCTION_TYPE_LABEL_KEYS
+const CONSTRUCTION_TYPE_LABEL_KEYS = {
+  CONTRACTOR: 'role.builder',
+  SELF_CONSTRUCTION: 'ui.shared.selfConstruction',
+}
+const STOCK_STATUS_KEYS = {
+  IN_STOCK: 'owner.pa.stockIn',
+  LOW_STOCK: 'owner.pa.stockLow',
+  OUT_OF_STOCK: 'owner.pa.stockOut',
+}
+
+function inr(value) {
+  const amount = Number(value || 0)
+  if (!amount) return '—'
+  return `₹${amount.toLocaleString('en-IN')}`
+}
+
+function StatusChip({ label, tone = 'brand' }) {
+  const bg = tone === 'positive' ? 'bg-brand-100' : tone === 'muted' ? 'bg-slate-100' : 'bg-brand-50'
+  const fg = tone === 'muted' ? 'text-slate-500' : 'text-brand-800'
+  return (
+    <View className={`self-start rounded-full px-3 py-1 ${bg}`}>
+      <Text className={`text-[11px] font-extrabold ${fg}`}>{label}</Text>
+    </View>
+  )
+}
+
+// The builder's project card (web ContractorProjectsTable): owner, area, type,
+// planned dates, Site Engineer assignment, progress and the contract amount.
+function ProjectCard({ project, onPress }) {
+  const { t } = useLanguage()
+  const progress = progressLabel(project, t)
+  const barWidth = completionPercent(project) !== null
+    ? completionPercent(project)
+    : project.work_started === true ? scheduleWidth(project) : 0
+  const schedule = scheduleText(project, t)
+  const ownerName = project.owner?.name || project.owner_name || ''
+  return (
+    <Pressable onPress={onPress} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
+      <View className="flex-row items-center gap-2">
+        <HardHat size={16} color={COLORS.brand[700]} />
+        <Text className="flex-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>
+          {project.project_title || project.title || t('dash.common.project')}
+        </Text>
+        <StatusChip label={projectStatusText(project.status || 'active', t)} />
+      </View>
+      <View className="mt-2 flex-row items-center gap-1.5">
+        <MapPin size={12} color={COLORS.slate[400]} />
+        <Text className="flex-1 text-xs font-semibold text-slate-500" numberOfLines={1}>
+          {project.address || t('dash.owner.estimates.locationNotSet')}{project.pincode ? ` · ${project.pincode}` : ''}
+        </Text>
+      </View>
+      <Text className="mt-1 text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+        {[ownerName, t('dash.owner.sqft', { area: project.land_area ?? 0 }), buildingTypeText(project.building_type, t) || null].filter(Boolean).join(' · ')}
+      </Text>
+      <View className="mt-1 flex-row items-center gap-1">
+        <CalendarDays size={11} color={COLORS.slate[400]} />
+        <Text className="text-[11px] font-semibold text-slate-500">
+          {formatDisplayDate(project.start_date, undefined, t)} → {formatDisplayDate(project.end_date, undefined, t)}
+        </Text>
+      </View>
+      <View className="mt-1.5 flex-row items-center gap-2">
+        <Text className="text-[11px] font-semibold text-slate-500">{t('dash.contractor.siteEngineer')}:</Text>
+        {project.assigned_engineer ? (
+          <>
+            <Badge label={t('dash.contractor.assigned')} bg="#ecfdf5" fg="#047857" />
+            <Text className="flex-1 text-[11px] font-bold text-slate-700" numberOfLines={1}>{project.assigned_engineer.name}</Text>
+          </>
+        ) : (
+          <Badge label={t('dash.contractor.assignmentRequired')} />
+        )}
+      </View>
+      <View className="mt-2 flex-row items-center justify-between">
+        <Text className="text-[11px] font-semibold text-slate-500">{progress ? `${t('dash.contractor.progress')}: ${progress}` : ''}</Text>
+        <Text className="text-sm font-extrabold text-graphite">{money(project.contract_amount ?? project.awarded_amount ?? project.budget, project.project_country)}</Text>
+      </View>
+      <View className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <View className="h-full rounded-full bg-brand-600" style={{ width: `${barWidth}%` }} />
+      </View>
+      {schedule ? <Text className="mt-1 text-[10px] font-semibold text-slate-400" numberOfLines={1}>{t('progress.schedule')}: {schedule}</Text> : null}
+    </Pressable>
+  )
+}
+
+function DetailField({ label, value }) {
+  const { t } = useLanguage()
+  return (
+    <View className="w-[48%] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      <Text className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</Text>
+      <Text className="mt-0.5 text-xs font-bold text-graphite" numberOfLines={1}>{value || t('dash.common.notSet')}</Text>
+    </View>
+  )
+}
+
+function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, navigation }) {
+  const { t } = useLanguage()
+  const engineerCategoryLabel = (category) => optionLabel(t, ENGINEER_CATEGORY_LABEL_KEYS, category)
+  const [activeTab, setActiveTab] = useState('details')
+  const [dailyForm, setDailyForm] = useState({
+    work_title: '',
+    activity_category: '',
+    boq_reference: '',
+    activity_unit: '',
+    planned_quantity: '',
+    completed_quantity: '',
+    detailed_remarks: '',
+    labour_worker_count: '',
+    labour_cost: '',
+    material_cost: '',
+    equipment_cost: '',
+    total_expenses: '',
+    material_used: '',
+    equipment_used: '',
+    inspection_remarks: '',
+  })
+  const [dailyWorkDate, setDailyWorkDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  })
+  const [savingDaily, setSavingDaily] = useState(false)
+  const [dailyPhotos, setDailyPhotos] = useState([])
+  const [dailyVideos, setDailyVideos] = useState([])
+  const [dailyAction, setDailyAction] = useState('IN_PROGRESS')
+
+  async function pickDailyMedia(kind) {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: kind === 'photo' ? ['images'] : ['videos'],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      })
+      if (result.canceled) return
+      const assets = result.assets || []
+      if (kind === 'photo') setDailyPhotos((current) => [...current, ...assets])
+      else setDailyVideos((current) => [...current, ...assets])
+    } catch (error) {
+      Alert.alert(t('mobile.projects.galleryFailed'), error?.message || t('mobile.projects.tryAgain'))
+    }
+  }
+  const updateDailyField = (key, value) =>
+    setDailyForm((current) => ({ ...current, [key]: value }))
+  const [activityText, setActivityText] = useState('')
+  const [savingActivity, setSavingActivity] = useState(false)
+  const [timelineRefresh, setTimelineRefresh] = useState(0)
+  const timeline = useAsyncData(() => fetchProjectTimelineEntries(project.id), [project.id, timelineRefresh])
+  const analysis = useAsyncData(
+() => fetchCostToolSummary(project.id),
+  [project.id]
+)
+  const engineer = useAsyncData(() => fetchProjectEngineer(project.id).catch(() => ({ engineer: null })), [project.id])
+  const suppliers = useAsyncData(() => fetchProjectSuppliers(project.id).catch(() => []), [project.id])
+    const mySuppliers = useAsyncData(() => fetchContractorSuppliers().catch(() => []), [])
+  const [supplierBusyId, setSupplierBusyId] = useState(null)
+  // Site Engineer assignment from the project Team tab (web ContractorProjectDetail).
+  const team = useAsyncData(() => fetchEngineerTeam().catch(() => ({ active: [] })), [])
+  const [teamSection, setTeamSection] = useState('siteEngineer')
+  const [selectedEngineerId, setSelectedEngineerId] = useState(null)
+  const [engineerBusy, setEngineerBusy] = useState(false)
+  const [engineerMessage, setEngineerMessage] = useState(null)
+  // Only Site Engineers may hold a project's Site Engineer slot; the server checks the same.
+  const siteEngineers = asList(team.data?.active).filter(
+    (member) => String(member.specialization || member.category || '').trim() === SITE_ENGINEER_CATEGORY,
+  )
+
+  async function assignSiteEngineer() {
+    if (!selectedEngineerId) return
+    setEngineerBusy(true)
+    setEngineerMessage(null)
+    try {
+      await assignEngineerToProject(project.id, selectedEngineerId)
+      setSelectedEngineerId(null)
+      setEngineerMessage({ tone: 'success', text: t('dash.msg.engineerAssigned') })
+      await Promise.all([engineer.reload(), team.reload()])
+      onTeamChanged?.()
+    } catch (error) {
+      setEngineerMessage({ tone: 'error', text: apiErrorText(error, t('dash.err.assignEngineer'), t) })
+    } finally {
+      setEngineerBusy(false)
+    }
+  }
+
+  function confirmUnassignSiteEngineer(current) {
+    Alert.alert(t('mobile.projects.unassignEngineerTitle'), t('dash.contractor.removeEngineer', { name: current.name || t('ce.engineerFallback') }), [
+      { text: t('dash.common.cancel'), style: 'cancel' },
+      {
+        text: t('dash.contractor.unassign'),
+        style: 'destructive',
+        onPress: async () => {
+          setEngineerBusy(true)
+          setEngineerMessage(null)
+          try {
+            await unassignEngineerFromProject(project.id, current.user_id || current.id)
+            setEngineerMessage({ tone: 'success', text: t('dash.msg.engineerRemoved') })
+            await Promise.all([engineer.reload(), team.reload()])
+            onTeamChanged?.()
+          } catch (error) {
+            setEngineerMessage({ tone: 'error', text: apiErrorText(error, t('dash.err.unassignEngineer'), t) })
+          } finally {
+            setEngineerBusy(false)
+          }
+        },
+      },
+    ])
+  }
+  const [progressValue, setProgressValue] = useState(
+    String(project.completion_percentage ?? 0)
+  )
+  const [savingProgress, setSavingProgress] = useState(false)
+    // Project specialist team
+  const [specialistRows, setSpecialistRows] = useState([])
+  const [specialistsLoading, setSpecialistsLoading] = useState(false)
+  const [specialistsError, setSpecialistsError] = useState('')
+  const [openSpecialistCategory, setOpenSpecialistCategory] = useState('')
+  const [specialistCandidates, setSpecialistCandidates] = useState([])
+  const [specialistBusyId, setSpecialistBusyId] = useState(null)
+  const [specialistMessage, setSpecialistMessage] = useState('')
+    const loadSpecialistTeam = useCallback(async () => {
+    setSpecialistsLoading(true)
+    setSpecialistsError('')
+    try {
+      const result = await fetchProjectSpecialistTeam(project.id)
+      setSpecialistRows(Array.isArray(result) ? result : [])
+    } catch (error) {
+      setSpecialistsError(
+        error?.response?.data?.detail || t('specialist.loadFailed')
+      )
+    } finally {
+      setSpecialistsLoading(false)
+    }
+  }, [project.id])
+
+  useEffect(() => {
+    if (activeTab === 'team') {
+      loadSpecialistTeam()
+    }
+  }, [activeTab, loadSpecialistTeam])
+
+  async function toggleSpecialistCategory(category) {
+    setSpecialistMessage('')
+    if (openSpecialistCategory === category) {
+      setOpenSpecialistCategory('')
+      setSpecialistCandidates([])
+      return
+    }
+
+    setOpenSpecialistCategory(category)
+    setSpecialistCandidates([])
+    try {
+      const result = await fetchProjectSpecialistCandidates(project.id, category)
+      setSpecialistCandidates(Array.isArray(result) ? result : [])
+    } catch (error) {
+      setSpecialistMessage(
+        error?.response?.data?.detail || t('specialist.loadFailed')
+      )
+    }
+  }
+
+  async function requestSpecialist(engineerId, category) {
+    setSpecialistBusyId(engineerId)
+    setSpecialistMessage('')
+    try {
+      await sendProjectSpecialistRequest(project.id, engineerId)
+      await loadSpecialistTeam()
+      const result = await fetchProjectSpecialistCandidates(project.id, category)
+      setSpecialistCandidates(Array.isArray(result) ? result : [])
+      setSpecialistMessage(t('specialist.requestSent'))
+    } catch (error) {
+      setSpecialistMessage(
+        error?.response?.data?.detail || t('specialist.requestFailed')
+      )
+    } finally {
+      setSpecialistBusyId(null)
+    }
+  }
+
+  const mySupplierList = Array.isArray(mySuppliers.data) ? mySuppliers.data : []
+
+  async function changeSupplier(supplier, assign) {
+    const engineerId = (engineer.data?.engineer || {}).user_id
+    if (assign && !engineerId) {
+      Alert.alert(t('mobile.projects.assignEngineerFirst'), t('team.supplierNeedsEngineer'))
+      return
+    }
+    const supplierId = supplier.user_id || supplier.id
+    setSupplierBusyId(supplierId)
+    try {
+      if (assign) await assignSupplierToProject(project.id, supplierId, engineerId)
+      else await unassignSupplierFromProject(project.id, supplierId, supplier.engineer_id || engineerId)
+      await suppliers.reload()
+    } catch (error) {
+      Alert.alert(t('mobile.projects.couldNotUpdate'), error?.response?.data?.detail || t('mobile.projects.tryAgain'))
+    } finally {
+      setSupplierBusyId(null)
+    }
+  }
+
+  async function saveProgress() {
+    const value = Number(progressValue)
+
+    if (
+      progressValue.trim() === '' ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      value > 100
+    ) {
+      Alert.alert(t('mobile.projects.invalidProgress'), t('mobile.projects.percentRange'))
+      return
+    }
+
+    setSavingProgress(true)
+    try {
+      await updateProjectProgress(project.id, value)
+      setProgressValue(String(value))
+      await onProgressSaved?.(value)
+      Alert.alert(t('mobile.projects.progressUpdated'), t('mobile.projects.progressSavedBody'))
+    } catch (error) {
+      Alert.alert(
+        t('mobile.projects.progressFailed'),
+        error?.response?.data?.detail || error?.message || t('mobile.projects.tryAgain')
+      )
+    } finally {
+      setSavingProgress(false)
+    }
+  }
+
+  async function saveDailyRecord(action) {
+    if (!dailyForm.work_title.trim()) {
+      Alert.alert(t('ui.shared.required'), t('se.form.errWorkTitle'))
+      return
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dailyWorkDate)) {
+      Alert.alert(t('mobile.projects.invalidDate'), t('mobile.projects.dateFormat'))
+      return
+    }
+
+    const submit = async () => {
+      setSavingDaily(true)
+      try {
+        const payload = new FormData()
+        payload.append('work_date', dailyWorkDate)
+        payload.append('action', action)
+
+        const numericFields = new Set([
+          'labour_worker_count', 'labour_cost', 'material_cost',
+          'equipment_cost', 'total_expenses',
+        ])
+        Object.entries(dailyForm).forEach(([key, value]) => {
+          payload.append(
+            key,
+            numericFields.has(key) ? String(Number(value) || 0) : String(value ?? '')
+          )
+        })
+        payload.append('material_usage', '[]')
+
+        const appendMedia = (field, asset, fallbackName) => {
+          if (!asset?.uri) return
+          const name = asset.fileName || asset.uri.split('/').pop() || fallbackName
+          const mimeType = asset.mimeType || (
+            field === 'videos' ? 'video/mp4' : 'image/jpeg'
+          )
+          payload.append(field, { uri: asset.uri, name, type: mimeType })
+        }
+        dailyPhotos.forEach((asset) => appendMedia('images', asset, 'site-photo.jpg'))
+        dailyVideos.forEach((asset) => appendMedia('videos', asset, 'site-video.mp4'))
+
+        await saveDailyWorkflow(project.id, payload)
+        setDailyPhotos([])
+        setDailyVideos([])
+        setTimelineRefresh((value) => value + 1)
+        Alert.alert(t('mobile.projects.saved'), action === 'CLOSED' ? t('se.dayClosed') : t('mobile.projects.dailySaved'))
+      } catch (error) {
+        Alert.alert(
+          t('mobile.projects.couldNotSave'),
+          error?.response?.data?.detail || error?.message || t('mobile.projects.tryAgain')
+        )
+      } finally {
+        setSavingDaily(false)
+      }
+    }
+
+    if (action === 'CLOSED') {
+      Alert.alert(t('mobile.projects.closeDayTitle'), t('se.form.closeDayHint'), [
+        { text: t('dash.common.cancel'), style: 'cancel' },
+        { text: t('se.form.closeDay'), onPress: submit },
+      ])
+    } else {
+      await submit()
+    }
+  }
+
+  async function saveActivity() {
+    if (!activityText.trim()) {
+      Alert.alert(t('mobile.projects.missingDetails'), t('mobile.projects.describeWork'))
+      return
+    }
+    setSavingActivity(true)
+    try {
+      const payload = new FormData()
+      payload.append('work_date', new Date().toISOString().slice(0, 10))
+      payload.append('work_type', activityText.trim())
+      await saveTimelineUpdate(project.id, payload)
+      setActivityText('')
+      setTimelineRefresh((value) => value + 1)
+      Alert.alert(t('mobile.projects.saved'), t('mobile.projects.activityRecorded'))
+    } catch (error) {
+      Alert.alert(t('mobile.projects.couldNotSave'), error?.response?.data?.detail || t('mobile.projects.tryAgain'))
+    } finally {
+      setSavingActivity(false)
+    }
+  }
+
+  const timelineList = Array.isArray(timeline.data) ? timeline.data : []
+  const supplierList = Array.isArray(suppliers.data) ? suppliers.data : []
+  const assignedEngineer = engineer.data?.engineer || null
+  const milestones = Array.isArray(project.escrow_milestones) ? project.escrow_milestones : []
+    return (
+    <View>
+      <Section>
+      <Pressable onPress={onBack} className="mb-3 flex-row items-center gap-1">
+        <ChevronLeft size={18} color={COLORS.brand[700]} />
+        <Text className="text-sm font-extrabold text-brand-700">{t('dash.owner.projectDetails.backToProjects')}</Text>
+      </Pressable>
+
+      <Text className="text-xl font-extrabold text-graphite">{project.project_title || project.title}</Text>
+      <Text className="mt-1 text-xs font-semibold text-slate-500">
+        {project.address || t('dash.owner.estimates.locationNotSet')}{project.pincode ? ` · ${project.pincode}` : ''}
+      </Text>
+
+      {/* Sub-tab strip — same 4 tabs as web ContractorProjectDetail */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4" contentContainerStyle={{ gap: 6 }}>
+        {TABS.map((tab) => {
+          const active = activeTab === tab.id
+          return (
+            <Pressable
+              key={tab.id}
+              onPress={() => setActiveTab(tab.id)}
+              className={`rounded-xl px-4 py-2 ${active ? 'bg-brand-700' : 'bg-white border border-slate-200'}`}
+            >
+              <Text className={`text-xs font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>{t(tab.labelKey)}</Text>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
+      </Section>
+
+      <View>
+        {activeTab === 'details' && (
+          <>
+            <Section>
+            <View className="flex-row flex-wrap justify-between gap-y-2.5">
+            <DetailField
+              label={t('dash.common.constructionType')}
+              value={CONSTRUCTION_TYPE_LABEL_KEYS[project.construction_type] ? t(CONSTRUCTION_TYPE_LABEL_KEYS[project.construction_type]) : constructionTypeLabel(project.construction_type)}
+            />
+            <DetailField label={t('dash.common.buildingType')} value={buildingTypeText(project.building_type, t)} />
+            <DetailField label={t('dash.common.landArea')} value={project.land_area ? `${project.land_area} ${t('dash.owner.profile.sqFt')}` : null} />
+            <DetailField label={t('dash.common.floors')} value={project.floors != null ? String(project.floors) : null} />
+            <DetailField label={t('dash.common.status')} value={projectStatusText(project.status || 'active', t)} />
+            <DetailField label={t('dash.common.pincode')} value={project.pincode} />
+            {completionPercent(project) !== null ? <DetailField label={t('progress.completion')} value={completionText(project, t)} /> : null}
+            <DetailField label={t('progress.schedule')} value={scheduleText(project, t) || null} />
+            {project.contract_amount != null ? <DetailField label={t('dash.common.contractValue')} value={money(project.contract_amount, project.project_country)} /> : null}
+            {project.contract_amount == null && project.awarded_amount != null ? <DetailField label={t('request.flow.builderQuotation')} value={money(project.awarded_amount, project.project_country)} /> : null}
+            <DetailField
+              label={t(project.contract_amount != null || project.awarded_amount != null ? 'dash.common.originalBudget' : 'dash.common.budget')}
+              value={project.budget ? money(project.budget, project.project_country) : null}
+            />
+            <DetailField label={t('dash.owner.projectDetails.startDate')} value={formatDisplayDate(project.start_date, undefined, t)} />
+            <DetailField label={t('dash.owner.projectDetails.endDate')} value={formatDisplayDate(project.end_date, undefined, t)} />
+          </View>
+          {project.description ? (
+            <View className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <Text className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{t('dash.common.description')}</Text>
+              <Text className="mt-0.5 text-xs font-semibold leading-5 text-graphite">{project.description}</Text>
+            </View>
+          ) : null}
+          </Section>
+          <Panel title={t('mobile.projects.updateProgress')}>
+            <Text className="mb-2 text-xs font-semibold text-slate-500">
+              {t('mobile.projects.updateProgressHint')}
+            </Text>
+            <View className="flex-row items-center gap-3">
+              <TextInput
+                value={progressValue}
+                onChangeText={setProgressValue}
+                keyboardType="numeric"
+                editable={!savingProgress}
+                maxLength={3}
+                accessibilityLabel={t('se.projectCompletion')}
+                className="h-12 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base font-bold text-graphite"
+                placeholder="0–100"
+              />
+              <Pressable
+                onPress={saveProgress}
+                disabled={savingProgress}
+                className={`rounded-xl px-4 py-3 ${
+                  savingProgress ? 'bg-slate-400' : 'bg-brand-700'
+                }`}
+              >
+                <Text className="text-xs font-extrabold text-white">
+                  {savingProgress ? t('se.form.saving') : t('se.form.saveProgress')}
+                </Text>
+              </Pressable>
+            </View>
+          </Panel>
+          </>
+        )}
+
+        {activeTab === 'activity' && (
+          <>
+          <Panel title={t('se.savedDailyRecords')}>
+            <SiteDayRecords project={project} onViewPlans={() => navigation?.navigate('BuilderSubscription')} />
+          </Panel>
+          <Panel title={t('mobile.projects.dailyWorkLog')}>
+            <Text className="mb-2 text-xs font-semibold text-slate-500">
+              {t('se.form.requiredHint')}
+            </Text>
+            <View className="mb-3">
+              <Text className="mb-1 text-xs font-bold text-slate-600">
+                {t('mobile.projects.workDate')}
+              </Text>
+              <TextInput
+                value={dailyWorkDate}
+                onChangeText={setDailyWorkDate}
+                placeholder="YYYY-MM-DD"
+                editable={!savingDaily}
+                accessibilityLabel={t('mobile.projects.workDate')}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-graphite"
+                placeholderTextColor={COLORS.slate[400]}
+              />
+            </View>
+            {[
+              ['work_title', `${t('se.form.workTitle')} *`],
+              ['activity_category', t('se.activityCategory')],
+              ['boq_reference', t('se.boqReference')],
+              ['activity_unit', t('se.activityUnit')],
+              ['planned_quantity', t('se.plannedQuantity')],
+              ['completed_quantity', t('se.completedQuantity')],
+              ['detailed_remarks', t('se.detailedRemarks')],
+              ['labour_worker_count', t('se.form.workers')],
+              ['labour_cost', t('se.form.labourCost')],
+              ['material_cost', t('se.form.materialCost')],
+              ['equipment_cost', t('se.form.equipmentCost')],
+              ['total_expenses', t('se.form.otherExpenses')],
+              ['material_used', t('se.materialUsed')],
+              ['equipment_used', t('se.form.equipmentUsed')],
+              ['inspection_remarks', t('se.inspectionRemarks')],
+            ].map(([key, label]) => (
+              <View key={key} className="mb-3">
+                <Text className="mb-1 text-xs font-bold text-slate-600">{label}</Text>
+                <TextInput
+                  value={dailyForm[key]}
+                  onChangeText={(value) => updateDailyField(key, value)}
+                  placeholder={label}
+                  editable={!savingDaily}
+                  keyboardType={[
+                    'planned_quantity', 'completed_quantity',
+                    'labour_worker_count', 'labour_cost', 'material_cost',
+                    'equipment_cost', 'total_expenses',
+                  ].includes(key) ? 'decimal-pad' : 'default'}
+                  multiline={['detailed_remarks', 'inspection_remarks'].includes(key)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-graphite"
+                  placeholderTextColor={COLORS.slate[400]}
+                />
+              </View>
+            ))}
+            <View className="mb-3 gap-2">
+              <Pressable
+                onPress={() => pickDailyMedia('photo')}
+                disabled={savingDaily}
+                className="items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-3"
+              >
+                <Text className="text-xs font-extrabold text-brand-800">
+                  {t('se.addSitePhotos')} ({dailyPhotos.length})
+                </Text>
+              </Pressable>
+              {dailyPhotos.map((asset, index) => (
+                <View key={`${asset.uri}-${index}`} className="flex-row items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+                  <Text numberOfLines={1} className="flex-1 text-xs font-semibold text-graphite">
+                    {asset.fileName || t('se.selectedPhoto', { index: index + 1 })}
+                  </Text>
+                  <Pressable onPress={() => setDailyPhotos((current) => current.filter((_, i) => i !== index))}>
+                    <Text className="ml-3 text-xs font-extrabold text-rose-600">{t('se.removePhoto')}</Text>
+                  </Pressable>
+                </View>
+              ))}
+              <Pressable
+                onPress={() => pickDailyMedia('video')}
+                disabled={savingDaily}
+                className="items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-3"
+              >
+                <Text className="text-xs font-extrabold text-brand-800">
+                  {t('se.addSiteVideos')} ({dailyVideos.length})
+                </Text>
+              </Pressable>
+              {dailyVideos.map((asset, index) => (
+                <View key={`${asset.uri}-${index}`} className="flex-row items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+                  <Text numberOfLines={1} className="flex-1 text-xs font-semibold text-graphite">
+                    {asset.fileName || t('mobile.projects.day.videoN', { index: index + 1 })}
+                  </Text>
+                  <Pressable onPress={() => setDailyVideos((current) => current.filter((_, i) => i !== index))}>
+                    <Text className="ml-3 text-xs font-extrabold text-rose-600">{t('se.removeVideo')}</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={() => saveDailyRecord('IN_PROGRESS')}
+                disabled={savingDaily}
+                className="flex-1 items-center rounded-xl bg-brand-700 px-3 py-3"
+              >
+                <Text className="text-xs font-extrabold text-white">
+                  {savingDaily ? t('se.form.saving') : t('se.form.saveProgress')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => saveDailyRecord('CLOSED')}
+                disabled={savingDaily}
+                className="flex-1 items-center rounded-xl bg-slate-700 px-3 py-3"
+              >
+                <Text className="text-xs font-extrabold text-white">{t('se.form.closeDay')}</Text>
+              </Pressable>
+            </View>
+          </Panel>
+          <Panel title={t('ui.siteActivity')}>
+            <Text className="mb-2 text-xs font-semibold text-slate-500">
+              {t('mobile.projects.activityHint')}
+            </Text>
+            <TextInput
+              value={activityText}
+              onChangeText={setActivityText}
+              placeholder={t('mobile.projects.activityPlaceholder')}
+              multiline
+              editable={!savingActivity}
+              accessibilityLabel={t('mobile.projects.activityPlaceholder')}
+              className="min-h-20 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[14px] font-semibold text-graphite"
+              placeholderTextColor={COLORS.slate[400]}
+              textAlignVertical="top"
+            />
+            <Pressable
+              onPress={saveActivity}
+              disabled={savingActivity}
+              className={`mt-2 items-center rounded-xl px-4 py-3 ${
+                savingActivity ? 'bg-slate-400' : 'bg-brand-700'
+              }`}
+            >
+              <Text className="text-xs font-extrabold text-white">
+                {savingActivity ? t('se.form.saving') : t('mobile.projects.saveSiteUpdate')}
+              </Text>
+            </Pressable>
+            <PanelState loading={timeline.loading} error={timeline.error} empty={!timelineList.length} emptyText={t('se.noDailyLogs')}>
+              {timelineList.map((entry, index) => (
+                <View key={entry.id || index} className="border-b border-slate-100 py-3">
+                  <Text className="text-xs font-extrabold text-brand-700">
+                    {String(entry.date || entry.work_date || '').slice(0, 10)}
+                  </Text>
+                  <Text className="mt-1 text-[13px] font-semibold text-graphite">
+                    {entry.work_type || entry.description || t('se.dailySiteRecord')}
+                  </Text>
+                  {!!(entry.images || []).length && (
+                    <Text className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                      {t((entry.images || []).length === 1 ? 'se.photoOne' : 'se.photoMany', { count: (entry.images || []).length })}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </PanelState>
+          </Panel>
+          </>
+        )}
+
+        {activeTab === 'team' && (
+          <>
+            {/* The three Team areas, as on the web: Site Engineer, Suppliers, Specialists. */}
+            <Section>
+              <SegmentTabs
+                tabs={[
+                  { id: 'siteEngineer', label: t('dash.contractor.siteEngineer'), icon: HardHat },
+                  { id: 'suppliers', label: t('team.suppliers'), icon: Truck },
+                  { id: 'specialists', label: t('team.specialists'), icon: Users },
+                ]}
+                active={teamSection}
+                onChange={setTeamSection}
+              />
+            </Section>
+
+            {teamSection === 'siteEngineer' && (
+            <Panel title={t('dash.contractor.siteEngineer')} action={assignedEngineer ? <Badge label={t('team.assigned')} bg="#ecfdf5" fg="#047857" /> : <Badge label={t('team.notAssigned')} bg="#fff1f2" fg="#e11d48" />}>
+              <Notice tone={engineerMessage?.tone} text={engineerMessage?.text} />
+              <PanelState loading={engineer.loading} error={engineer.error} empty={false}>
+                {assignedEngineer ? (
+                  <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <View className="flex-1">
+                      <Text className="text-[15px] font-extrabold text-graphite">{assignedEngineer.name || assignedEngineer.full_name}</Text>
+                      <Text className="mt-0.5 text-xs font-semibold text-slate-500">
+                        {engineerCategoryLabel(assignedEngineer.category || assignedEngineer.specialization || SITE_ENGINEER_CATEGORY)} · {t('dash.contractor.engineerMeta', { pincode: assignedEngineer.pincode || '—', years: assignedEngineer.experience_years || 0 })}
+                      </Text>
+                    </View>
+                    <ActionButton small tone="danger" icon={X} label={t('dash.contractor.unassign')} disabled={engineerBusy} onPress={() => confirmUnassignSiteEngineer(assignedEngineer)} />
+                  </View>
+                ) : (
+                  <View>
+                    <Text className="mb-2 text-xs font-bold text-slate-600">{t('team.availableSiteEngineers')}</Text>
+                    {siteEngineers.length ? siteEngineers.map((member) => {
+                      const busyElsewhere = Boolean(member.working_on_project)
+                      const on = selectedEngineerId === member.user_id
+                      return (
+                        <Pressable
+                          key={member.user_id}
+                          disabled={busyElsewhere}
+                          onPress={() => setSelectedEngineerId(on ? null : member.user_id)}
+                          className={`mb-2 rounded-xl border px-3 py-2.5 ${on ? 'border-brand-700 bg-brand-50' : 'border-slate-200 bg-white'} ${busyElsewhere ? 'opacity-50' : ''}`}
+                        >
+                          <Text className="text-[14px] font-extrabold text-graphite">{member.name}</Text>
+                          <Text className="text-xs font-semibold text-slate-500">
+                            {busyElsewhere ? t('ce.workingOnAnotherProject') : (member.pincode || t('dash.contractor.noPincode'))}
+                          </Text>
+                        </Pressable>
+                      )
+                    }) : (
+                      <View className="items-center rounded-xl border border-slate-200 px-4 py-6">
+                        <Text className="text-[14px] font-extrabold text-graphite">{t('team.noSiteEngineersTitle')}</Text>
+                        <Text className="mt-1 text-center text-xs font-semibold text-slate-500">{t('team.noSiteEngineersSub')}</Text>
+                        <ActionButton small tone="brandOutline" label={t('team.manageSiteEngineers')} onPress={() => navigation?.navigate('ContractorPartnersTab')} className="mt-3" />
+                      </View>
+                    )}
+                    {siteEngineers.length ? (
+                      <ActionButton icon={UserPlus} label={t('team.assignEngineer')} disabled={!selectedEngineerId} busy={engineerBusy} onPress={assignSiteEngineer} className="mt-1" />
+                    ) : null}
+                  </View>
+                )}
+              </PanelState>
+            </Panel>
+            )}
+
+            {teamSection === 'specialists' && (
+            <Panel title={t('team.specialists')}>
+              {specialistsLoading ? (
+                <Text className="py-3 text-xs font-semibold text-slate-500">
+                  {t('specialist.loading')}
+                </Text>
+              ) : specialistsError ? (
+                <Text className="py-3 text-xs font-semibold text-rose-600">
+                  {specialistsError}
+                </Text>
+              ) : specialistRows.length === 0 ? (
+                <Text className="py-3 text-xs font-semibold text-slate-500">
+                  {t('mobile.projects.noSpecialistCategories')}
+                </Text>
+              ) : (
+                specialistRows.map((row) => {
+                  const category = row.category
+                  const isOpen = openSpecialistCategory === category
+
+                  return (
+                    <View
+                      key={category}
+                      className="border-b border-slate-100 py-3"
+                    >
+                      <View className="flex-row items-center gap-2">
+                        <View className="flex-1">
+                          <Text className="text-sm font-extrabold text-graphite">
+                            {engineerCategoryLabel(category)}
+                          </Text>
+                          <Text className="mt-1 text-xs font-semibold text-slate-500">
+                            {row.engineer?.name || t('specialist.nobodyYet')}
+                          </Text>
+                        </View>
+
+                        <StatusChip
+                          label={
+                            row.status === 'accepted'
+                              ? t('specialist.assigned')
+                              : row.status === 'pending'
+                                ? t('specialist.pending')
+                                : t('specialist.open')
+                          }
+                          tone={row.status === 'accepted' ? 'positive' : 'muted'}
+                        />
+
+                        <Pressable
+                          onPress={() => toggleSpecialistCategory(category)}
+                          className="rounded-lg bg-brand-700 px-3 py-2"
+                        >
+                          <Text className="text-[10px] font-extrabold text-white">
+                            {isOpen ? t('dash.common.close') : t('specialist.view')}
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      {isOpen && (
+                        <View className="mt-3 border-t border-slate-100 pt-2">
+                          {specialistCandidates.length === 0 ? (
+                            <Text className="py-2 text-xs font-semibold text-slate-500">
+                              {t('specialist.noCandidates', { category: engineerCategoryLabel(category) })}
+                            </Text>
+                          ) : (
+                            specialistCandidates.map((candidate) => {
+                              const id = candidate.user_id
+                              const requestStatus = candidate.request_status
+
+                              return (
+                                <View
+                                  key={id}
+                                  className="flex-row items-center gap-2 border-b border-slate-100 py-3"
+                                >
+                                  <View className="flex-1">
+                                    <Text className="text-sm font-bold text-graphite">
+                                      {candidate.name || t('ce.engineerFallback')}
+                                    </Text>
+                                    <Text className="text-xs text-slate-500">
+                                      {candidate.pincode || t('dash.contractor.noPincode')}
+                                    </Text>
+                                    {requestStatus === 'accepted' && (
+                                      <Text className="text-xs font-bold text-emerald-700">
+                                        {t('specialist.assigned')}
+                                      </Text>
+                                    )}
+                                    {requestStatus === 'pending' && (
+                                      <Text className="text-xs font-bold text-amber-700">
+                                        {t('specialist.pending')}
+                                      </Text>
+                                    )}
+                                  </View>
+
+                                  {requestStatus !== 'accepted' &&
+                                    requestStatus !== 'pending' && (
+                                      <Pressable
+                                        onPress={() => requestSpecialist(id, category)}
+                                        disabled={
+                                          specialistBusyId === id ||
+                                          candidate.can_request === false
+                                        }
+                                        className={`rounded-lg px-3 py-2 ${
+                                          specialistBusyId === id ||
+                                          candidate.can_request === false
+                                            ? 'bg-slate-300'
+                                            : 'bg-brand-700'
+                                        }`}
+                                      >
+                                        <Text className="text-[10px] font-extrabold text-white">
+                                          {specialistBusyId === id
+                                            ? t('ce.sending')
+                                            : candidate.can_request === false
+                                              ? t('progress.notAvailable')
+                                              : t('specialist.sendRequest')}
+                                        </Text>
+                                      </Pressable>
+                                    )}
+                                </View>
+                              )
+                            })
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  )
+                })
+              )}
+
+              {!!specialistMessage && (
+                <Text className="mt-2 text-xs font-semibold text-brand-700">
+                  {specialistMessage}
+                </Text>
+              )}
+            </Panel>
+            )}
+                        {teamSection === 'suppliers' && (
+            <>
+            <Panel title={t('team.suppliers')} action={supplierList.length ? <Badge label={t('team.suppliersAssignedCount', { count: supplierList.length })} bg="#ecfdf5" fg="#047857" /> : <Badge label={t('team.notAssigned')} bg="#fff1f2" fg="#e11d48" />}>
+              <PanelState loading={suppliers.loading} error={suppliers.error} empty={!supplierList.length} emptyText={t('mobile.projects.noProjectSuppliers')}>
+                {supplierList.map((supplier, index) => {
+                  const id = supplier.user_id || supplier.id
+                  return (
+                    <View key={id || index} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
+                      <View className="flex-1">
+                        <Text className="text-[14px] font-extrabold text-graphite">{supplier.store_name || supplier.business_name || supplier.name}</Text>
+                        {!!(supplier.supplier_category || supplier.material_types) && (
+                          <Text className="mt-0.5 text-xs font-semibold text-slate-500">{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : String(supplier.material_types)}</Text>
+                        )}
+                      </View>
+                      <Pressable onPress={() => changeSupplier(supplier, false)} disabled={supplierBusyId === id} className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5">
+                        <Text className="text-[10px] font-extrabold text-rose-700">{t('dash.contractor.unassign')}</Text>
+                      </Pressable>
+                    </View>
+                  )
+                })}
+              </PanelState>
+            </Panel>
+            <Panel title={t('mobile.projects.assignSupplier')}>
+              {!assignedEngineer && mySupplierList.length ? (
+                <Notice tone="warn" text={t('team.supplierNeedsEngineer')} />
+              ) : null}
+              <PanelState loading={mySuppliers.loading} empty={!mySupplierList.length} emptyText={`${t('team.noSuppliersTitle')}. ${t('team.noSuppliersSub')}`}>
+                {/* Grouped by the category each supplier saved on their profile (web parity). */}
+                {[...SUPPLIER_CATEGORY_ORDER, null].map((category) => {
+                  const group = mySupplierList.filter((supplier) => (category
+                    ? supplier.supplier_category === category
+                    : !SUPPLIER_CATEGORY_ORDER.includes(supplier.supplier_category)))
+                  if (!group.length) return null
+                  return (
+                    <View key={category || 'other'} className="mb-2">
+                      <Text className="mb-1 mt-1 text-xs font-extrabold text-slate-700">{category ? optionLabel(t, SUPPLIER_TYPE_KEYS, category) : t('team.supplierNoCategory')} <Text className="font-semibold text-slate-400">({group.length})</Text></Text>
+                      {group.map((supplier) => {
+                        const id = supplier.user_id || supplier.id
+                        const assigned = supplierList.some((item) => (item.user_id || item.id) === id)
+                        return (
+                          <View key={id} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
+                            <View className="flex-1">
+                              <Text className="text-[14px] font-extrabold text-graphite">{supplier.store_name || supplier.business_name || supplier.name}</Text>
+                              <Text className="text-xs font-semibold text-slate-500">{supplier.pincode || '—'}</Text>
+                            </View>
+                            {assigned ? (
+                              <Badge label={t('team.assigned')} bg="#ecfdf5" fg="#047857" />
+                            ) : (
+                              <Pressable onPress={() => changeSupplier(supplier, true)} disabled={supplierBusyId === id || !assignedEngineer} className={`rounded-lg px-3 py-1.5 ${assignedEngineer ? 'bg-brand-700' : 'bg-slate-300'}`}>
+                                <Text className="text-[10px] font-extrabold text-white">{t('team.assign')}</Text>
+                              </Pressable>
+                            )}
+                          </View>
+                        )
+                      })}
+                    </View>
+                  )
+                })}
+              </PanelState>
+            </Panel>
+            </>
+            )}
+          </>
+        )}
+
+        {activeTab === 'payments' && (
+          <Panel title={t('dash.owner.escrow.title')}>
+            <PanelState empty={!milestones.length} emptyText={t('dash.owner.projectDetails.noMilestones')}>
+              {milestones.map((milestone) => (
+                <View key={milestone.id} className="flex-row items-center justify-between border-b border-slate-100 py-3">
+                  <Text className="flex-1 text-[14px] font-extrabold text-graphite">{milestone.name}</Text>
+                  <View className="items-end">
+                    <Text className="text-[15px] font-extrabold text-brand-700">{inr(milestone.amount)}</Text>
+                    <StatusChip label={projectStatusText(milestone.status || 'PENDING', t)} tone={milestone.status === 'RELEASED' ? 'positive' : 'muted'} />
+                  </View>
+                </View>
+              ))}
+            </PanelState>
+          </Panel>
+        )}
+
+        {activeTab === 'analysis' && (
+  <Panel title={t('owner.analysis.title')}>
+    <PanelState
+      loading={analysis.loading}
+      error={analysis.error}
+      empty={!analysis.data}
+      emptyText={t('mobile.projects.analysisUnavailable')}
+    >
+      {analysis.data && (() => {
+        const data = analysis.data
+        const dashboard = data.dashboard || {}
+       const figures = analysisFigures(dashboard)
+const trend = spendingTrend(data.registers)
+const workItems = workItemProgress(data.registers)
+const budgetBreakdown = budgetRows(project, dashboard)
+const materialDetails = materialRows(data.materials)
+const recentExpenseItems = recentExpenses(data.expenses)
+
+const budget = figures?.budget ?? 0
+const spent = figures?.spent ?? 0
+const completion = dashboard.project_completion
+  
+
+        return (
+          <>
+            <View className="mb-3 rounded-xl border border-slate-200 p-3">
+              <Text className="text-xs font-bold text-slate-500">
+                {t('owner.pa.totalBudget')}
+              </Text>
+              <Text className="mt-1 text-lg font-extrabold text-graphite">
+                {budget > 0 ? inr(budget) : t('dash.common.notSet')}
+              </Text>
+            </View>
+
+            <View className="mb-3 rounded-xl border border-slate-200 p-3">
+              <Text className="text-xs font-bold text-slate-500">
+                {t('owner.pa.amountSpent')}
+              </Text>
+              <Text className="mt-1 text-lg font-extrabold text-graphite">
+                {inr(spent)}
+              </Text>
+            </View>
+
+            <View className="mb-3 rounded-xl border border-slate-200 p-3">
+              <Text className="text-xs font-bold text-slate-500">
+                {t('owner.pa.remainingBudget')}
+              </Text>
+              <Text className="mt-1 text-lg font-extrabold text-graphite">
+                {budget > 0 ? inr(budget - spent) : t('progress.notAvailable')}
+              </Text>
+            </View>
+
+            <View className="rounded-xl border border-slate-200 p-3">
+              <Text className="text-xs font-bold text-slate-500">
+                {t('owner.pa.overallProgress')}
+              </Text>
+              <Text className="mt-1 text-lg font-extrabold text-graphite">
+                {completion == null
+                  ? t('progress.notAvailable')
+                  : `${completion}%`}
+              </Text>
+            </View>
+
+
+<Panel title={t('owner.pa.budgetBreakdown')}>
+  {budgetBreakdown.map((row) => (
+    <View
+      key={row.key}
+      className="flex-row items-center justify-between border-b border-slate-100 py-3"
+    >
+      <View className="flex-1 pr-3">
+        <Text className="font-bold text-graphite">
+          {row.labelKey ? t(row.labelKey) : row.key.replace('_cost', '').replace('_', ' ')}
+        </Text>
+        <Text className="mt-1 text-xs text-slate-500">
+          {t('owner.pa.colPlanned')}: {row.planned == null ? t('dash.common.notSet') : inr(row.planned)}
+        </Text>
+      </View>
+      <View className="items-end">
+        <Text className="font-extrabold text-graphite">{inr(row.actual)}</Text>
+        <Text className="mt-1 text-xs text-slate-500">
+          {row.percent == null ? '—' : `${row.percent}%`}
+        </Text>
+      </View>
+    </View>
+  ))}
+</Panel>
+
+<Panel title={t('owner.pa.spendTrend')}>
+  <PanelState empty={!trend.length} emptyText={t('owner.pa.noTrend')}>
+    {trend.slice(-8).map((point) => (
+      <View
+        key={point.date}
+        className="flex-row items-center justify-between border-b border-slate-100 py-2.5"
+      >
+        <Text className="text-xs text-slate-500">{point.date}</Text>
+        <View className="items-end">
+          <Text className="font-bold text-graphite">{inr(point.daily)}</Text>
+          <Text className="text-xs text-slate-500">
+            {t('owner.pa.cumulative')}: {inr(point.cumulative)}
+          </Text>
+        </View>
+      </View>
+    ))}
+  </PanelState>
+</Panel>
+
+<Panel title={t('owner.pa.phaseProgress')}>
+  <PanelState empty={!workItems.length} emptyText={t('owner.pa.noPhaseProgress')}>
+    {workItems.map((item) => (
+      <View
+        key={item.reference}
+        className="border-b border-slate-100 py-3"
+      >
+        <View className="flex-row items-center justify-between gap-3">
+          <Text className="flex-1 font-bold text-graphite">
+            {item.label}
+          </Text>
+          <Text className="font-extrabold text-brand-700">
+            {item.percent}%
+          </Text>
+        </View>
+        <View className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+          <View
+            className="h-full rounded-full bg-brand-600"
+            style={{ width: `${item.percent}%` }}
+          />
+        </View>
+        <Text className="mt-1 text-xs text-slate-500">
+          {item.status === 'completed'
+            ? t('owner.pa.statusCompleted')
+            : item.status === 'ongoing'
+              ? t('owner.pa.statusOngoing')
+              : t('owner.pa.statusNotStarted')}
+          {item.unit ? ` · ${item.completed} / ${item.planned} ${item.unit}` : ''}
+        </Text>
+      </View>
+    ))}
+  </PanelState>
+</Panel>
+            <Panel title={t('owner.pa.materialUsage')}>
+              <PanelState
+empty={!materialDetails.length}
+                emptyText={t('owner.pa.noMaterials')}
+              >
+               {materialDetails.map((item) => (
+                  <View
+                    key={item.id ?? item.material}
+                    className="border-b border-slate-100 py-3"
+                  >
+                    <Text className="font-extrabold text-graphite">
+                      {item.material || t('owner.pa.colMaterial')}
+                    </Text>
+                    <Text className="mt-1 text-xs text-slate-500">
+                      {t('owner.pa.colReceived')}: {Number(item.received || 0)} {item.unit || ''}
+                      {' · '}{t('owner.pa.colUsed')}: {Number(item.used || 0)} {item.unit || ''}
+                      {' · '}{t('owner.pa.colRemaining')}: {Number(item.remaining || 0)} {item.unit || ''}
+                    </Text>
+                    <Text className="mt-1 text-xs font-bold text-slate-500">
+                      {t('owner.pa.colStatus')}: {t(STOCK_STATUS_KEYS[item.status || 'IN_STOCK'] || 'owner.pa.stockIn')}
+                    </Text>
+                  </View>
+                ))}
+              </PanelState>
+            </Panel>
+<Panel title={t('owner.pa.recentExpenses')}>
+  <PanelState
+    empty={!recentExpenseItems.length}
+    emptyText={t('owner.pa.noExpenses')}
+  >
+    {recentExpenseItems.map((expense) => (
+      <View
+        key={expense.id}
+        className="flex-row items-start justify-between gap-3 border-b border-slate-100 py-3"
+      >
+        <View className="flex-1">
+          <Text className="font-bold text-graphite">
+            {expense.description || '—'}
+          </Text>
+          <Text className="mt-1 text-xs text-slate-500">
+            {expense.expense_date || '—'} · {expense.category || '—'}
+          </Text>
+        </View>
+        <Text className="font-extrabold text-graphite">
+          {inr(expense.amount)}
+        </Text>
+      </View>
+    ))}
+  </PanelState>
+</Panel>
+
+          </>
+        )
+      })()}
+    </PanelState>
+  </Panel>
+)}
+
+                {activeTab === 'liveCamera' && (
+          <Panel title={t('ui.liveCamera')}>
+            <Text className="text-sm text-slate-600">
+              {t('mobile.projects.liveCameraHint')}
+            </Text>
+
+            <Pressable
+              onPress={() =>
+                navigation.navigate('LiveCamera', {
+                  projectId: project.id,
+                  projectTitle:
+                    project.project_title || project.title || t('dash.common.project'),
+                })
+              }
+              className="mt-3 items-center rounded-xl bg-brand-700 px-4 py-3"
+            >
+              <Text className="font-extrabold text-white">
+                {t('mobile.projects.openLiveCamera')}
+              </Text>
+            </Pressable>
+          </Panel>
+        )}
+      </View>
+    </View>
+  )
+}
+
+export default function ContractorProjectsScreen({ navigation }) {
+  const { t } = useLanguage()
+  const [selected, setSelected] = useState(null)
+  const [category, setCategory] = useState('current')
+  const [refreshing, setRefreshing] = useState(false)
+  const projects = useAsyncData(fetchBuilderProjectsWithAssignments, [])
+  useLiveRefresh(() => projects.reload())
+  const projectList = Array.isArray(projects.data) ? projects.data : []
+  const groups = groupProjectsByCategory(projectList)
+  const activeCategory = PROJECT_CATEGORY_TABS.find((tab) => tab.id === category) || PROJECT_CATEGORY_TABS[0]
+  const shown = groups[activeCategory.id] || []
+
+  // After any reload, the open project is replaced by its fresh copy (web parity).
+  useEffect(() => {
+    if (!Array.isArray(projects.data)) return
+    setSelected((current) => (current ? projects.data.find((project) => project.id === current.id) || current : current))
+  }, [projects.data])
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await projects.reload()
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  return (
+    <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
+      {selected ? (
+        <ProjectDetail
+          project={selected}
+          navigation={navigation}
+          onBack={() => setSelected(null)}
+          onProgressSaved={async (value) => {
+            setSelected((current) =>
+              current ? { ...current, completion_percentage: value } : current
+            )
+            await projects.reload()
+          }}
+          onTeamChanged={() => projects.reload()}
+        />
+      ) : (
+        <>
+          {/* All three category tabs always render, including empty ones. */}
+          <Section>
+            <SegmentTabs
+              tabs={PROJECT_CATEGORY_TABS.map((tab) => ({ id: tab.id, label: t(tab.labelKey), count: groups[tab.id].length }))}
+              active={activeCategory.id}
+              onChange={setCategory}
+            />
+          </Section>
+          <Panel title={t('ui.projects')}>
+            <PanelState
+              loading={projects.loading}
+              error={projects.error}
+              empty={!shown.length}
+              emptyText={projectList.length ? t(activeCategory.emptyKey) : t('ui.contractor.noProjectsAssigned')}
+            >
+              {shown.map((project) => (
+                <ProjectCard key={project.id} project={project} onPress={() => setSelected(project)} />
+              ))}
+            </PanelState>
+          </Panel>
+        </>
+      )}
+    </DashboardShell>
+  )
+}

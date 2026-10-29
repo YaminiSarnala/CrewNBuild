@@ -35,6 +35,7 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
   }, [requestedTab, navigation])
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
+  const [checkoutSupplierId, setCheckoutSupplierId] = useState(null)
 
   const products = useAsyncData(() => fetchShopProducts(), [])
   const orders = useAsyncData(fetchMyMaterialRequests, [])
@@ -58,8 +59,11 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await Promise.all([products.reload(), orders.reload(), checkoutProjectId ? dispatch(loadCart(checkoutProjectId)) : null])
-    setRefreshing(false)
+    try {
+      await Promise.all([products.reload(), orders.reload(), dispatch(loadCart())])
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   function addToCart(productId) {
@@ -72,17 +76,39 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
 
   async function checkout(supplierId) {
     if (requireCompleteProfile(() => checkout(supplierId))) return
+    if (checkoutSupplierId !== null) return
     if (!checkoutProject) {
       Alert.alert('No project', 'You need a project linked to your account before sending a buy request.')
       return
     }
-    const result = await dispatch(sendBuyRequest({ projectId: checkoutProject.id, supplierId }))
-    if (sendBuyRequest.fulfilled.match(result)) {
-      Alert.alert('Buy request sent', result.payload?.request_code ? `Request code: ${result.payload.request_code}` : 'The supplier has been notified.')
-      dispatch(clearCartMessage())
-      orders.reload()
-    } else {
-      Alert.alert('Could not send', result.payload || 'Unable to send the buy request.')
+    setCheckoutSupplierId(supplierId)
+    try {
+      const result = await dispatch(sendBuyRequest({
+        projectId: checkoutProject.id,
+        supplierId,
+      }))
+      if (sendBuyRequest.fulfilled.match(result)) {
+        Alert.alert(
+          'Buy request sent',
+          result.payload?.request_code
+            ? `Request code: ${result.payload.request_code}`
+            : 'The supplier has been notified.'
+        )
+        dispatch(clearCartMessage())
+        await orders.reload()
+      } else {
+        Alert.alert(
+          'Could not send',
+          result.payload || 'Unable to send the buy request.'
+        )
+      }
+    } catch (error) {
+      Alert.alert(
+        'Could not send',
+        error?.message || 'Unable to send the buy request. Please try again.'
+      )
+    } finally {
+      setCheckoutSupplierId(null)
     }
   }
 
@@ -192,10 +218,15 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
               <Pressable
                 key={supplier.supplier_id || supplier.id}
                 onPress={() => checkout(supplier.supplier_id || supplier.id)}
-                style={styles.pressable6}
+                disabled={checkoutSupplierId !== null}
+                className={`mt-3 h-11 items-center justify-center rounded-xl bg-brand-700 ${
+                  checkoutSupplierId !== null ? 'opacity-60' : ''
+                }`}
               >
-                <Text style={styles.text15}>
-                  Send buy request · {supplier.supplier_name || supplier.name || 'Supplier'}
+                <Text className="text-[13px] font-extrabold text-white">
+                  {checkoutSupplierId === (supplier.supplier_id || supplier.id)
+                    ? 'Sending request…'
+                    : `Send buy request · ${supplier.supplier_name || supplier.name || 'Supplier'}`}
                 </Text>
               </Pressable>
             ))}

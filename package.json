@@ -30,6 +30,7 @@
     "expo-constants": "~57.0.11",
     "expo-crypto": "~57.0.4",
     "expo-dev-client": "~57.0.20",
+    "expo-file-system": "~57.0.7",
     "expo-font": "~57.0.1",
     "expo-gl": "~57.0.2",
     "expo-image": "~57.0.5",
@@ -38,6 +39,7 @@
     "expo-linking": "~57.0.13",
     "expo-location": "~57.0.22",
     "expo-secure-store": "~57.0.4",
+    "expo-sharing": "~57.0.24",
     "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
     "expo-updates": "~57.0.26",
@@ -53,6 +55,7 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
+    "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1",
     "react-redux": "^9.1.2",
     "three": "^0.161.0"

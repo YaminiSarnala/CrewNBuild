@@ -15,15 +15,34 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { I18nManager, NativeModules, Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { LANGUAGES, TRANSLATIONS } from './translations.js'
-import { setActiveLanguage } from './activeLanguage'
+import { LANGUAGES, TRANSLATIONS as WEB_TRANSLATIONS } from './translations.js'
+import { MOBILE_TRANSLATIONS } from './mobileTranslations.js'
+import { getActiveLanguage, setActiveLanguage } from './activeLanguage'
 import {
-  BATCH_DELAY,
-  cachedTranslation,
-  fetchTranslations,
-  isTranslatableText,
-  loadStoredTranslations,
+  BATCH_DELAY, cachedTranslation, fetchTranslations, isTranslatableText, loadStoredTranslations,
 } from './dynamicTranslation'
+
+// The web table plus the mobile-only keys (mobile.*, see mobileTranslations.js).
+const TRANSLATIONS = Object.fromEntries(
+  Object.entries(WEB_TRANSLATIONS).map(([code, table]) => [code, { ...table, ...(MOBILE_TRANSLATIONS[code] || {}) }]),
+)
+
+/**
+ * `t` for code that is not a component (Builder helpers). Same lookup as
+ * i18n/translate.js, but it also knows the mobile-only keys.
+ */
+export function translate(key, values = {}) {
+  const template = TRANSLATIONS[getActiveLanguage()]?.[key] ?? TRANSLATIONS.en[key] ?? key
+  return Object.entries(values).reduce(
+    (translatedText, [name, value]) => translatedText.split(`{${name}}`).join(String(value)),
+    template,
+  )
+}
+
+/** Prefer the `t` a caller passed, else translate from the active language. */
+export function translatorFrom(t) {
+  return typeof t === 'function' ? t : translate
+}
 
 const STORAGE_KEY = 'octabuild_language'
 const SUPPORTED_CODES = new Set(LANGUAGES.map(({ code }) => code))

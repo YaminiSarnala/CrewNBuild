@@ -24,6 +24,7 @@ import EstimateScreen from '../screens/EstimateScreen'
 import LoginScreen from '../screens/auth/LoginScreen'
 import SignupScreen from '../screens/auth/SignupScreen'
 import CompleteProfileScreen from '../screens/auth/CompleteProfileScreen'
+import PincodeSetupScreen from '../screens/auth/PincodeSetupScreen'
 import { OwnerTabs, ContractorTabs, SupplierTabs, EngineerTabs } from './RoleTabs'
 import NotificationsScreen from '../screens/shared/NotificationsScreen'
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'
@@ -36,6 +37,9 @@ import BuilderProfileScreen from '../screens/owner/BuilderProfileScreen'
 import { NotificationsProvider } from '../notifications/NotificationsContext'
 import { ComingSoonProvider, ComingSoonRoleScreen } from '../components/ComingSoon'
 import { isRoleLive } from '../config/modules'
+import BuilderSubscriptionScreen from '../screens/contractor/BuilderSubscriptionScreen'
+import BuilderPortfolioScreen from '../screens/contractor/BuilderPortfolioScreen'
+import BuilderProfileSettingsScreen from '../screens/contractor/BuilderProfileSettingsScreen'
 
 import { restoreSession, sessionExpired, setAuthenticatedUser } from '../store/authSlice'
 import { onAuthExpired, onAuthRefreshed } from '../api/client'
@@ -63,7 +67,7 @@ function SplashGate() {
 
 export default function RootNavigator() {
   const dispatch = useDispatch()
-  const { user, accessToken, hydrated } = useSelector((state) => state.auth)
+  const { user, hydrated } = useSelector((state) => state.auth)
   const { theme, isDark } = useTheme()
   // Screens read COLORS while rendering, so a theme change remounts the
   // navigator (keyed on the theme); the last navigation state is kept and
@@ -81,7 +85,8 @@ export default function RootNavigator() {
 
   if (!hydrated) return <SplashGate />
 
-  const signedIn = Boolean(accessToken && user)
+  // Signed in = the server confirmed an account (no login token is returned any more).
+  const signedIn = Boolean(user)
   // Supplier / Site Engineer are not live yet: one Coming soon screen instead
   // of their unfinished dashboards (src/config/modules.js).
   const dashboard = isRoleLive(user?.role || 'OWNER')
@@ -119,6 +124,14 @@ export default function RootNavigator() {
             <Stack.Screen name="Messages" component={MessagesScreen} />
             <Stack.Screen name="BookTechnician" component={BookTechnicianScreen} />
             <Stack.Screen name="Estimate" component={EstimateScreen} />
+            {/* Builder-only screens (web Plan & billing, Portfolio, Profile Settings). */}
+            {user?.role === 'CONTRACTOR' && (
+              <>
+                <Stack.Screen name="BuilderSubscription" component={BuilderSubscriptionScreen} />
+                <Stack.Screen name="BuilderPortfolio" component={BuilderPortfolioScreen} />
+                <Stack.Screen name="BuilderProfileSettings" component={BuilderProfileSettingsScreen} />
+              </>
+            )}
           </>
         )}
       </Stack.Navigator>

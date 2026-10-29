@@ -113,7 +113,14 @@ export default function ProfileScreen({ navigation }) {
     <>
       <DashboardShell onOpenNotifications={() => navigation.navigate('Notifications')}>
         <View style={[styles.view3, { marginHorizontal: gutter }]}>
-                      <Pressable onPress={changeAvatar} disabled={avatarBusy} style={styles.pressable}>
+          <Pressable
+              // A Builder's details live in the full builder profile (company,
+              // licence, portfolio…). Saving only these four fields through the
+              // same PATCH /auth/complete-profile could blank the rest, so the
+              // Builder edits them in Profile Settings, as on the web.
+              onPress={() => (user?.role === 'CONTRACTOR' ? navigation.navigate('BuilderProfileSettings') : setEditing((e) => !e))}
+              style={styles.pressable3}
+            >
             <View style={[styles.view4, avatarBusy ? styles.pressable2 : null]}>
               {user?.profile_image_url ? (
                 <Image source={imageSource(user.profile_image_url)} style={{ width: 80, height: 80 }} contentFit="cover" />
