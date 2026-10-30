@@ -113,8 +113,7 @@ function continueToDashboard() {
         style={{ paddingTop: insets.top + 18 }}
         className="bg-brand-800 px-5 pb-7"
       >
-        <View className="mb-5 h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-          <MapPin size={25} color="#ffffff" />
+        <View className="mb-5 h-12 w-12 items-center justify-center rounded-2xl bg-glass/10">          <MapPin size={25} color="#ffffff" />
         </View>
 
         <Text className="font-display text-white" style={{ fontSize: 27 }}>

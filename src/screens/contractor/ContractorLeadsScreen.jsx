@@ -20,7 +20,9 @@ import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useBuilderInbox } from '../../components/builder/BuilderInbox'
 import { View, Text, Pressable, TextInput } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
-import { House, Truck, Send, CircleCheckBig, MapPin, Lock, Phone, Mail, Store } from 'lucide-react-native'
+import { House, Truck, Send, MapPin, Lock, Phone, Mail, Store, FileText, BrickWall, Tractor, HardHat } from 'lucide-react-native'
+import { Image } from 'expo-image'
+import { avatarFromPath } from '../../utils/avatars'
 import DashboardShell, { PanelState, useAsyncData } from '../../components/DashboardShell'
 import { fetchNearbyProjects, fetchNearbySuppliers } from '../../api/projects'
 import { fetchIncomingRequests, sendProjectRequest } from '../../api/requests'
@@ -37,6 +39,7 @@ import { constructionTypeLabel } from '../../utils/roleLabels'
 import { COLORS } from '../../theme/tokens'
 import { userCountry } from '../../utils/countryConfig'
 import { createStyles } from '../../theme/createStyles'
+import { ink, line, soft } from '../../theme/tint'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { BUSINESS_TYPE_KEYS, FLOOR_TYPE_KEYS, SUPPLIER_CATEGORY_KEYS, optionLabel } from '../../i18n/optionKeys'
 
@@ -64,7 +67,23 @@ const SUPPLIER_TYPE_KEYS = {
   'Labor Supplier': 'opt.supplierType.labor',
   'Equipment Supplier': 'opt.supplierType.equipment',
 }
+// Card backgrounds, cycled by index (web LEAD_TINTS).
+const LEAD_TINTS = [
+    { bg: '#f0fdf4', border: '#d1fae5', accent: '#10b981' },
+  { bg: '#ffffff', border: '#e2e8f0', accent: '#64748b' },
+  { bg: '#fff7ed', border: '#fed7aa', accent: '#f97316' },
+  { bg: '#fdf2f8', border: '#fbcfe8', accent: '#ec4899' },
+  { bg: '#f0f9ff', border: '#bae6fd', accent: '#0ea5e9' },
+  { bg: '#f0fdfa', border: '#99f6e4', accent: '#14b8a6' },
+]
 
+// Supplier card top band by supplier_category (web contractorFindClients).
+const SUPPLIER_BANDS = {
+  'Material Supplier': { icon: BrickWall, bg: '#ecfdf5', fg: '#047857' },
+  'Equipment Supplier': { icon: Tractor, bg: '#f5f3ff', fg: '#6d28d9' },
+  'Labor Supplier': { icon: HardHat, bg: '#f0f9ff', fg: '#0369a1' },
+  other: { icon: Truck, bg: '#f8fafc', fg: '#475569' },
+}
 function listOf(value) {
   return (Array.isArray(value) ? value : String(value || '').split(','))
     .map((item) => String(typeof item === 'object' && item ? (item.name || item.title || '') : item).trim())
@@ -75,7 +94,12 @@ export default function ContractorLeadsScreen({ navigation }) {
   const dispatch = useDispatch()
   const { t } = useLanguage()
   const stateLabel = (state) => (stateLabelKey[state] ? t(stateLabelKey[state]) : '')
-  const user = useSelector((state) => state.auth.user)
+  // Send-button label by priority, as on the web.
+  const leadButtonLabel = (state) => (state === 'rejected' ? t('ui.status.rejected')
+    : state === 'pending' ? t('ui.status.pending')
+      : state !== 'none' ? t('dash.contractor.status.proposalSent')
+        : t('dash.common.sendRequest'))
+          const user = useSelector((state) => state.auth.user)
   const [activeTab, setActiveTab] = useState('houseowners')
   const [refreshing, setRefreshing] = useState(false)
   const [sentKeys, setSentKeys] = useState({})
@@ -217,16 +241,17 @@ export default function ContractorLeadsScreen({ navigation }) {
     <>
       <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
         <Section>
-          <View className="flex-row gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5">
+                   {/* Underlined tabs, as on the web. */}
+          <View className="flex-row border-b border-slate-200">
             {[
               { id: 'houseowners', label: `${t('dash.contractor.tab.houseownerProjects')} (${openOwnerClients.length})`, icon: House },
               { id: 'suppliers', label: `${t('dash.contractor.tab.supplierRequests')} (${openSupplierClients.length})`, icon: Truck },
             ].map(({ id, label, icon: Icon }) => {
               const active = activeTab === id
               return (
-                <Pressable key={id} onPress={() => setActiveTab(id)} className={`h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl ${active ? 'bg-brand-700' : ''}`}>
-                  <Icon size={13} color={active ? '#fff' : COLORS.slate[400]} />
-                  <Text className={`text-[11px] font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>{label}</Text>
+                <Pressable key={id} onPress={() => setActiveTab(id)} className="mr-4 flex-row items-center gap-1.5 pb-2.5 pt-1" style={{ borderBottomWidth: 2.5, borderBottomColor: active ? COLORS.brand[800] : 'transparent' }}>
+                  <Icon size={14} color={active ? COLORS.brand[900] : COLORS.slate[400]} />
+                  <Text className={`text-[12.5px] font-extrabold ${active ? 'text-brand-900' : 'text-slate-500'}`}>{label}</Text>
                 </Pressable>
               )
             })}
@@ -245,31 +270,43 @@ export default function ContractorLeadsScreen({ navigation }) {
           <Notice tone={message?.tone} text={message?.text} />
           {activeTab === 'houseowners' ? (
             <PanelState loading={leads.loading} error={leads.error} empty={!openOwnerClients.length} emptyText={`${t('dash.contractor.noClientsTitle')}\n${t('dash.contractor.noClientsSub')}`}>
-              {openOwnerClients.map((project) => {
+                           {openOwnerClients.map((project, index) => {
                 const state = requestState(project, 'CONTRACTOR_TO_OWNER')
                 const sent = state !== 'none'
+                const tint = LEAD_TINTS[index % LEAD_TINTS.length]
                 return (
-                  <Pressable key={`${project.owner_id}-${project.project_id || project.id}`} onPress={() => setProfileTarget(project)} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                    <View className="flex-row items-center gap-1.5">
-                      <CircleCheckBig size={13} color={COLORS.brand[600]} />
-                      <Text className="text-[10px] font-extrabold uppercase tracking-wide text-brand-700">{t('dash.contractor.verifiedLead')}</Text>
+                  <Pressable key={`${project.owner_id}-${project.project_id || project.id}`} onPress={() => setProfileTarget(project)} className="mb-3 rounded-3xl border p-4" style={{ backgroundColor: soft(tint.bg, tint.accent), borderColor: line(tint.border, tint.accent) }}>
+                    <View className="flex-row items-start gap-3">
+                      <Image source={avatarFromPath(project.owner_profile_image_url, 'OWNER')} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
+                      <View className="flex-1">
+                        <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{project.owner_name || project.profile_title || t('dash.contractor.homeowner')}</Text>
+                        <Text className="text-xs font-semibold text-slate-500" numberOfLines={1}>{project.project_title || project.title || t('dash.contractor.homeownerProject')}</Text>
+                      </View>
+                      {project.building_type ? (
+                        <View className="rounded-full border border-emerald-100 bg-white/80 px-2.5 py-1">
+                          <Text className="text-[10px] font-extrabold text-emerald-800">{buildingTypeText(project.building_type, t)}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                    <Text className="mt-1.5 text-[15px] font-extrabold text-graphite" numberOfLines={1}>{project.project_title || project.title || t('dash.contractor.homeownerProject')}</Text>
-                    <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={1}>{project.owner_name || project.profile_title || t('dash.contractor.homeowner')}</Text>
-                    <View className="mt-1 flex-row items-center gap-1">
-                      <MapPin size={11} color={COLORS.slate[400]} />
-                      <Text className="flex-1 text-[11px] font-semibold text-slate-400" numberOfLines={1}>
+                    <View className="mt-3 flex-row items-center gap-3">
+                      <View>
+                        <Text className="text-[16px] font-extrabold text-graphite">{project.land_area ? Number(project.land_area).toLocaleString('en-IN') : '—'}</Text>
+                        <Text className="text-[11px] font-semibold text-slate-500">{t('dash.contractor.sqftUnit')}</Text>
+                      </View>
+                      <View className="h-9 w-px bg-slate-200" />
+                      <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-slate-100 bg-white/80 px-3 py-2">
+                        <Text className="text-[11px] font-semibold text-slate-500">{t('dash.contractor.budgetAmount')}</Text>
+                        <Text className="flex-1 text-right text-[14px] font-extrabold text-graphite" numberOfLines={1}>{Number(project.budget || 0) > 0 ? money(project.budget, project.project_country) : '—'}</Text>
+                      </View>
+                    </View>
+                    <View className="mt-3 flex-row items-center gap-1.5 border-t border-slate-100 pt-3">
+                      <MapPin size={13} color="#047857" />
+                      <Text className="flex-1 text-[12px] font-semibold text-slate-600" numberOfLines={2}>
                         {project.address || t('dash.owner.estimates.locationNotSet')}{project.pincode ? ` - ${project.pincode}` : ''}
                       </Text>
                     </View>
-                    <View className="mt-2 flex-row flex-wrap gap-x-4 gap-y-1">
-                      <Text className="text-xs font-semibold text-slate-600">{t('dash.contractor.area')}: <Text className="font-extrabold text-graphite">{project.land_area ? t('ui.contractor.areaSqft', { area: project.land_area }) : '—'}</Text></Text>
-                      <Text className="text-xs font-semibold text-slate-600">{t('dash.common.budget')}: <Text className="font-extrabold text-graphite">{Number(project.budget || 0) > 0 ? money(project.budget, project.project_country) : t('dash.common.notSet')}</Text></Text>
-                      {project.building_type ? <Text className="text-xs font-semibold text-slate-600">{buildingTypeText(project.building_type, t)}</Text> : null}
-                    </View>
                     <ActionButton
-                      small
-                      label={stateLabel(state) || t('dash.common.sendRequest')}
+                      label={leadButtonLabel(state)}
                       icon={Send}
                       tone={sent ? 'outline' : 'primary'}
                       disabled={sent}
@@ -287,35 +324,56 @@ export default function ContractorLeadsScreen({ navigation }) {
               empty={!openSupplierClients.length}
               emptyText={`${t('dash.owner.suppliers.emptyTitle')}\n${t('dash.contractor.suppliersEmpty')}`}
             >
-              {openSupplierClients.map((supplier) => {
+                           {openSupplierClients.map((supplier) => {
                 const state = requestState(supplier, 'CONTRACTOR_TO_SUPPLIER')
                 const sent = state !== 'none'
                 const name = supplier.name || supplier.store_name || supplier.business_name || supplier.title || t('dash.common.supplier')
                 const store = supplier.store_name || supplier.business_name || supplier.title || ''
                 const offerings = listOf(supplier.categories || supplier.material_types).map((category) => optionLabel(t, SUPPLIER_CATEGORY_KEYS, category)).join(', ')
+                const band = SUPPLIER_BANDS[supplier.supplier_category] || SUPPLIER_BANDS.other
+                const BandIcon = band.icon
                 return (
-                  <Pressable key={`${supplier.owner_id || supplier.user_id || supplier.id}`} onPress={() => openSupplierProfile(supplier)} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                    <Text className="text-[10px] font-extrabold uppercase tracking-wide text-brand-700">{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : t('role.supplier')}</Text>
-                    <Text className="mt-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>{name}</Text>
-                    {store && store !== name ? (
-                      <View className="mt-0.5 flex-row items-center gap-1">
-                        <Store size={11} color={COLORS.brand[700]} />
-                        <Text className="text-xs font-semibold text-slate-600" numberOfLines={1}>{store}</Text>
+                  <Pressable key={`${supplier.owner_id || supplier.user_id || supplier.id}`} onPress={() => openSupplierProfile(supplier)} className="mb-3 overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                    <View className="flex-row items-center justify-between px-4 py-2" style={{ backgroundColor: soft(band.bg, band.fg) }}>
+                      <View className="flex-row items-center gap-1.5">
+                        <BandIcon size={13} color={ink(band.fg)} />
+                        <Text className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: band.fg }}>{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : t('role.supplier')}</Text>
                       </View>
-                    ) : null}
-                    {offerings ? <Text className="mt-1 text-xs font-semibold text-slate-500" numberOfLines={2}>{offerings}</Text> : null}
-                    <Text className="mt-1 text-[11px] font-semibold text-slate-400" numberOfLines={1}>
-                      {supplier.address || ''}{supplier.pincode ? `${supplier.address ? ' - ' : ''}${supplier.pincode}` : ''}
-                    </Text>
-                    <ActionButton
-                      small
-                      label={state === 'sent' ? t('dash.contractor.requestSent') : stateLabel(state) || t('dash.common.sendRequest')}
-                      icon={Send}
-                      tone={sent ? 'outline' : 'primary'}
-                      disabled={sent}
-                      onPress={() => openSend(supplier, 'CONTRACTOR_TO_SUPPLIER')}
-                      className="mt-3"
-                    />
+                      {supplier.pincode ? (
+                        <View className="flex-row items-center gap-1">
+                          <MapPin size={11} color={ink(band.fg)} />
+                          <Text className="text-[11px] font-bold" style={{ color: ink(band.fg) }}>{supplier.pincode}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View className="p-4">
+                      <View className="flex-row items-center gap-3">
+                        <Image source={avatarFromPath(supplier.cover_image_url, 'SUPPLIER')} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
+                        <View className="flex-1">
+                          <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{name}</Text>
+                          {store && store !== name ? (
+                            <View className="mt-0.5 flex-row items-center gap-1">
+                              <Store size={11} color={COLORS.brand[700]} />
+                              <Text className="text-xs font-semibold text-slate-600" numberOfLines={1}>{store}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </View>
+                      {offerings ? (
+                        <View className="mt-3 flex-row items-start gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                          <FileText size={13} color={COLORS.slate[500]} />
+                          <Text className="flex-1 text-xs font-semibold text-slate-600" numberOfLines={2}>{offerings}</Text>
+                        </View>
+                      ) : null}
+                      <ActionButton
+                        label={state === 'sent' ? t('dash.contractor.requestSent') : leadButtonLabel(state)}
+                        icon={Send}
+                        tone={sent ? 'outline' : 'primary'}
+                        disabled={sent}
+                        onPress={() => openSend(supplier, 'CONTRACTOR_TO_SUPPLIER')}
+                        className="mt-3"
+                      />
+                    </View>
                   </Pressable>
                 )
               })}

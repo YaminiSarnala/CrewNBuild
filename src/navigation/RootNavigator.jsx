@@ -19,7 +19,9 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { useTheme } from '../theme/ThemeContext'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useDispatch, useSelector } from 'react-redux'
-
+import BuilderPortfolioScreen from '../screens/contractor/BuilderPortfolioScreen'
+import BuilderSubscriptionScreen from '../screens/contractor/BuilderSubscriptionScreen'
+import BuilderProfileSettingsScreen from '../screens/contractor/BuilderProfileSettingsScreen'
 import EstimateScreen from '../screens/EstimateScreen'
 import LoginScreen from '../screens/auth/LoginScreen'
 import SignupScreen from '../screens/auth/SignupScreen'
@@ -37,9 +39,6 @@ import BuilderProfileScreen from '../screens/owner/BuilderProfileScreen'
 import { NotificationsProvider } from '../notifications/NotificationsContext'
 import { ComingSoonProvider, ComingSoonRoleScreen } from '../components/ComingSoon'
 import { isRoleLive } from '../config/modules'
-import BuilderSubscriptionScreen from '../screens/contractor/BuilderSubscriptionScreen'
-import BuilderPortfolioScreen from '../screens/contractor/BuilderPortfolioScreen'
-import BuilderProfileSettingsScreen from '../screens/contractor/BuilderProfileSettingsScreen'
 
 import { restoreSession, sessionExpired, setAuthenticatedUser } from '../store/authSlice'
 import { onAuthExpired, onAuthRefreshed } from '../api/client'
@@ -123,6 +122,7 @@ export default function RootNavigator() {
             <Stack.Screen name="LiveCamera" component={LiveCameraScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
             <Stack.Screen name="BookTechnician" component={BookTechnicianScreen} />
+            
             <Stack.Screen name="Estimate" component={EstimateScreen} />
             {/* Builder-only screens (web Plan & billing, Portfolio, Profile Settings). */}
             {user?.role === 'CONTRACTOR' && (

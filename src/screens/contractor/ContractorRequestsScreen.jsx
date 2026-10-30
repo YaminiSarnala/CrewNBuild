@@ -16,8 +16,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useFocusEffect } from '@react-navigation/native'
 import { useBuilderInbox } from '../../components/builder/BuilderInbox'
-import { View, Text, Alert, TextInput } from 'react-native'
-import { House, Truck, Check, X, ClipboardList, Plus, ArrowRight, MapPin, CalendarDays } from 'lucide-react-native'
+import { View, Text, Alert, TextInput, Pressable, ScrollView } from 'react-native'
+import { Image } from 'expo-image'
+import { userAvatarSource } from '../../utils/avatars'
+import { House, Truck, Check, X, Plus, ArrowRight, MapPin, CalendarDays, LayoutGrid, List, SlidersHorizontal } from 'lucide-react-native'
 import DashboardShell, { PanelState, useAsyncData } from '../../components/DashboardShell'
 import {
   fetchIncomingRequests,
@@ -27,8 +29,7 @@ import {
   fetchProjectAward,
 } from '../../api/requests'
 import {
-  Section, SegmentTabs, RequestStatusBadge, Badge, ActionButton, SearchBox, SheetModal, InfoRow, Notice,
-} from '../../components/builder/BuilderUi'
+  Section, SegmentTabs, RequestStatusBadge, Badge, ActionButton, SearchBox, SheetModal, InfoRow, Notice, SelectChip, ViewToggle,} from '../../components/builder/BuilderUi'
 import AwardPanel from '../../components/builder/AwardPanel'
 import { builderFlowStatus, hasAssignmentFlow, FLOW_TONE_COLORS } from '../../utils/awardFlow'
 import {
@@ -38,6 +39,7 @@ import {
 import { constructionTypeLabel } from '../../utils/roleLabels'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { ink, soft } from '../../theme/tint'
 
 const FILTERS = [
   { id: 'all', labelKey: 'dash.contractor.filter.all' },
@@ -54,7 +56,25 @@ const SORTS = [
   { id: 'budgetHigh', labelKey: 'req.board.budgetHigh' },
   { id: 'budgetLow', labelKey: 'req.board.budgetLow' },
 ]
+// Status chip colours (web: brand, sky, emerald, violet, rose, slate).
+const CHIP_TONES = {
+  all: { bg: '#e7f0eb', fg: '#14532d', onBg: '#14532d', onFg: '#ffffff' },
+  pending: { bg: '#f0f9ff', fg: '#0369a1', onBg: '#0369a1', onFg: '#ffffff' },
+  accepted: { bg: '#ecfdf5', fg: '#047857', onBg: '#047857', onFg: '#ffffff' },
+  sent: { bg: '#f5f3ff', fg: '#6d28d9', onBg: '#6d28d9', onFg: '#ffffff' },
+  rejected: { bg: '#fff1f2', fg: '#be123c', onBg: '#be123c', onFg: '#ffffff' },
+  withdrawn: { bg: '#f1f5f9', fg: '#475569', onBg: '#475569', onFg: '#ffffff' },
+}
 
+// House-owner board empty states, per status filter (web).
+const EMPTY_KEYS = {
+  all: { title: 'dash.contractor.empty.allTitle', body: 'dash.contractor.empty.allBody', hint: 'dash.contractor.empty.allHint' },
+  pending: { title: 'dash.contractor.empty.pendingTitle', body: 'dash.contractor.empty.pendingBody', hint: 'dash.contractor.empty.pendingHint' },
+  accepted: { title: 'dash.contractor.empty.acceptedTitle', body: 'dash.contractor.empty.acceptedBody' },
+  sent: { title: 'dash.contractor.empty.sentTitle', body: 'dash.contractor.empty.sentBody' },
+  rejected: { title: 'dash.contractor.empty.rejectedTitle', body: 'dash.contractor.empty.rejectedBody' },
+  withdrawn: { title: 'dash.contractor.empty.withdrawnTitle', body: 'dash.contractor.empty.withdrawnBody' },
+}
 const ROW_NOTES = {
   owner: { pending: 'dash.contractor.row.incoming', sent: 'dash.contractor.row.proposalSent', accepted: 'dash.contractor.row.quoteApproved', rejected: 'dash.contractor.row.declined', withdrawn: 'ui.shared.statusWithdrawn' },
   supplier: { pending: 'dash.contractor.row.incoming', sent: 'dash.common.requestSent', accepted: 'ui.status.accepted', rejected: 'dash.contractor.row.declined', withdrawn: 'ui.shared.statusWithdrawn' },
@@ -111,7 +131,8 @@ export default function ContractorRequestsScreen({ navigation }) {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [sortOrder, setSortOrder] = useState('newest')
-  const [refreshing, setRefreshing] = useState(false)
+  const [view, setView] = useState('cards')
+    const [refreshing, setRefreshing] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [message, setMessage] = useState(null)
   const [quoteFor, setQuoteFor] = useState(null)
@@ -246,58 +267,60 @@ export default function ContractorRequestsScreen({ navigation }) {
   return (
     <>
       <DashboardShell refreshing={refreshing} onRefresh={refresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
-        <Section>
-          <View className="rounded-3xl bg-brand-800 p-5">
-            <Text className="text-xl font-extrabold text-white">{t('mobile.dashboard.projectRequests')}</Text>
-            <Text className="mt-1 text-xs font-semibold text-white/80">{t('mobile.dashboard.projectRequestsSub')}</Text>
-            <View className="mt-4 flex-row gap-3">
-              <View className="flex-1 rounded-2xl bg-white/10 p-3">
-                <Text className="text-xs font-bold text-white/80">{t('mobile.dashboard.homeowners')}</Text>
-                <Text className="mt-1 text-2xl font-extrabold text-white">{ownerRequests.length}</Text>
-              </View>
-              <View className="flex-1 rounded-2xl bg-white/10 p-3">
-                <Text className="text-xs font-bold text-white/80">{t('role.suppliers')}</Text>
-                <Text className="mt-1 text-2xl font-extrabold text-white">{supplierRequests.length}</Text>
-              </View>
-            </View>
-          </View>
-        </Section>
-
-        <Section>
-          <View className="flex-row items-center gap-2">
-            <View className="flex-1">
-              <SegmentTabs
-                tabs={[
-                  { id: 'owner', label: t('dash.contractor.tab.houseOwnerRequests'), count: ownerRequests.length, icon: House },
-                  { id: 'supplier', label: t('dash.contractor.tab.supplierRequests'), count: supplierRequests.length, icon: Truck },
-                ]}
-                active={activeTab}
-                onChange={(id) => { setActiveTab(id); setFilter('all') }}
-              />
-            </View>
-          </View>
-          {/* New Request opens Find Clients, where a builder sends a request. */}
-          <ActionButton
-            label={t('req.board.newRequest')}
-            icon={Plus}
-            small
-            onPress={() => navigation.navigate('ContractorMoreTab', { section: 'clients' })}
-            className="mt-2 self-start"
-          />
-        </Section>
-
-        <Section>
+                <Section>
           <SegmentTabs
-            dense
-            tabs={FILTERS.map((item) => ({ id: item.id, label: t(item.labelKey), count: counts[item.id] || 0 }))}
-            active={filter}
-            onChange={setFilter}
+            tabs={[
+              { id: 'owner', label: t('dash.contractor.tab.houseOwnerRequests'), count: ownerRequests.length, icon: House },
+              { id: 'supplier', label: t('dash.contractor.tab.supplierRequests'), count: supplierRequests.length, icon: Truck },
+            ]}
+            active={activeTab}
+            onChange={(id) => { setActiveTab(id); setFilter('all') }}
           />
-          <View className="mt-2">
-            <SearchBox value={search} onChangeText={setSearch} placeholder={t('req.board.searchPh')} />
-          </View>
-          <View className="mt-2">
-            <SegmentTabs dense tabs={SORTS.map((item) => ({ id: item.id, label: t(item.labelKey) }))} active={sortOrder} onChange={setSortOrder} />
+        </Section>
+
+        <Section>
+          <View className="rounded-2xl border border-slate-200 bg-white p-3">
+            {/* Status chips, in the web's colours. */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              {FILTERS.map((item) => {
+                const on = filter === item.id
+                const tone = CHIP_TONES[item.id]
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => setFilter(item.id)}
+                    className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"                    style={{ backgroundColor: on ? tone.onBg : soft(tone.bg, tone.fg) }}
+                  >
+                    <Text className="text-[12px] font-extrabold" style={{ color: on ? tone.onFg : ink(tone.fg) }}>{t(item.labelKey)}</Text>
+                    <View className={`min-w-[18px] items-center rounded-full px-1 ${on ? 'bg-glass/90' : 'bg-white/70'}`}>
+                      <Text className="text-[10px] font-extrabold" style={{ color: on ? tone.onBg : ink(tone.fg) }}>{counts[item.id] || 0}</Text>
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+            <View className="mt-2">
+              <SearchBox value={search} onChangeText={setSearch} placeholder={t('req.board.searchPh')} />
+            </View>
+            <View className="mt-2 flex-row flex-wrap items-center gap-2">
+              <ViewToggle
+                options={[{ id: 'cards', label: t('dash.supplier.cards'), icon: LayoutGrid }, { id: 'table', label: t('dash.supplier.table'), icon: List }]}
+                active={view}
+                onChange={setView}
+              />
+              {/* The web's "Filters" menu sorts the board. */}
+              <SelectChip
+                placeholder={t('req.board.filters')}
+                icon={SlidersHorizontal}
+                value={sortOrder === 'newest' ? '' : sortOrder}
+                onChange={(value) => setSortOrder(value || 'newest')}
+                options={SORTS.filter((item) => item.id !== 'newest').map((item) => ({ value: item.id, label: t(item.labelKey) }))}
+              />
+              <View className="flex-1 items-end">
+                {/* New Request opens Find Clients, where a builder sends a request (web). */}
+                <ActionButton label={t('req.board.newRequest')} icon={Plus} small onPress={() => navigation.navigate('ContractorMoreTab', { section: 'clients' })} />
+              </View>
+            </View>
           </View>
         </Section>
 
@@ -307,11 +330,11 @@ export default function ContractorRequestsScreen({ navigation }) {
             loading={requests.loading}
             error={requests.error}
             empty={!shown.length}
-            emptyText={currentList.length && (search.trim() || filter !== 'all')
+                        emptyText={search.trim() && currentList.length
               ? t('req.board.noMatch')
               : isOwnerTab
-                ? t('mobile.dashboard.noOwnerRequests')
-                : t('ce.noSupplierRequests')}
+                ? [t(EMPTY_KEYS[filter].title), t(EMPTY_KEYS[filter].body), EMPTY_KEYS[filter].hint ? t(EMPTY_KEYS[filter].hint) : ''].filter(Boolean).join('\n')
+                : `${t('ce.noSupplierRequests')}\n${t('ce.noSupplierRequestsSub')}`}
           >
             {shown.map((request) => {
               const category = categorizeRequest(request)
@@ -325,13 +348,50 @@ export default function ContractorRequestsScreen({ navigation }) {
                 : request.created_at
                   ? t(request.is_sender ? 'req.board.sentOn' : 'req.board.receivedOn', { date: formatDisplayDate(request.created_at_iso || request.created_at, '') })
                   : ''
-              const busy = busyId === request.id
+                            const busy = busyId === request.id
+              if (view === 'table') {
+                // Table row (web board table): counterparty, project, budget, status, action.
+                return (
+                  <Pressable key={request.id} onPress={() => setDetailsRequest(request)} className="border-b border-slate-100 bg-white px-1 py-3">
+                    <View className="flex-row items-center gap-3">
+                      <Image source={userAvatarSource(request, isOwnerTab ? 'OWNER' : 'SUPPLIER')} style={{ width: 28, height: 28, borderRadius: 14 }} contentFit="cover" />
+                      <View className="flex-1">
+                        <Text className="text-[13px] font-extrabold text-graphite" numberOfLines={1}>{request.sender_name}</Text>
+                        <Text className="text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+                          {[request.project_title, location].filter(Boolean).join(' · ')}
+                        </Text>
+                        {isOwnerTab ? (
+                          <Text className="text-[11px] font-semibold text-slate-600" numberOfLines={1}>
+                            {request.budget ? money(request.budget) : '—'}{request.land_area ? ` · ${request.land_area} ${t('dash.contractor.sqft')}` : ''}{hasQuote ? ` · ${t('request.flow.builderQuotation')}: ${money(request.quotation_amount)}` : ''}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {flow ? <FlowBadge flow={flow} /> : <RequestStatusBadge category={category} sentLabel={t(isOwnerTab ? 'dash.contractor.status.proposalSent' : 'dash.common.requestSent')} />}
+                    </View>
+                    {pendingIncoming || canWithdraw ? (
+                      <View className="ml-10 mt-2 flex-row flex-wrap gap-2">
+                        {pendingIncoming && isOwnerTab ? (
+                          <>
+                            <ActionButton small label={t('dash.contractor.quoteAccept')} disabled={busy} onPress={() => startQuote(request)} />
+                            <ActionButton small tone="outline" label={t('dash.contractor.notInterested')} disabled={busy} onPress={() => reject(request)} />
+                          </>
+                        ) : null}
+                        {pendingIncoming && !isOwnerTab ? (
+                          <>
+                            <ActionButton small label={t('ce.accept')} disabled={busy} onPress={() => accept(request)} />
+                            <ActionButton small tone="danger" label={t('ce.reject')} disabled={busy} onPress={() => reject(request)} />
+                          </>
+                        ) : null}
+                        {canWithdraw ? <ActionButton small tone="outline" label={t('property.action.withdraw')} disabled={busy} onPress={() => withdraw(request)} /> : null}
+                      </View>
+                    ) : null}
+                  </Pressable>
+                )
+              }
               return (
                 <View key={request.id} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
                   <View className="flex-row items-start gap-3">
-                    <View className="h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
-                      <ClipboardList size={18} color={COLORS.brand[700]} />
-                    </View>
+                                        <Image source={userAvatarSource(request, isOwnerTab ? 'OWNER' : 'SUPPLIER')} style={{ width: 40, height: 40, borderRadius: 20 }} contentFit="cover" />
                     <View className="flex-1">
                       <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{request.sender_name}</Text>
                       {!isOwnerTab && request.profile_title && request.profile_title !== request.sender_name ? (

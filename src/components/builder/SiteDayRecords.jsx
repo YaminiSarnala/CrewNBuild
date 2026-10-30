@@ -386,16 +386,14 @@ export default function SiteDayRecords({ project, onViewPlans }) {
 
       <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
         <View className="flex-1 items-center justify-center bg-black/90">
-          <Pressable onPress={() => setViewer(null)} accessibilityLabel={t('dash.common.close')} className="absolute right-5 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-white/20">
-            <X size={20} color="#fff" />
+          <Pressable onPress={() => setViewer(null)} accessibilityLabel={t('dash.common.close')} className="absolute right-5 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-glass/20">            <X size={20} color="#fff" />
           </Pressable>
           {viewer ? <Image source={{ uri: imageUrl(viewer.image_url) }} style={{ width: '100%', height: '75%' }} contentFit="contain" /> : null}
         </View>
       </Modal>
       <Modal visible={!!videoViewer} transparent animationType="fade" onRequestClose={() => setVideoViewer(null)}>
         <View className="flex-1 items-center justify-center bg-black/90">
-          <Pressable onPress={() => setVideoViewer(null)} accessibilityLabel={t('dash.common.close')} className="absolute right-5 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-white/20">
-            <X size={20} color="#fff" />
+          <Pressable onPress={() => setVideoViewer(null)} accessibilityLabel={t('dash.common.close')} className="absolute right-5 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-glass/20">            <X size={20} color="#fff" />
           </Pressable>
           {videoViewer ? <SiteVideo uri={imageUrl(videoViewer.image_url)} /> : null}
         </View>

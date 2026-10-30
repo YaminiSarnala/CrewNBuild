@@ -14,7 +14,7 @@
 //   - window focus -> AppState: returning to the app reconnects at once and
 //     tells listeners once, to catch up on anything missed in the background.
 import { AppState } from 'react-native'
-import { WEB_ORIGIN, getCachedAuth, onAuthExpired, websocketUrl } from './client'
+import { getCachedAuth, onAuthExpired, websocketUrl } from './client'
 const PING_MS = 25000
 const MAX_BACKOFF_MS = 30000
 const RELEASE_GRACE_MS = 1500
@@ -75,12 +75,14 @@ function scheduleReconnect() {
 function open() {
   if (holders <= 0 || socket) return
     // Signed out: nothing to connect as. A later sign-in remounts the tabs.
-  if (!getCachedAuth()?.user) return
+    const token = getCachedAuth()?.accessToken
+  if (!token) return
   let next
   try {
-    // The session cookie goes with the handshake (native cookie store), as in a
-    // browser; Origin is what a browser would send for the site.
-    next = new WebSocket(websocketUrl('/events/ws'), undefined, WEB_ORIGIN ? { headers: { origin: WEB_ORIGIN } } : undefined)
+    // The app signs in with a Bearer token (api/client.js): sent as a header and
+    // as ?token=, the same query parameter the app uses for /files/.
+    const base = websocketUrl('/events/ws')
+    next = new WebSocket(`${base}${base.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`, undefined, { headers: { Authorization: `Bearer ${token}` } })
   } catch {
     scheduleReconnect()
     return

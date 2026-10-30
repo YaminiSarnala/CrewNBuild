@@ -6,12 +6,15 @@
 // Other screens open a section here with navigate('ContractorMoreTab', { section }).
 // Labels use the web nav keys; mobile-only subtitles live in i18n/mobile/account.js.
 import { useEffect, useState } from 'react'
-import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native'
+import { ScrollView, View, Text, Pressable } from 'react-native'
+import { createStyles } from '../../theme/createStyles'
 import { useSelector } from 'react-redux'
 import { useLanguage } from '../../i18n/LanguageContext'
 import {
-  Users, ShoppingBag, Search, CircleUser, ArrowLeft, Package, Activity, CreditCard, Settings, MessageCircle, Building2,
+  Users, ShoppingBag, Search, Store, CircleUser, ArrowLeft, Package, Activity, CreditCard, Settings, MessageCircle, ChevronRight,
 } from 'lucide-react-native'
+import { COLORS } from '../../theme/tokens'
+import { ink, line, soft } from '../../theme/tint'
 import ContractorLeadsScreen from './ContractorLeadsScreen'
 import BuilderProductCatalogScreen from './BuilderProductCatalogScreen'
 import ShopHubScreen from '../shared/ShopHubScreen'
@@ -24,22 +27,30 @@ import useBuilderSubscription from '../../hooks/useBuilderSubscription'
 import { useBuilderInbox } from '../../components/builder/BuilderInbox'
 import { fetchOwnerProjects } from '../../api/projects'
 
-const GREEN = '#15803d'
+// Each card's icon colour (light values; tint.js gives the dark ones).
+const TONES = {
+  sky: { bg: '#f0f9ff', border: '#bae6fd', fg: '#0369a1' },
+  violet: { bg: '#f5f3ff', border: '#ddd6fe', fg: '#6d28d9' },
+  emerald: { bg: '#ecfdf5', border: '#a7f3d0', fg: '#047857' },
+  blue: { bg: '#eff6ff', border: '#bfdbfe', fg: '#1d4ed8' },
+  amber: { bg: '#fffbeb', border: '#fde68a', fg: '#b45309' },
+  slate: { bg: '#f8fafc', border: '#e2e8f0', fg: '#475569' },
+  orange: { bg: '#fff7ed', border: '#fed7aa', fg: '#ea580c' },
+  brand: { bg: '#f0f6f2', border: '#c3dccd', fg: '#1a5038' },
+}
 
 const MENU = [
-  { id: 'clients', titleKey: 'ui.findClients', subtitleKey: 'mobile.account.more.sub.clients', Icon: Search },
-  { id: 'shop', titleKey: 'ui.buySell', subtitleKey: 'mobile.account.more.sub.shop', Icon: ShoppingBag },
-  { id: 'catalog', titleKey: 'ui.productCatalog', subtitleKey: 'mobile.account.more.sub.catalog', Icon: Package },
-  { id: 'portfolio', titleKey: 'subscription.portfolio.nav', subtitleKey: 'mobile.account.more.sub.portfolio', Icon: Activity, route: 'BuilderPortfolio' },
-  { id: 'subscription', titleKey: 'subscription.panel.menu', subtitleKey: 'mobile.account.more.sub.subscription', Icon: CreditCard, route: 'BuilderSubscription' },
-  { id: 'settings', titleKey: 'ui.profileSettings', subtitleKey: 'mobile.account.more.sub.settings', Icon: Settings, route: 'BuilderProfileSettings' },
-  { id: 'messages', titleKey: 'ui.messages', subtitleKey: 'mobile.account.more.sub.messages', Icon: MessageCircle, route: 'Messages' },
-  { id: 'profile', titleKey: 'mobile.account.more.myProfile', subtitleKey: 'mobile.account.more.sub.profile', Icon: CircleUser },
+  { id: 'clients', titleKey: 'ui.findClients', subtitleKey: 'mobile.account.more.sub.clients', Icon: Search, tone: TONES.sky },
+  { id: 'shop', titleKey: 'ui.buySell', subtitleKey: 'mobile.account.more.sub.shop', Icon: ShoppingBag, tone: TONES.violet },
+  { id: 'catalog', titleKey: 'ui.productCatalog', subtitleKey: 'mobile.account.more.sub.catalog', Icon: Package, tone: TONES.emerald },
+  { id: 'portfolio', titleKey: 'subscription.portfolio.nav', subtitleKey: 'mobile.account.more.sub.portfolio', Icon: Activity, route: 'BuilderPortfolio', tone: TONES.blue },
+  { id: 'subscription', titleKey: 'subscription.panel.menu', subtitleKey: 'mobile.account.more.sub.subscription', Icon: CreditCard, route: 'BuilderSubscription', tone: TONES.amber },
+  { id: 'settings', titleKey: 'ui.profileSettings', subtitleKey: 'mobile.account.more.sub.settings', Icon: Settings, route: 'BuilderProfileSettings', tone: TONES.slate },
+  { id: 'messages', titleKey: 'ui.messages', subtitleKey: 'mobile.account.more.sub.messages', Icon: MessageCircle, route: 'Messages', tone: TONES.orange },
+  { id: 'profile', titleKey: 'mobile.account.more.myProfile', subtitleKey: 'mobile.account.more.sub.profile', Icon: CircleUser, tone: TONES.brand },
 ]
-// Sections that exist only where the server offers builder plans.
-const PLAN_SECTIONS = ['portfolio', 'subscription']
 
-const STACK_SECTIONS =Object.fromEntries(MENU.filter((item) => item.route).map((item) => [item.id, item.route]))
+const STACK_SECTIONS = Object.fromEntries(MENU.filter((item) => item.route).map((item) => [item.id, item.route]))
 
 function BuySellSection({ navigation }) {
   const { t } = useLanguage()
@@ -49,8 +60,9 @@ function BuySellSection({ navigation }) {
   const projects = useAsyncData(() => fetchOwnerProjects().catch(() => []), [])
   const projectList = Array.isArray(projects.data) ? projects.data : []
   const buySellTabs = [
-    { id: 'sell', label: t('property.tab.sell'), icon: Building2 },
+    // Web order: Buy, then Sell (it still opens on Sell).
     { id: 'buy', label: t('property.tab.buy'), icon: Search },
+    { id: 'sell', label: t('property.tab.sell'), icon: Store },
     { id: 'materials', label: t('site.estimate.result.materials'), icon: ShoppingBag },
   ]
   const tabs = (
@@ -98,8 +110,8 @@ function BuySellSection({ navigation }) {
 export default function ContractorMoreScreen({ navigation, route }) {
   const { t } = useLanguage()
   const [section, setSection] = useState(null)
-  const { status, unavailable: plansUnavailable } = useBuilderSubscription()
-    const inbox = useBuilderInbox()
+  const { status } = useBuilderSubscription()
+  const inbox = useBuilderInbox()
   // The web sidebar's badges for the sections that live here.
   const menuBadges = {
     clients: inbox.unseenClients || inbox.notificationCounts?.findClients || 0,
@@ -168,31 +180,40 @@ export default function ContractorMoreScreen({ navigation, route }) {
         {t('mobile.account.more.description')}
       </Text>
 
-            {MENU.filter((item) => !(plansUnavailable && PLAN_SECTIONS.includes(item.id))).map((item) => {
-        const { id, titleKey, subtitleKey, Icon } = item
-        return (
-          <Pressable
-            key={id}
-            onPress={() => open(item)}
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-          >
-            <View style={styles.iconBox}>
-              <Icon size={23} color={GREEN} />
-            </View>
-            <View style={styles.cardText}>
-              <Text style={styles.cardTitle}>{t(titleKey)}</Text>
-              <Text style={styles.cardSubtitle}>{t(subtitleKey)}</Text>
-            </View>
-            {menuBadges[id] > 0 ? (
-              <View style={styles.badge}><Text style={styles.badgeText}>{menuBadges[id] > 9 ? '9+' : menuBadges[id]}</Text></View>
-            ) : null}
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
-        )
-      })}
+      {/* The 8 sections as 8 separate cards, two per row (web sidebar items). */}
+      <View style={styles.grid}>
+        {MENU.map((item) => {
+          const { id, titleKey, subtitleKey, Icon, tone } = item
+          const count = menuBadges[id] || 0
+          return (
+            <Pressable
+              key={id}
+              onPress={() => open(item)}
+              accessibilityRole="button"
+              accessibilityLabel={t(titleKey)}
+                        style={styles.card}
+            >
+              <View style={styles.cardTop}>
+                <View style={[styles.iconBox, { backgroundColor: soft(tone.bg, tone.fg), borderColor: line(tone.border, tone.fg) }]}>
+                  <Icon size={20} color={ink(tone.fg)} />
+                </View>
+                {count > 0 ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
+                  </View>
+                ) : (
+                  <ChevronRight size={17} color={COLORS.slate[400]} />
+                )}
+              </View>
+              <Text style={styles.cardTitle} numberOfLines={2}>{t(titleKey)}</Text>
+              <Text style={styles.cardSubtitle} numberOfLines={3}>{t(subtitleKey)}</Text>
+            </Pressable>
+          )
+        })}
+      </View>
 
       <View style={styles.note}>
-        <Users size={19} color={GREEN} />
+        <Users size={19} color={COLORS.brand[700]} />
         <Text style={styles.noteText}>
           {t('mobile.account.more.partnersNote')}
         </Text>
@@ -206,47 +227,64 @@ function BackHeader({ title, onBack }) {
   return (
     <View style={styles.backHeader}>
       <Pressable onPress={onBack} style={styles.backButton} accessibilityLabel={t('dash.common.back')}>
-        <ArrowLeft size={21} color="#17211b" />
+        <ArrowLeft size={21} color={COLORS.graphite} />
       </Pressable>
       <Text style={styles.backTitle}>{title}</Text>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f7f9f7' },
-  content: { padding: 20, paddingBottom: 36 },
-  eyebrow: { color: GREEN, fontSize: 11, fontWeight: '800', letterSpacing: 1.4, marginTop: 12 },
-  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  heading: { color: '#17211b', fontSize: 30, fontWeight: '800' },
-  description: { color: '#647067', fontSize: 14, lineHeight: 21, marginTop: 7, marginBottom: 22 },
+const styles = createStyles((c) => ({
+  screen: { flex: 1, backgroundColor: c.canvas },
+  content: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 32 },
+  eyebrow: { color: c.brandText, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginTop: 4 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 5 },
+  heading: { color: c.text, fontSize: 26, fontWeight: '800', flexShrink: 1 },
+  description: { color: c.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 4, marginBottom: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, marginBottom: 14 },
   card: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-    borderRadius: 16, borderWidth: 1, borderColor: '#e7ece8',
-    padding: 15, marginBottom: 12,
+    width: '48.5%',
+    minHeight: 148,
+    backgroundColor: c.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: c.border,
+    padding: 14,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 2,
   },
-  pressed: { opacity: 0.75 },
-  iconBox: {
-    width: 46, height: 46, borderRadius: 13, backgroundColor: '#edf7ef',
-    alignItems: 'center', justifyContent: 'center',
+  pressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
+  iconBox: { width: 42, height: 42, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { color: c.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
+  cardSubtitle: { color: c.textMuted, fontSize: 11.5, lineHeight: 16, marginTop: 4 },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    flexShrink: 0,
+    borderRadius: 10,
+    backgroundColor: '#e11d48',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
   },
-  cardText: { flex: 1, marginLeft: 13 },
-  cardTitle: { color: '#17211b', fontSize: 15, fontWeight: '700' },
-  cardSubtitle: { color: '#748078', fontSize: 12, lineHeight: 17, marginTop: 4 },
-  arrow: { color: '#8a968d', fontSize: 27, marginLeft: 8 },
-  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#e11d48', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  note: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#edf7ef', padding: 14, borderRadius: 13, marginTop: 8,
-  },
-  noteText: { flex: 1, color: '#356345', fontSize: 12, lineHeight: 18 },
+  badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '800', textAlign: 'center' },
+  note: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.brandSoft, padding: 12, borderRadius: 12, marginTop: 6 },
+  noteText: { flex: 1, minWidth: 0, color: c.textSecondary, fontSize: 11, lineHeight: 16 },
   backHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e7ece8',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: c.card,
+    borderBottomWidth: 1,
+    borderBottomColor: c.border,
   },
   backButton: { padding: 5 },
-  backTitle: { color: '#17211b', fontSize: 17, fontWeight: '700' },
-  tabBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff' },
-})
+  backTitle: { color: c.text, fontSize: 17, fontWeight: '700', flexShrink: 1 },
+  tabBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: c.card },
+}))

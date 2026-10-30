@@ -3,11 +3,13 @@
 // NativeWind look as the existing dashboard Panel / PanelState.
 // Built-in text uses the web's translation keys (subscription.*, dash.common.*).
 import { View, Text, Pressable, TextInput, Modal, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, RefreshControl } from 'react-native'
+import { useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, Lock, Clock, Search, CalendarClock, ShieldCheck, ArrowLeft } from 'lucide-react-native'
+import { X, Lock, Clock, Search, CalendarClock, ShieldCheck, ArrowLeft, ChevronDown, Check } from 'lucide-react-native'
 import { useResponsive } from '../../hooks/useResponsive'
 import { ContentWrap } from '../Responsive'
 import { COLORS, SHADOW } from '../../theme/tokens'
+import { ink, soft } from '../../theme/tint'
 import { useLanguage } from '../../i18n/LanguageContext'
 import {
   dashboardBanner, formatPlanDate, isPremium, lockedMessage, offerName, statusName, currentTier,
@@ -26,8 +28,7 @@ export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefres
       <View style={{ paddingTop: insets.top }} className="bg-brand-800 pb-4">
         <ContentWrap>
           <View className="flex-row items-center gap-3 px-4 pt-3">
-            <Pressable onPress={onBack} accessibilityLabel={t('dash.common.back')} className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
-              <ArrowLeft size={20} color="#ffffff" />
+            <Pressable onPress={onBack} accessibilityLabel={t('dash.common.back')} className="h-10 w-10 items-center justify-center rounded-full bg-glass/10">              <ArrowLeft size={20} color="#ffffff" />
             </Pressable>
             <View className="flex-1">
               <Text className="text-[17px] font-extrabold text-white" numberOfLines={1}>{title}</Text>
@@ -87,11 +88,11 @@ export function SegmentTabs({ tabs, active, onChange, dense = false }) {
     </ScrollView>
   )
 }
-
-export function Badge({ label, bg = '#f0f6f2', fg = COLORS.brand[800] }) {
+export function Badge({ label, bg = '#f0f6f2', fg = '#134127' }) {
+  // Fixed light colours; soft()/ink() give their dark-theme versions.
   return (
-    <View className="self-start rounded-full px-2.5 py-1" style={{ backgroundColor: bg }}>
-      <Text className="text-[10px] font-extrabold uppercase" style={{ color: fg, letterSpacing: 0.4 }}>{label}</Text>
+    <View className="self-start rounded-full px-2.5 py-1" style={{ backgroundColor: soft(bg, fg) }}>
+      <Text className="text-[10px] font-extrabold uppercase" style={{ color: ink(fg), letterSpacing: 0.4 }}>{label}</Text>
     </View>
   )
 }
@@ -118,8 +119,7 @@ export function ActionButton({ label, onPress, tone = 'primary', disabled, busy,
     dark: { box: 'bg-slate-800', text: 'text-white', icon: '#fff' },
     outline: { box: 'border border-slate-300 bg-white', text: 'text-slate-700', icon: COLORS.slate[600] },
     brandOutline: { box: 'border border-brand-700 bg-white', text: 'text-brand-800', icon: COLORS.brand[700] },
-    danger: { box: 'border border-rose-200 bg-rose-50', text: 'text-rose-700', icon: '#be123c' },
-    success: { box: 'bg-emerald-600', text: 'text-white', icon: '#fff' },
+    danger: { box: 'border border-rose-200 bg-rose-50', text: 'text-rose-700', icon: ink('#be123c') },    success: { box: 'bg-emerald-600', text: 'text-white', icon: '#fff' },
   }[tone] || {}
   const off = disabled || busy
   return (
@@ -230,6 +230,61 @@ export function SheetModal({ visible, title, subtitle, onClose, children, footer
   )
 }
 
+/**
+ * A web <select> on the phone: a chip showing the chosen option (or the
+ * placeholder) that opens a sheet with the options. `options`: [{ value, label }];
+ * the empty value '' is the "all" choice and shows `placeholder`.
+ */
+export function SelectChip({ placeholder, value = '', options, onChange, icon: Icon }) {
+  const [open, setOpen] = useState(false)
+  const chosen = options.find((option) => option.value === value)
+  const active = value !== '' && value !== null && value !== undefined
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        className={`h-10 flex-row items-center gap-1.5 rounded-xl border px-3 ${active ? 'border-brand-700 bg-brand-50' : 'border-slate-200 bg-white'}`}
+      >
+        {Icon ? <Icon size={13} color={active ? COLORS.brand[800] : COLORS.slate[500]} /> : null}
+        <Text className={`text-[12px] font-extrabold ${active ? 'text-brand-800' : 'text-graphite'}`} numberOfLines={1}>{chosen && active ? chosen.label : placeholder}</Text>
+        <ChevronDown size={14} color={COLORS.slate[500]} />
+      </Pressable>
+      <SheetModal visible={open} title={placeholder} onClose={() => setOpen(false)}>
+        {[{ value: '', label: placeholder }, ...options].map((option) => {
+          const on = option.value === value || (option.value === '' && !active)
+          return (
+            <Pressable
+              key={`${option.value}`}
+              onPress={() => { onChange(option.value); setOpen(false) }}
+              className="flex-row items-center justify-between border-b border-slate-100 py-3"
+            >
+              <Text className={`text-[14px] ${on ? 'font-extrabold text-brand-800' : 'font-semibold text-graphite'}`}>{option.label}</Text>
+              {on ? <Check size={16} color={COLORS.brand[700]} /> : null}
+            </Pressable>
+          )
+        })}
+      </SheetModal>
+    </>
+  )
+}
+
+/** Two-way view switch (web Cards / Table, Grid / List). `options`: [{ id, label, icon }]. */
+export function ViewToggle({ options, active, onChange }) {
+  return (
+    <View className="h-10 flex-row items-center rounded-xl border border-slate-200 bg-white p-1">
+      {options.map(({ id, label, icon: Icon }) => {
+        const on = active === id
+        return (
+          <Pressable key={id} onPress={() => onChange(id)} className={`h-8 flex-row items-center gap-1 rounded-lg px-2.5 ${on ? 'bg-brand-800' : ''}`}>
+            {Icon ? <Icon size={13} color={on ? '#fff' : COLORS.slate[500]} /> : null}
+            <Text className={`text-[12px] font-extrabold ${on ? 'text-white' : 'text-slate-600'}`}>{label}</Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
 /** A simple confirmation dialog (web's centred decision box). */
 export function ConfirmDialog({ visible, title, body, rows = [], confirmLabel, tone = 'primary', busy, onConfirm, onCancel }) {
   const { t } = useLanguage()
@@ -294,7 +349,7 @@ export function FreeAccessBanner({ status, onViewPlans }) {
     return (
       <Section>
         <View className="flex-row items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
-          <Clock size={16} color="#0369a1" />
+         <Clock size={16} color={ink('#0369a1')} />
           <Text className="flex-1 text-[13px] font-bold text-sky-900">
             {t('subscription.freeAccess.daysLeft', { days: banner.days, date: formatPlanDate(status.free_access_until) })}
           </Text>
@@ -308,7 +363,7 @@ export function FreeAccessBanner({ status, onViewPlans }) {
     <Section>
       <View className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3">
         <View className="flex-row items-start gap-3">
-          <Lock size={16} color="#b45309" />
+<Lock size={16} color={ink('#b45309')} />
           <View className="flex-1">
             <Text className="text-[13px] font-extrabold text-amber-900">
               {t(planExpired ? 'subscription.planExpired.title' : 'subscription.freeAccess.expiredTitle')}

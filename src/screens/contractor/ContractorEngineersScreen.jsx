@@ -17,9 +17,11 @@
 // Strings come from the web translation keys (mobile.partners.* for mobile-only text).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
-import { View, Text, Pressable, TextInput, Alert, Share } from 'react-native'
+import { View, Text, Pressable, TextInput, Alert, Share, ScrollView } from 'react-native'
 import { useSelector } from 'react-redux'
-import { Check, X, Send, Users, Search, Truck, Clock, UserPlus, Share2, HardHat } from 'lucide-react-native'
+import { Check, X, Send, Users, Search, Truck, Clock, Share2, UserRound, LayoutGrid, List } from 'lucide-react-native'
+import { Image } from 'expo-image'
+import { userAvatarSource } from '../../utils/avatars'
 import DashboardShell, { PanelState, useAsyncData } from '../../components/DashboardShell'
 import {
   fetchEngineerTeam,
@@ -37,8 +39,7 @@ import {
 import { fetchOwnerProjects } from '../../api/projects'
 import { fetchSupplierProfile } from '../../api/profiles'
 import {
-  ActionButton, InfoRow, LabeledInput, Notice, SearchBox, Section, SegmentTabs, SheetModal, Badge,
-} from '../../components/builder/BuilderUi'
+  ActionButton, InfoRow, LabeledInput, Notice, SearchBox, Section, SegmentTabs, SheetModal, Badge, SelectChip, ViewToggle,} from '../../components/builder/BuilderUi'
 import { SITE_ENGINEER_CATEGORY, apiErrorText, asList, projectStatusText, takenProjectIdsFor } from '../../utils/builderHelpers'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -72,6 +73,19 @@ const SUPPLIER_TYPE_KEYS = {
   'Equipment Supplier': 'opt.supplierType.equipment',
 }
 
+
+// Experience bands (web MyTeamEngineers): 0–2, 3–5, 6–10, 10+ years.
+const EXPERIENCE_BANDS = [
+  { value: '0-2', from: 0, to: 2 },
+  { value: '3-5', from: 3, to: 5 },
+  { value: '6-10', from: 6, to: 10 },
+  { value: '10+', from: 11, to: Infinity },
+]
+
+/** On a project (web isBusy). */
+const isBusy = (engineer) => (typeof engineer.working_on_project === 'boolean'
+  ? engineer.working_on_project
+  : Number(engineer.project_count || 0) > 0 || (engineer.assigned_projects || []).length > 0)
 /** An engineer's category for display, falling back to "Site Engineer". */
 const engineerCategory = (t, value) => (value ? optionLabel(t, ENGINEER_CATEGORY_LABEL_KEYS, value) : t('role.engineer'))
 
@@ -129,7 +143,13 @@ export default function ContractorEngineersScreen({ navigation }) {
   const [supplierUnassignTarget, setSupplierUnassignTarget] = useState(null)
   const [supplierProfile, setSupplierProfile] = useState(null)
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
+  // My Site Engineers filters and view (web MyTeamEngineers).
+  const [teamLocation, setTeamLocation] = useState('')
+  const [teamExperience, setTeamExperience] = useState('')
+  const [teamProjects, setTeamProjects] = useState('')
+  const [teamStatus, setTeamStatus] = useState('')
+  const [teamView, setTeamView] = useState('grid')
+    const [busy, setBusy] = useState(false)
 
   const activeProject = projectList.find((project) => project.id === findProjectId) || projectList[0] || null
   const country = activeProject?.project_country || userCountry(user)
@@ -332,8 +352,23 @@ export default function ContractorEngineersScreen({ navigation }) {
     { id: 'pending', label: t('ce.pendingRequests'), count: pending.length + invitations.length + outgoing.length, icon: Clock },
   ]
 
-  const teamShown = active.filter((engineer) => matches(engineer.name, engineer.pincode, engineer.address, engineer.specialization))
-  const findShown = nearby.filter((engineer) => matches(engineer.name, engineer.pincode, engineer.address, engineer.specialization))
+  const locationOptions = [...new Set(active.map((engineer) => engineer.pincode).filter(Boolean))].sort().map((pin) => ({ value: pin, label: String(pin) }))
+  const teamShown = active.filter((engineer) => {
+    if (!matches(engineer.name, engineer.pincode, engineer.address, engineer.specialization)) return false
+    if (teamLocation && engineer.pincode !== teamLocation) return false
+    if (teamExperience) {
+      const band = EXPERIENCE_BANDS.find((item) => item.value === teamExperience)
+      const years = Number(engineer.experience_years || 0)
+      if (band && (years < band.from || years > band.to)) return false
+    }
+    const busy = isBusy(engineer)
+    if (teamProjects === 'on' && !busy) return false
+    if (teamProjects === 'off' && busy) return false
+    if (teamStatus === 'busy' && !busy) return false
+    if (teamStatus === 'active' && busy) return false
+    return true
+  })
+    const findShown = nearby.filter((engineer) => matches(engineer.name, engineer.pincode, engineer.address, engineer.specialization))
   const suppliersShown = supplierList.filter((supplier) => matches(supplier.store_name, supplier.name, supplier.pincode, supplier.address, ...(supplier.categories || [])))
   const teamStatusOf = (engineer) => (active.some((item) => item.user_id === engineer.user_id)
     ? 'active'
@@ -342,14 +377,29 @@ export default function ContractorEngineersScreen({ navigation }) {
   return (
     <>
       <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
-        <Section>
-          <SegmentTabs tabs={tabs} active={tab} onChange={setTab} />
-          <View className="mt-2 flex-row items-center gap-2">
-            <View className="flex-1">
-              <SearchBox value={search} onChangeText={setSearch} placeholder={t('ce.filter.searchPh')} />
-            </View>
-            <ActionButton small icon={UserPlus} label={t('ce.invite')} onPress={() => setInviteOpen(true)} />
+                <Section>
+          {/* "Invite Site Engineer" at the top right, as on the web. */}
+          <View className="mb-2 flex-row justify-end">
+            <ActionButton small icon={UserRound} label={t('ce.inviteEngineer')} onPress={() => setInviteOpen(true)} />
           </View>
+          <SegmentTabs tabs={tabs} active={tab} onChange={setTab} />
+          <View className="mt-2">
+            <SearchBox value={search} onChangeText={setSearch} placeholder={t('ce.filter.searchPh')} />
+          </View>
+          {tab === 'team' ? (
+            // The web's filter bar: Location, Experience, Projects, Status, Grid / List.
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2" contentContainerStyle={{ gap: 8 }}>
+              <SelectChip placeholder={t('ce.filter.allLocations')} value={teamLocation} onChange={setTeamLocation} options={locationOptions} />
+              <SelectChip placeholder={t('ce.filter.experience')} value={teamExperience} onChange={setTeamExperience} options={EXPERIENCE_BANDS.map((band) => ({ value: band.value, label: band.to === Infinity ? t('ce.filter.yearsPlus', { from: band.from - 1 }) : t('ce.filter.yearsRange', { from: band.from, to: band.to }) }))} />
+              <SelectChip placeholder={t('ce.filter.projects')} value={teamProjects} onChange={setTeamProjects} options={[{ value: 'on', label: t('ce.filter.onProject') }, { value: 'off', label: t('ce.filter.notOnProject') }]} />
+              <SelectChip placeholder={t('ce.filter.status')} value={teamStatus} onChange={setTeamStatus} options={[{ value: 'active', label: t('ce.active') }, { value: 'busy', label: t('ce.busy') }]} />
+              <ViewToggle
+                options={[{ id: 'grid', label: t('ce.view.grid'), icon: LayoutGrid }, { id: 'list', label: t('ce.view.list'), icon: List }]}
+                active={teamView}
+                onChange={setTeamView}
+              />
+            </ScrollView>
+          ) : null}
         </Section>
 
         <Section>
@@ -357,24 +407,63 @@ export default function ContractorEngineersScreen({ navigation }) {
 
           {tab === 'team' ? (
             <PanelState loading={team.loading} error={team.error} empty={!teamShown.length} emptyText={active.length ? t('ce.filter.noMatch') : t('ce.noActiveEngineers')}>
-              {teamShown.map((engineer) => {
+                            {teamShown.map((engineer) => {
                 const assigned = engineer.assigned_projects || []
+                const busy = isBusy(engineer)
+                const area = String(engineer.address || '').split(',').map((part) => part.trim()).filter(Boolean).pop() || ''
+                const action = engineer.working_on_other_project ? (
+                  <Text className="text-center text-[11px] font-bold text-slate-500">{t('ce.workingOnAnotherProject')}</Text>
+                ) : assigned.length ? (
+                  <ActionButton small tone="danger" label={t('ce.unassign')} onPress={() => setUnassignTarget(engineer)} />
+                ) : (
+                  <ActionButton small tone="brandOutline" label={t('ce.assignProject')} onPress={() => setAssignTarget(engineer)} />
+                )
+                if (teamView === 'list') {
+                  return (
+                    <Pressable key={engineer.user_id} onPress={() => setEngineerProfile(engineer)} className="flex-row items-center gap-3 border-b border-slate-100 bg-white px-1 py-3">
+                      <Image source={userAvatarSource(engineer, 'ENGINEER')} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+                      <View className="flex-1">
+                        <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
+                        <Text className="text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+                          {[engineer.pincode, t('ce.yearsCount', { years: engineer.experience_years || 0 }), `${t('ce.filter.projects')}: ${engineer.project_count ?? assigned.length}`].filter(Boolean).join(' · ')}
+                        </Text>
+                      </View>
+                      {busy ? <Badge label={t('ce.busy')} bg="#fffbeb" fg="#92400e" /> : <Badge label={t('ce.active')} bg="#ecfdf5" fg="#047857" />}
+                    </Pressable>
+                  )
+                }
                 return (
-                  <Card key={engineer.user_id} onPress={() => setEngineerProfile(engineer)}>
-                    <View className="flex-row items-center gap-2">
-                      <HardHat size={16} color={COLORS.brand[700]} />
-                      <Text className="flex-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
-                      {engineer.working_on_project || assigned.length ? <Badge label={t('ce.busy')} bg="#fffbeb" fg="#92400e" /> : <Badge label={t('ce.available')} bg="#ecfdf5" fg="#047857" />}
+                  <Pressable key={engineer.user_id} onPress={() => setEngineerProfile(engineer)} className="mb-3 overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                    <View className="flex-row">
+                      <View style={{ width: 5, backgroundColor: busy ? '#f59e0b' : '#10b981' }} />
+                      <View className="flex-1 p-4">
+                        <View className="flex-row items-center gap-3">
+                          <Image source={userAvatarSource(engineer, 'ENGINEER')} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
+                          <View className="flex-1">
+                            <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
+                            <Text className="text-xs font-semibold text-slate-500">{engineerCategory(t, engineer.specialization || engineer.category)}</Text>
+                          </View>
+                          {busy ? <Badge label={t('ce.busy')} bg="#fffbeb" fg="#92400e" /> : <Badge label={t('ce.active')} bg="#ecfdf5" fg="#047857" />}
+                        </View>
+                        <View className="mt-3 flex-row gap-2">
+                          {[
+                            [engineer.pincode || '—', area || t('ce.col.location')],
+                            [String(engineer.experience_years || 0), t('ce.filter.experience')],
+                            [String(engineer.project_count ?? assigned.length), t('ce.filter.projects')],
+                          ].map(([value, label]) => (
+                            <View key={label} className="flex-1 rounded-xl bg-slate-50 px-2 py-2">
+                              <Text className="text-[13px] font-extrabold text-graphite" numberOfLines={1}>{value}</Text>
+                              <Text className="text-[10px] font-semibold text-slate-500" numberOfLines={1}>{label}</Text>
+                            </View>
+                          ))}
+                        </View>
+                        {assigned.length ? (
+                          <Text className="mt-2 text-xs font-semibold text-slate-600" numberOfLines={2}>{assigned.map((item) => projectTitle(item, t)).join(', ')}</Text>
+                        ) : null}
+                        <View className="mt-3">{action}</View>
+                      </View>
                     </View>
-                    <Meta items={[engineerCategory(t, engineer.specialization || engineer.category), engineer.pincode, t('ui.contractor.yearsShort', { years: engineer.experience_years || 0 })]} />
-                    <Text className="mt-1 text-xs font-semibold text-slate-600" numberOfLines={2}>
-                      {assigned.length ? `${t('ui.projects')}: ${assigned.map((item) => projectTitle(item, t)).join(', ')}` : t('ui.contractor.noProjectsAssigned')}
-                    </Text>
-                    <View className="mt-3 flex-row gap-2">
-                      <ActionButton small label={t('ce.assignProject')} tone="brandOutline" onPress={() => setAssignTarget(engineer)} className="flex-1" />
-                      <ActionButton small label={t('ce.unassign')} tone="danger" disabled={!assigned.length} onPress={() => setUnassignTarget(engineer)} className="flex-1" />
-                    </View>
-                  </Card>
+                  </Pressable>
                 )
               })}
             </PanelState>
