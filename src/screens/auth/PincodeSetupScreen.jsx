@@ -15,6 +15,7 @@ import { MapPin, Search, ArrowRight, CheckCircle2 } from 'lucide-react-native'
 import { lookupPincodeArea, updateUserLocation } from '../../api/location'
 import { mergeUser } from '../../store/authSlice'
 import { PrimaryButton, GhostButton, GlassCard } from '../../components/ui'
+import { createStyles } from '../../theme/createStyles'
 
 export default function PincodeSetupScreen({ navigation }) {
   const dispatch = useDispatch()
@@ -108,19 +109,18 @@ function continueToDashboard() {
   navigation.replace(routeName)
 }
   return (
-    <View className="flex-1 bg-paper">
+    <View style={styles.view}>
       <View
-        style={{ paddingTop: insets.top + 18 }}
-        className="bg-brand-800 px-5 pb-7"
+        style={[styles.view2, { paddingTop: insets.top + 18 }]}
       >
-        <View className="mb-5 h-12 w-12 items-center justify-center rounded-2xl bg-glass/10">          <MapPin size={25} color="#ffffff" />
+        <View style={styles.view3}>          <MapPin size={25} color="#ffffff" />
         </View>
 
-        <Text className="font-display text-white" style={{ fontSize: 27 }}>
+        <Text style={[styles.text, { fontSize: 27 }]}>
           Set your location
         </Text>
 
-        <Text className="mt-2 font-sans text-brand-200" style={{ fontSize: 14, lineHeight: 21 }}>
+        <Text style={[styles.text2, { fontSize: 14, lineHeight: 21 }]}>
           Find construction services and professionals available in your area.
         </Text>
       </View>
@@ -136,12 +136,12 @@ function continueToDashboard() {
             paddingBottom: insets.bottom + 28,
           }}
         >
-          <GlassCard className="p-5">
-            <Text className="font-sansBold text-graphite" style={{ fontSize: 16 }}>
+          <GlassCard style={styles.glassCard}>
+            <Text style={[styles.text3, { fontSize: 16 }]}>
               Enter your pincode
             </Text>
 
-            <Text className="mt-1 mb-4 font-sans text-slate-500" style={{ fontSize: 13, lineHeight: 19 }}>
+            <Text style={[styles.text4, { fontSize: 13, lineHeight: 19 }]}>
               We'll use this to find the correct service area.
             </Text>
 
@@ -158,11 +158,10 @@ function continueToDashboard() {
               keyboardType="number-pad"
               maxLength={6}
               accessibilityLabel="6-digit pincode"
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-4 font-sans text-graphite"
-              style={{ fontSize: 16 }}
+              style={[styles.textInput, { fontSize: 16 }]}
             />
 
-            <View className="mt-4">
+            <View style={styles.view4}>
               <PrimaryButton
                 label="Find my area"
                 icon={<Search size={17} color="#ffffff" />}
@@ -174,23 +173,23 @@ function continueToDashboard() {
             </View>
 
             {areaDetails ? (
-              <View className="mt-5 rounded-2xl bg-brand-50 p-4">
-                <Text className="font-sansSemi text-brand-800" style={{ fontSize: 13 }}>
+              <View style={styles.view5}>
+                <Text style={[styles.text5, { fontSize: 13 }]}>
                   {[
                     areaDetails.city,
                     areaDetails.district,
                     areaDetails.state,
                   ].filter(Boolean).join(', ')}
                 </Text>
-                <Text className="mt-1 font-sans text-slate-500" style={{ fontSize: 12 }}>
+                <Text style={[styles.text6, { fontSize: 12 }]}>
                   Select your post office or area below.
                 </Text>
               </View>
             ) : null}
 
             {areas.length > 0 ? (
-              <View className="mt-5">
-                <Text className="mb-3 font-sansBold text-graphite" style={{ fontSize: 14 }}>
+              <View style={styles.view6}>
+                <Text style={[styles.text7, { fontSize: 14 }]}>
                   Available areas
                 </Text>
 {areas.map((area) => {
@@ -202,17 +201,10 @@ function continueToDashboard() {
       onPress={() => setSelectedArea(area.name)}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
-      className={`mb-2 flex-row items-center justify-between rounded-2xl border p-4 ${
-        selected
-          ? 'border-brand-600 bg-brand-50'
-          : 'border-slate-200 bg-white'
-      }`}
+      style={[styles.pressable, selected ? styles.pressable2 : styles.pressable3]}
     >
       <Text
-        className={`flex-1 font-sansSemi ${
-          selected ? 'text-brand-800' : 'text-graphite'
-        }`}
-        style={{ fontSize: 14 }}
+        style={[styles.text8, selected ? styles.text9 : styles.text10, { fontSize: 14 }]}
       >
         {area.name}
       </Text>
@@ -224,7 +216,7 @@ function continueToDashboard() {
   )
 })}
 
-                <View className="mt-3">
+                <View style={styles.view7}>
                   <PrimaryButton
                     label="Save location"
                     icon={<ArrowRight size={17} color="#ffffff" />}
@@ -238,7 +230,7 @@ function continueToDashboard() {
             ) : null}
 
             {error ? (
-              <Text accessibilityRole="alert" className="mt-4 font-sans text-red-600" style={{ fontSize: 13, lineHeight: 19 }}>
+              <Text accessibilityRole="alert" style={[styles.text11, { fontSize: 13, lineHeight: 19 }]}>
                 {error}
               </Text>
             ) : null}
@@ -248,7 +240,7 @@ function continueToDashboard() {
             ) : null}
           </GlassCard>
 
-          <View className="mt-5">
+          <View style={styles.view6}>
             <GhostButton
               label="Later — go to dashboard"
               onPress={continueToDashboard}
@@ -256,7 +248,7 @@ function continueToDashboard() {
             />
           </View>
 
-          <Text className="mt-4 text-center font-sans text-slate-500" style={{ fontSize: 12, lineHeight: 18 }}>
+          <Text style={[styles.text12, { fontSize: 12, lineHeight: 18 }]}>
             You can update your location later.
           </Text>
         </ScrollView>
@@ -264,3 +256,30 @@ function continueToDashboard() {
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flex: 1, backgroundColor: c.paper },
+  view2: { backgroundColor: '#134127', paddingHorizontal: 17.5, paddingBottom: 24.5 },
+  view3: { marginBottom: 17.5, height: 42, width: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+  text: { fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },
+  text2: { marginTop: 7, fontFamily: 'Inter_400Regular', color: '#c3dccd' },
+  glassCard: { padding: 17.5 },
+  text3: { fontFamily: 'Inter_700Bold', color: c.text },
+  text4: { marginTop: 3.5, marginBottom: 14, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  textInput: { borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 14, paddingVertical: 14, fontFamily: 'Inter_400Regular', color: c.text },
+  view4: { marginTop: 14 },
+  view5: { marginTop: 17.5, borderRadius: 16, backgroundColor: c.brandSoft, padding: 14 },
+  text5: { fontFamily: 'Inter_600SemiBold', color: c.brandTextStrong },
+  text6: { marginTop: 3.5, fontFamily: 'Inter_400Regular', color: c.textMuted },
+  view6: { marginTop: 17.5 },
+  text7: { marginBottom: 10.5, fontFamily: 'Inter_700Bold', color: c.text },
+  pressable: { marginBottom: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 16, borderWidth: 1, padding: 14 },
+  pressable2: { borderColor: '#236645', backgroundColor: c.brandSoft },
+  pressable3: { borderColor: c.border, backgroundColor: c.card },
+  text8: { flex: 1, fontFamily: 'Inter_600SemiBold' },
+  text9: { color: c.brandTextStrong },
+  text10: { color: c.text },
+  view7: { marginTop: 10.5 },
+  text11: { marginTop: 14, fontFamily: 'Inter_400Regular', color: c.redTextSoft },
+  text12: { marginTop: 14, textAlign: 'center', fontFamily: 'Inter_400Regular', color: c.textMuted },
+}))

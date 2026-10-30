@@ -22,6 +22,7 @@ import { asList, money } from '../../utils/builderHelpers'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { ink, soft, isDarkTheme } from '../../theme/tint'
+import { createStyles } from '../../theme/createStyles'
 
 const discountedPrice = (price, discount) => {
   const base = Number(price || 0)
@@ -48,9 +49,9 @@ function StockBadge({ quantity, threshold, t }) {
   const style = STOCK[stockState(quantity, threshold)]
   const Icon = style.icon
   return (
-       <View className="flex-row items-center gap-1 self-start rounded-full px-2 py-0.5" style={{ backgroundColor: soft(style.bg, style.fg) }}>
+       <View style={[styles.view, { backgroundColor: soft(style.bg, style.fg) }]}>
       <Icon size={11} color={ink(style.fg)} />
-      <Text className="text-[10px] font-extrabold" style={{ color: ink(style.fg) }}>{t(style.key)}</Text>
+      <Text style={[styles.text, { color: ink(style.fg) }]}>{t(style.key)}</Text>
     </View>
   )
 }
@@ -58,10 +59,10 @@ function StockBadge({ quantity, threshold, t }) {
 function PriceTag({ offer }) {
   const discount = Number(offer?.discount_percentage || 0)
   return (
-    <View className="flex-row flex-wrap items-baseline gap-1">
-      <Text className="text-[14px] font-extrabold text-graphite">{money(discountedPrice(offer.price, discount))}</Text>
-      {discount > 0 ? <Text className="text-[10px] font-semibold text-slate-400 line-through">{money(offer.price)}</Text> : null}
-      {offer.unit ? <Text className="text-[10px] font-semibold text-slate-500">/ {offer.unit}</Text> : null}
+    <View style={styles.view2}>
+      <Text style={styles.text2}>{money(discountedPrice(offer.price, discount))}</Text>
+      {discount > 0 ? <Text style={styles.text3}>{money(offer.price)}</Text> : null}
+      {offer.unit ? <Text style={styles.text4}>/ {offer.unit}</Text> : null}
     </View>
   )
 }
@@ -83,26 +84,26 @@ function ProductTile({ product, offer, onOpen, t }) {
   const discount = Number(offer?.discount_percentage || 0)
   const sizes = (product.variants || []).map((variant) => variant.name).filter(Boolean)
   return (
-    <Pressable onPress={onOpen} className="mb-3 w-[48.5%] overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <View className="aspect-square items-center justify-center bg-slate-50">
+    <Pressable onPress={onOpen} style={styles.pressable}>
+      <View style={styles.view3}>
         {product.image_url ? (
           <Image source={imageSource(product.image_url)} style={{ width: '100%', height: '100%' }} contentFit="contain" />
         ) : (
-          <Text className="text-[11px] font-bold text-slate-400">{t('mobile.account.catalog.noImage')}</Text>
+          <Text style={styles.text5}>{t('mobile.account.catalog.noImage')}</Text>
         )}
         {discount > 0 ? (
-          <View className="absolute left-2 top-2 rounded-md px-2 py-0.5" style={{ backgroundColor: '#f5b31b' }}>
-            <Text className="text-[10px] font-extrabold" style={{ color: '#1f2937' }}>{t('mobile.account.catalog.percentOffBadge', { percent: Number(discount.toFixed(2)) })}</Text>
+          <View style={[styles.view4, { backgroundColor: '#f5b31b' }]}>
+            <Text style={[styles.text, { color: '#1f2937' }]}>{t('mobile.account.catalog.percentOffBadge', { percent: Number(discount.toFixed(2)) })}</Text>
           </View>
         ) : null}
       </View>
-      <View className="gap-1 p-2.5">
-        <View className="flex-row items-center gap-1.5">
+      <View style={styles.view5}>
+        <View style={styles.view6}>
           {product.brand_logo_url ? <Image source={imageSource(product.brand_logo_url)} style={{ width: 14, height: 14, borderRadius: 3 }} contentFit="contain" /> : null}
-          <Text className="flex-1 text-[10px] font-extrabold uppercase text-brand-700" numberOfLines={1}>{product.brand_name || t('mobile.account.catalog.generic')}</Text>
+          <Text style={styles.text6} numberOfLines={1}>{product.brand_name || t('mobile.account.catalog.generic')}</Text>
         </View>
-        <Text className="text-xs font-extrabold leading-4 text-graphite" numberOfLines={2}>{product.name}</Text>
-        <Text className="text-[11px] font-semibold text-slate-400" numberOfLines={1}>
+        <Text style={styles.text7} numberOfLines={2}>{product.name}</Text>
+        <Text style={styles.text8} numberOfLines={1}>
           {[product.subcategory_name, offer?.size || sizes.join(' / ')].filter(Boolean).join(' · ')}
         </Text>
         {offer ? (
@@ -175,60 +176,59 @@ export default function BuilderProductCatalogScreen({ navigation }) {
     <>
       <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
         <Section>
-          <View className="rounded-3xl border border-slate-200 bg-white p-4">
-            <Text className="text-xs font-semibold text-slate-500">{t('mobile.account.catalog.subheading')}</Text>
-            <View className="mt-3">
+          <View style={styles.view7}>
+            <Text style={styles.text9}>{t('mobile.account.catalog.subheading')}</Text>
+            <View style={styles.view8}>
               <SearchBox value={search} onChangeText={setSearch} placeholder={t('mobile.account.catalog.searchPh')} />
             </View>
 
             {/* The admin's categories, as circles with their pictures. */}
             {categoryList.length ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4" contentContainerStyle={{ gap: 14 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.view9} contentContainerStyle={{ gap: 14 }}>
                 {categoryList.map((category) => {
                   const on = category.id === categoryId
                   return (
-                    <Pressable key={category.id} onPress={() => { setSearch(''); setCategoryId(on ? null : category.id) }} className="items-center" style={{ width: 72 }}>
+                    <Pressable key={category.id} onPress={() => { setSearch(''); setCategoryId(on ? null : category.id) }} style={[styles.pressable2, { width: 72 }]}>
                       <View
-                        className="h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-brand-50"
-                        style={{ borderWidth: on ? 3 : 1, borderColor: on ? COLORS.brand[700] : (isDarkTheme() ? '#334155' : '#e2e8f0') }}
+                        style={[styles.view10, { borderWidth: on ? 3 : 1, borderColor: on ? COLORS.brand[700] : (isDarkTheme() ? '#334155' : '#e2e8f0') }]}
                       >
                         {category.image_url ? (
                           <Image source={imageSource(category.image_url)} style={{ width: 64, height: 64 }} contentFit="cover" />
                         ) : (
-                          <Text className="text-xl font-extrabold text-brand-800">{String(category.name || '?').slice(0, 1).toUpperCase()}</Text>
+                          <Text style={styles.text10}>{String(category.name || '?').slice(0, 1).toUpperCase()}</Text>
                         )}
                       </View>
-                      <Text className={`mt-1.5 text-center text-[12px] font-extrabold ${on ? 'text-brand-800' : 'text-graphite'}`} numberOfLines={1}>{category.name}</Text>
+                      <Text style={[styles.text11, on ? styles.text12 : styles.text13]} numberOfLines={1}>{category.name}</Text>
                     </Pressable>
                   )
                 })}
               </ScrollView>
-            ) : categories.loading ? <ActivityIndicator className="mt-4" color={COLORS.brand[800]} /> : null}
+            ) : categories.loading ? <ActivityIndicator style={styles.view9} color={COLORS.brand[800]} /> : null}
 
             {search.trim() ? (
               // Search results (web CatalogSearchOverlay).
-              <View className="mt-4">
+              <View style={styles.view9}>
                 {searching || loadingOffers ? (
-                  <Text className="text-xs font-semibold text-slate-400">{t('shop.loading')}</Text>
+                  <Text style={styles.text14}>{t('shop.loading')}</Text>
                 ) : !searchRows.length ? (
-                  <Text className="rounded-lg bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500">{t('mobile.account.catalog.noMatch')}</Text>
+                  <Text style={styles.text15}>{t('mobile.account.catalog.noMatch')}</Text>
                 ) : searchRows.map((product) => (
-                  <Pressable key={product.id} onPress={() => setOpenProduct(product)} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
-                    <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-lg bg-slate-50">
+                  <Pressable key={product.id} onPress={() => setOpenProduct(product)} style={styles.pressable3}>
+                    <View style={styles.view11}>
                       {product.image_url ? <Image source={imageSource(product.image_url)} style={{ width: 44, height: 44 }} contentFit="contain" /> : <PackageSearch size={16} color={COLORS.slate[400]} />}
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-[13px] font-extrabold text-graphite" numberOfLines={1}>{product.name}</Text>
-                      <Text className="text-[11px] font-semibold text-slate-500" numberOfLines={1}>{[product.brand_name, product.category_name].filter(Boolean).join(' · ')}</Text>
+                    <View style={styles.view12}>
+                      <Text style={styles.text16} numberOfLines={1}>{product.name}</Text>
+                      <Text style={styles.text17} numberOfLines={1}>{[product.brand_name, product.category_name].filter(Boolean).join(' · ')}</Text>
                     </View>
-                    {cheapest(product) ? <Text className="text-[12px] font-extrabold text-brand-800">{money(discountedPrice(cheapest(product).price, cheapest(product).discount_percentage))}</Text> : null}
+                    {cheapest(product) ? <Text style={styles.text18}>{money(discountedPrice(cheapest(product).price, cheapest(product).discount_percentage))}</Text> : null}
                   </Pressable>
                 ))}
               </View>
             ) : !categoryId ? (
-              <View className="mt-4 flex-row items-center gap-2 rounded-lg bg-slate-50 px-3 py-3">
+              <View style={styles.view13}>
                 <PackageSearch size={16} color={COLORS.slate[400]} />
-                <Text className="flex-1 text-xs font-semibold text-slate-500">{t('mobile.account.catalog.chooseCategory')}</Text>
+                <Text style={styles.text19}>{t('mobile.account.catalog.chooseCategory')}</Text>
               </View>
             ) : null}
           </View>
@@ -236,16 +236,16 @@ export default function BuilderProductCatalogScreen({ navigation }) {
 
         {!search.trim() && categoryId ? (
           <Section>
-            <View className="mb-2 flex-row items-center gap-2">
-              <Text className="text-sm font-extrabold uppercase text-graphite">{selectedCategory?.name}</Text>
-              {!categoryProducts.loading && !loadingOffers ? <Text className="text-xs font-bold text-slate-400">{categoryRows.length}</Text> : null}
+            <View style={styles.view14}>
+              <Text style={styles.text20}>{selectedCategory?.name}</Text>
+              {!categoryProducts.loading && !loadingOffers ? <Text style={styles.text21}>{categoryRows.length}</Text> : null}
             </View>
             {categoryProducts.loading || loadingOffers ? (
-              <Text className="text-xs font-semibold text-slate-400">{t('shop.loading')}</Text>
+              <Text style={styles.text14}>{t('shop.loading')}</Text>
             ) : !categoryRows.length ? (
-              <Text className="rounded-lg bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500">{t('mobile.account.catalog.categoryEmpty')}</Text>
+              <Text style={styles.text15}>{t('mobile.account.catalog.categoryEmpty')}</Text>
             ) : (
-              <View className="flex-row flex-wrap justify-between">
+              <View style={styles.view15}>
                 {categoryRows.map((product) => (
                   <ProductTile key={product.id} product={product} offer={cheapest(product)} onOpen={() => setOpenProduct(product)} t={t} />
                 ))}
@@ -263,17 +263,17 @@ export default function BuilderProductCatalogScreen({ navigation }) {
         onClose={() => setOpenProduct(null)}
       >
         {openProduct?.image_url ? (
-          <View className="mb-3 h-40 items-center justify-center rounded-2xl bg-slate-50">
+          <View style={styles.view16}>
             <Image source={imageSource(openProduct.image_url)} style={{ width: '100%', height: '100%' }} contentFit="contain" />
           </View>
         ) : null}
-        <Text className="mb-2 text-[11px] font-semibold text-slate-400">{t('mobile.account.catalog.offerCount', { count: openOffers.length })}</Text>
+        <Text style={styles.text22}>{t('mobile.account.catalog.offerCount', { count: openOffers.length })}</Text>
         {openOffers.map((offer) => {
           const price = discountedPrice(offer.price, offer.discount_percentage)
           return (
-            <View key={offer.id} className="mb-2 rounded-2xl border border-slate-200 p-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="flex-1 text-[13px] font-extrabold text-graphite" numberOfLines={1}>{offer.supplier_name || t('dash.common.supplier')}</Text>
+            <View key={offer.id} style={styles.view17}>
+              <View style={styles.view18}>
+                <Text style={styles.text23} numberOfLines={1}>{offer.supplier_name || t('dash.common.supplier')}</Text>
                 <Badge label={t(STOCK[stockState(offer.quantity, offer.low_stock_threshold)].key)} />
               </View>
               <InfoRow label={t('dash.supplier.price')} value={`${money(price)}${offer.unit ? ` / ${offer.unit}` : ''}`} strong />
@@ -289,3 +289,50 @@ export default function BuilderProductCatalogScreen({ navigation }) {
     </>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flexDirection: 'row', alignItems: 'center', gap: 3.5, alignSelf: 'flex-start', borderRadius: 9999, paddingHorizontal: 7, paddingVertical: 1.75 },
+  text: { fontSize: 10, fontWeight: '800' },
+  view2: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 3.5 },
+  text2: { fontSize: 14, fontWeight: '800', color: c.text },
+  text3: { fontSize: 10, fontWeight: '600', color: c.textFaint, textDecorationLine: 'line-through' },
+  text4: { fontSize: 10, fontWeight: '600', color: c.textMuted },
+  pressable: { marginBottom: 10.5, width: '48.5%', overflow: 'hidden', borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
+  view3: { aspectRatio: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.subtle },
+  text5: { fontSize: 11, fontWeight: '700', color: c.textFaint },
+  view4: { position: 'absolute', left: 7, top: 7, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 1.75 },
+  view5: { gap: 3.5, padding: 8.75 },
+  view6: { flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text6: { flex: 1, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: c.brandText },
+  text7: { fontSize: 12, lineHeight: 14, fontWeight: '800', color: c.text },
+  text8: { fontSize: 11, fontWeight: '600', color: c.textFaint },
+  view7: { borderRadius: 24, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  text9: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view8: { marginTop: 10.5 },
+  view9: { marginTop: 14 },
+  pressable2: { alignItems: 'center' },
+  view10: { height: 56, width: 56, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 9999, backgroundColor: c.brandSoft },
+  text10: { fontSize: 20, lineHeight: 28, fontWeight: '800', color: c.brandTextStrong },
+  text11: { marginTop: 5.25, textAlign: 'center', fontSize: 12, fontWeight: '800' },
+  text12: { color: c.brandTextStrong },
+  text13: { color: c.text },
+  text14: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textFaint },
+  text15: { borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  pressable3: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
+  view11: { height: 38.5, width: 38.5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 8, backgroundColor: c.subtle },
+  view12: { flex: 1 },
+  text16: { fontSize: 13, fontWeight: '800', color: c.text },
+  text17: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  text18: { fontSize: 12, fontWeight: '800', color: c.brandTextStrong },
+  view13: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 10.5 },
+  text19: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view14: { marginBottom: 7, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text20: { fontSize: 14, lineHeight: 20, fontWeight: '800', textTransform: 'uppercase', color: c.text },
+  text21: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textFaint },
+  view15: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  view16: { marginBottom: 10.5, height: 140, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: c.subtle },
+  text22: { marginBottom: 7, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  view17: { marginBottom: 7, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: 10.5 },
+  view18: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text23: { flex: 1, fontSize: 13, fontWeight: '800', color: c.text },
+}))

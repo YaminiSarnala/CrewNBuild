@@ -1,4 +1,3 @@
-import './global.css'
 import { useCallback } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { Provider } from 'react-redux'
@@ -20,7 +19,6 @@ import {
 
 import { store } from './src/store'
 import { ThemeProvider } from './src/theme/ThemeContext'
-import ThemeVars from './src/theme/ThemeVars'
 import { LanguageProvider } from './src/i18n/LanguageContext'
 import RootNavigator from './src/navigation/RootNavigator'
 
@@ -50,15 +48,13 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayout}>
       <Provider store={store}>
         <ThemeProvider>
-          <ThemeVars>
-            <LanguageProvider>
-              <SafeAreaProvider>
-                {/* Every screen has the green header behind the status bar, so its icons stay light. */}
-                <StatusBar style="light" />
-                <RootNavigator />
-              </SafeAreaProvider>
-            </LanguageProvider>
-          </ThemeVars>
+          <LanguageProvider>
+            <SafeAreaProvider>
+              {/* Every screen has the green header behind the status bar, so its icons stay light. */}
+              <StatusBar style="light" />
+              <RootNavigator />
+            </SafeAreaProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </Provider>
     </GestureHandlerRootView>

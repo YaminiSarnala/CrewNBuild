@@ -28,6 +28,7 @@ import {
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { BUSINESS_TYPE_KEYS, EQUIPMENT_OPTION_KEYS, SERVICE_OPTION_KEYS, optionLabel } from '../../i18n/optionKeys'
+import { createStyles } from '../../theme/createStyles'
 
 // Same option lists as web pages/auth/profileConstants.js. Stored values are
 // these English strings; anything else a builder saved is kept as it is.
@@ -68,14 +69,14 @@ function ChipPicker({ label, options, labelKeys, value, onChange }) {
   const all = [...options, ...value.filter((item) => !options.includes(item))]
   const toggle = (item) => onChange(value.includes(item) ? value.filter((entry) => entry !== item) : [...value, item])
   return (
-    <View className="mb-3">
-      <Text className="mb-1.5 text-xs font-bold text-slate-600">{label}</Text>
-      <View className="flex-row flex-wrap gap-2">
+    <View style={styles.view}>
+      <Text style={styles.text}>{label}</Text>
+      <View style={styles.view2}>
         {all.map((item) => {
           const on = value.includes(item)
           return (
-            <Pressable key={item} onPress={() => toggle(item)} className={`rounded-full px-3 py-1.5 ${on ? 'bg-brand-700' : 'border border-slate-200 bg-white'}`}>
-              <Text className={`text-[11px] font-extrabold ${on ? 'text-white' : 'text-slate-600'}`}>{optionLabel(t, labelKeys, item)}</Text>
+            <Pressable key={item} onPress={() => toggle(item)} style={[styles.pressable, on ? styles.pressable2 : styles.pressable3]}>
+              <Text style={[styles.text2, on ? styles.text3 : styles.text4]}>{optionLabel(t, labelKeys, item)}</Text>
             </Pressable>
           )
         })}
@@ -265,25 +266,25 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
       <Section><Notice tone={message?.tone} text={message?.text} /></Section>
       <Panel title={t('mobile.account.settings.photoAndLogo')}>
         <PanelState loading={loading && !profile} error={loadError} empty={false}>
-          <View className="flex-row justify-around">
+          <View style={styles.view3}>
             {[
               ['photo', t('ps.eng.profilePhoto'), photoUrl],
               ['logo', t('ps.con.companyLogo'), logoUrl],
             ].map(([kind, label, url]) => (
-              <Pressable key={kind} onPress={() => changePhoto(kind)} disabled={Boolean(uploading) || !profile} className="items-center">
-                <View className={`h-20 w-20 overflow-hidden rounded-full bg-brand-100 ${uploading === kind ? 'opacity-50' : ''}`}>
+              <Pressable key={kind} onPress={() => changePhoto(kind)} disabled={Boolean(uploading) || !profile} style={styles.pressable4}>
+                <View style={[styles.view4, uploading === kind ? styles.pressable5 : null]}>
                   {url ? (
                     <Image source={{ uri: imageUrl(url) }} style={{ width: 80, height: 80 }} contentFit="cover" />
                   ) : (
-                    <View className="h-full w-full items-center justify-center">
-                      {kind === 'logo' ? <Building2 size={26} color={COLORS.brand[700]} /> : <Text className="text-2xl font-extrabold text-brand-800">{(user?.name || 'B').slice(0, 1).toUpperCase()}</Text>}
+                    <View style={styles.view5}>
+                      {kind === 'logo' ? <Building2 size={26} color={COLORS.brand[700]} /> : <Text style={styles.text5}>{(user?.name || 'B').slice(0, 1).toUpperCase()}</Text>}
                     </View>
                   )}
                 </View>
-                <View className="-mt-5 ml-14 h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-brand-700">
+                <View style={styles.view6}>
                   <Camera size={13} color="#fff" />
                 </View>
-                <Text className="mt-1 text-xs font-bold text-slate-600">{label}</Text>
+                <Text style={styles.text6}>{label}</Text>
               </Pressable>
             ))}
           </View>
@@ -295,18 +296,18 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
         <LabeledInput label={t('ps.phoneShort')} value={form.phone} onChangeText={(value) => update('phone', value)} keyboardType="phone-pad" />
         <LabeledInput label={t('ps.address')} value={form.address} onChangeText={(value) => update('address', value)} />
         <LabeledInput label={t('ps.pincode')} value={form.pincode} onChangeText={(value) => update('pincode', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} />
-        <Text className="text-[11px] font-semibold text-slate-400">{t('ps.email')}: {user?.email || '—'}</Text>
+        <Text style={styles.text7}>{t('ps.email')}: {user?.email || '—'}</Text>
       </Panel>
 
       <Panel title={t('cps.professionalInformation')}>
         <LabeledInput label={t('ps.con.companyName')} value={form.company_name} onChangeText={(value) => update('company_name', value)} />
-        <Text className="mb-1.5 text-xs font-bold text-slate-600">{t('ps.businessType')}</Text>
-        <View className="mb-3 flex-row flex-wrap gap-2">
+        <Text style={styles.text}>{t('ps.businessType')}</Text>
+        <View style={styles.view7}>
           {BUSINESS_TYPES.map((item) => {
             const on = form.business_type === item
             return (
-              <Pressable key={item} onPress={() => update('business_type', on ? '' : item)} className={`rounded-full px-3 py-1.5 ${on ? 'bg-brand-700' : 'border border-slate-200 bg-white'}`}>
-                <Text className={`text-[11px] font-extrabold ${on ? 'text-white' : 'text-slate-600'}`}>{optionLabel(t, BUSINESS_TYPE_KEYS, item)}</Text>
+              <Pressable key={item} onPress={() => update('business_type', on ? '' : item)} style={[styles.pressable, on ? styles.pressable2 : styles.pressable3]}>
+                <Text style={[styles.text2, on ? styles.text3 : styles.text4]}>{optionLabel(t, BUSINESS_TYPE_KEYS, item)}</Text>
               </Pressable>
             )
           })}
@@ -318,8 +319,8 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
         <LabeledInput label={t('ps.registrationYear')} value={form.registration_year} onChangeText={(value) => update('registration_year', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={4} />
         <LabeledInput label={t('cps.yearsOfExperience')} value={form.experience_years} onChangeText={(value) => update('experience_years', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={2} />
         <LabeledInput label={t('ps.con.teamSize')} value={form.team_size} onChangeText={(value) => update('team_size', value)} />
-        <View className="mb-3 flex-row items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
-          <Text className="text-[13px] font-bold text-slate-700">{t('cps.insuranceAvailable')}</Text>
+        <View style={styles.view8}>
+          <Text style={styles.text8}>{t('cps.insuranceAvailable')}</Text>
           <Switch value={form.insurance_available} onValueChange={(value) => update('insurance_available', value)} trackColor={{ true: COLORS.brand[500] }} />
         </View>
         <LabeledInput label={t('ps.eng.about')} value={form.about} onChangeText={(value) => update('about', value)} multiline maxLength={2000} />
@@ -335,32 +336,32 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
         title={`${t('cps.completedProjects')} (${portfolio.length}/${PORTFOLIO_MAX_PROJECTS})`}
         action={portfolio.length < PORTFOLIO_MAX_PROJECTS ? <ActionButton small tone="brandOutline" icon={Plus} label={t('cps.portfolio.add')} onPress={addProject} /> : null}
       >
-        {!portfolio.length ? <Text className="text-[13px] font-semibold text-slate-400">{t('cps.portfolio.empty')}</Text> : null}
+        {!portfolio.length ? <Text style={styles.text9}>{t('cps.portfolio.empty')}</Text> : null}
         {portfolio.map((item, index) => (
-          <View key={`portfolio-${index}`} className="mb-3 rounded-2xl border border-slate-200 p-3">
-            <View className="mb-2 flex-row items-center justify-between">
-              <Text className="text-xs font-extrabold text-slate-500">{t('ui.requests.project', { n: index + 1 })}</Text>
+          <View key={`portfolio-${index}`} style={styles.view9}>
+            <View style={styles.view10}>
+              <Text style={styles.text10}>{t('ui.requests.project', { n: index + 1 })}</Text>
               <Pressable onPress={() => removeProject(index)} accessibilityLabel={t('shop.remove')}><Trash2 size={16} color="#e11d48" /></Pressable>
             </View>
             <LabeledInput label={t('dash.owner.projectForm.titlePh')} value={item.title} onChangeText={(value) => updateProject(index, 'title', value)} />
             <LabeledInput label={t('ps.location')} value={item.location} onChangeText={(value) => updateProject(index, 'location', value)} />
             <LabeledInput label={t('dash.common.description')} value={item.description} onChangeText={(value) => updateProject(index, 'description', value)} multiline />
-            <View className="flex-row flex-wrap gap-2">
+            <View style={styles.view2}>
               {(item.images || []).map((url) => (
-                <Pressable key={url} onLongPress={() => removeProjectImage(index, url)} onPress={() => removeProjectImage(index, url)} className="h-16 w-16 overflow-hidden rounded-lg bg-slate-100">
+                <Pressable key={url} onLongPress={() => removeProjectImage(index, url)} onPress={() => removeProjectImage(index, url)} style={styles.pressable6}>
                   <Image source={{ uri: imageUrl(url) }} style={{ width: 64, height: 64 }} contentFit="cover" />
                 </Pressable>
               ))}
               {(item.images || []).length < PORTFOLIO_MAX_IMAGES ? (
-                <Pressable onPress={() => addProjectImage(index)} disabled={Boolean(uploading)} className={`h-16 w-16 items-center justify-center rounded-lg border border-dashed border-brand-300 bg-brand-50 ${uploading === `portfolio-${index}` ? 'opacity-50' : ''}`}>
+                <Pressable onPress={() => addProjectImage(index)} disabled={Boolean(uploading)} style={[styles.pressable7, styles[uploading === `portfolio-${index}` ? 'pressable5' : '']]}>
                   <ImagePlus size={18} color={COLORS.brand[700]} />
                 </Pressable>
               ) : null}
             </View>
-            {(item.images || []).length ? <Text className="mt-1 text-[10px] text-slate-400">{t('mobile.account.tapPhotoToRemove')}</Text> : null}
+            {(item.images || []).length ? <Text style={styles.text11}>{t('mobile.account.tapPhotoToRemove')}</Text> : null}
           </View>
         ))}
-        <Text className="text-[11px] font-semibold text-slate-400">{t('mobile.account.settings.savedWithProfile')}</Text>
+        <Text style={styles.text7}>{t('mobile.account.settings.savedWithProfile')}</Text>
       </Panel>
 
       <Section>
@@ -368,9 +369,41 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
       </Section>
 
       <Panel title={t('account.delete')}>
-        <Text className="mb-3 text-xs font-semibold text-slate-500">{t('account.deleteSub')}</Text>
+        <Text style={styles.text12}>{t('account.deleteSub')}</Text>
         <ActionButton label={t('account.delete')} tone="danger" icon={Trash2} busy={deleting} onPress={confirmDelete} />
       </Panel>
     </StackScreenShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 10.5 },
+  text: { marginBottom: 5.25, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  view2: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  pressable: { borderRadius: 9999, paddingHorizontal: 10.5, paddingVertical: 5.25 },
+  pressable2: { backgroundColor: '#1a5038' },
+  pressable3: { borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
+  text2: { fontSize: 11, fontWeight: '800' },
+  text3: { color: '#ffffff' },
+  text4: { color: c.textSecondary },
+  view3: { flexDirection: 'row', justifyContent: 'space-around' },
+  pressable4: { alignItems: 'center' },
+  view4: { height: 70, width: 70, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.brandSoftStrong },
+  pressable5: { opacity: 0.5 },
+  view5: { height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' },
+  text5: { fontSize: 24, lineHeight: 32, fontWeight: '800', color: c.brandTextStrong },
+  view6: { marginTop: -17.5, marginLeft: 49, height: 24.5, width: 24.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, borderWidth: 2, borderColor: '#ffffff', backgroundColor: '#1a5038' },
+  text6: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  text7: { fontSize: 11, fontWeight: '600', color: c.textFaint },
+  view7: { marginBottom: 10.5, flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  view8: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text8: { fontSize: 13, fontWeight: '700', color: c.textSoft },
+  text9: { fontSize: 13, fontWeight: '600', color: c.textFaint },
+  view9: { marginBottom: 10.5, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: 10.5 },
+  view10: { marginBottom: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text10: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.textMuted },
+  pressable6: { height: 56, width: 56, overflow: 'hidden', borderRadius: 8, backgroundColor: c.muted },
+  pressable7: { height: 56, width: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: '#9dc5af', backgroundColor: c.brandSoft },
+  text11: { marginTop: 3.5, fontSize: 10, color: c.textFaint },
+  text12: { marginBottom: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+}))

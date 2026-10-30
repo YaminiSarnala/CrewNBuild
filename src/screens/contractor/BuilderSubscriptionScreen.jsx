@@ -32,6 +32,7 @@ import {
 import { COLORS } from '../../theme/tokens'
 import RazorpayCheckoutModal from '../../components/builder/RazorpayCheckoutModal'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { createStyles } from '../../theme/createStyles'
 
 export default function BuilderSubscriptionScreen({ navigation }) {
   const { t } = useLanguage()
@@ -187,41 +188,41 @@ export default function BuilderSubscriptionScreen({ navigation }) {
                 ? t('subscription.panel.expiredOn', { date: formatPlanDate(status.coverage_end) })
                 : inForce ? t('subscription.panel.validUntil', { date: formatPlanDate(status.coverage_end) }) : '—'}
             />
-            {status.status === 'GRACE' ? <Text className="mt-2 text-xs font-bold text-amber-700">{t('subscription.panel.graceUntil', { date: formatPlanDate(status.grace_until) })}</Text> : null}
+            {status.status === 'GRACE' ? <Text style={styles.text}>{t('subscription.panel.graceUntil', { date: formatPlanDate(status.grace_until) })}</Text> : null}
             {(status.queued_periods || []).map((period) => (
-              <Text key={period.id} className="mt-1 text-xs font-semibold text-slate-500">{t('subscription.panel.renewalQueued', { date: formatPlanDate(period.period_start) })}</Text>
+              <Text key={period.id} style={styles.text2}>{t('subscription.panel.renewalQueued', { date: formatPlanDate(period.period_start) })}</Text>
             ))}
             {status.status === 'TRIAL' && status.free_access_until ? (
-              <Text className="mt-2 text-xs font-bold text-sky-700">{t('mobile.billing.freeMonthUntil', { date: formatPlanDate(status.free_access_until) })}</Text>
+              <Text style={styles.text3}>{t('mobile.billing.freeMonthUntil', { date: formatPlanDate(status.free_access_until) })}</Text>
             ) : null}
           </>
         ) : null}
         {status?.status === 'EXPIRED' ? (
-          <View className="mt-3 flex-row gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5">
+          <View style={styles.view}>
             <TriangleAlert size={15} color="#be123c" />
-            <Text className="flex-1 text-xs font-bold text-rose-800">{t('subscription.panel.expiredMessage')}</Text>
+            <Text style={styles.text4}>{t('subscription.panel.expiredMessage')}</Text>
           </View>
         ) : null}
         {isEndingSoon(status) ? (
-          <View className="mt-3 flex-row gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <View style={styles.view2}>
             <TriangleAlert size={15} color="#b45309" />
-            <Text className="flex-1 text-xs font-bold text-amber-800">{t('subscription.panel.expiringSoon', { date: formatPlanDate(status.coverage_end) })}</Text>
+            <Text style={styles.text5}>{t('subscription.panel.expiringSoon', { date: formatPlanDate(status.coverage_end) })}</Text>
           </View>
         ) : null}
-        {notice ? <View className="mt-3"><Notice tone={notice.tone} text={notice.text} /></View> : null}
+        {notice ? <View style={styles.actionButton}><Notice tone={notice.tone} text={notice.text} /></View> : null}
       </Panel>
 
       <Panel title={t('subscription.panel.choosePlan')}>
         {status?.region_supported === false ? <Notice tone="info" text={t('subscription.panel.regionUnavailable')} /> : null}
-        <Text className="text-xs font-semibold text-slate-600">
+        <Text style={styles.text6}>
           {t('subscription.panel.activationNote')}
         </Text>
-        {inForce ? <Text className="mt-2 text-xs font-bold text-slate-600">{t('subscription.panel.changeRestriction')}</Text> : null}
+        {inForce ? <Text style={styles.text7}>{t('subscription.panel.changeRestriction')}</Text> : null}
 
         {/* Coupon */}
-        <View className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
-          <Text className="mb-1 text-xs font-bold text-slate-600">{t('subscription.coupon.label')}</Text>
-          <View className="flex-row gap-2">
+        <View style={styles.view3}>
+          <Text style={styles.text8}>{t('subscription.coupon.label')}</Text>
+          <View style={styles.view4}>
             <TextInput
               value={couponInput}
               onChangeText={(value) => setCouponInput(value.toUpperCase())}
@@ -229,7 +230,7 @@ export default function BuilderSubscriptionScreen({ navigation }) {
               placeholderTextColor={COLORS.slate[400]}
               autoCapitalize="characters"
               editable={!couponQuote}
-              className="h-10 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-graphite"
+              style={styles.textInput}
             />
             {couponQuote ? (
               <ActionButton small tone="outline" label={t('subscription.coupon.remove')} onPress={() => { setCouponQuote(null); setCouponInput(''); setCouponError('') }} />
@@ -238,15 +239,15 @@ export default function BuilderSubscriptionScreen({ navigation }) {
             )}
           </View>
           {couponQuote && quoteOffers.length > 0 ? (
-            <Text className="mt-2 text-xs font-bold text-emerald-700">{t('subscription.coupon.applied', { code: couponQuote.code, plan: quoteOffers.map((offer) => t(`subscription.offer.${offer.id}.name`)).join(', ') })}</Text>
+            <Text style={styles.text9}>{t('subscription.coupon.applied', { code: couponQuote.code, plan: quoteOffers.map((offer) => t(`subscription.offer.${offer.id}.name`)).join(', ') })}</Text>
           ) : null}
-          {couponError ? <Text className="mt-2 text-xs font-bold text-rose-600">{couponError}</Text> : null}
+          {couponError ? <Text style={styles.text10}>{couponError}</Text> : null}
         </View>
 
         {/* Free tier */}
-        <View className="mt-4 rounded-2xl border border-slate-200 p-4">
-          <Text className="text-[15px] font-extrabold text-graphite">{t('subscription.plan.FREE')}</Text>
-          {FREE_FEATURE_KEYS.map((key) => <Text key={key} className="mt-1 text-xs font-semibold text-slate-600">• {t(key)}</Text>)}
+        <View style={styles.view5}>
+          <Text style={styles.text11}>{t('subscription.plan.FREE')}</Text>
+          {FREE_FEATURE_KEYS.map((key) => <Text key={key} style={styles.text12}>• {t(key)}</Text>)}
         </View>
 
         {/* Paid offers */}
@@ -264,23 +265,23 @@ export default function BuilderSubscriptionScreen({ navigation }) {
           const coupon = quoteForOffer(couponQuote, offer.planCode, offer.durationCode)
           const premium = offer.id === 'PREMIUM_ANNUAL'
           return (
-            <View key={offer.id} className={`mt-4 rounded-2xl border p-4 ${premium ? 'border-slate-800 bg-slate-900' : 'border-emerald-200 bg-white'}`}>
-              <View className="flex-row items-center gap-2">
+            <View key={offer.id} style={[styles.view6, premium ? styles.view7 : styles.view8]}>
+              <View style={styles.view9}>
                 <CreditCard size={16} color={premium ? '#fcd34d' : COLORS.brand[700]} />
-                <Text className={`flex-1 text-[15px] font-extrabold ${premium ? 'text-white' : 'text-graphite'}`}>{name}</Text>
-                <Text className={`text-[15px] font-extrabold ${premium ? 'text-amber-300' : 'text-brand-800'}`}>{price === null ? t('subscription.price.notSet') : formatRupees(price)}</Text>
+                <Text style={[styles.text13, premium ? styles.text14 : styles.text15]}>{name}</Text>
+                <Text style={[styles.text16, premium ? styles.text17 : styles.text18]}>{price === null ? t('subscription.price.notSet') : formatRupees(price)}</Text>
               </View>
-              <Text className={`mt-1 text-xs font-semibold ${premium ? 'text-slate-300' : 'text-slate-500'}`}>{t(`subscription.offer.${offer.id}.access`)}</Text>
-              <Text className={`mt-0.5 text-xs ${premium ? 'text-slate-400' : 'text-slate-500'}`}>{t(`subscription.offer.${offer.id}.audience`)}</Text>
+              <Text style={[styles.text19, premium ? styles.text20 : styles.text21]}>{t(`subscription.offer.${offer.id}.access`)}</Text>
+              <Text style={[styles.text22, premium ? styles.text23 : styles.text21]}>{t(`subscription.offer.${offer.id}.audience`)}</Text>
               {premium && saving ? (
-                <Text className="mt-1 text-xs font-bold text-amber-300">{t('subscription.offer.annualSaving', { amount: formatRupees(saving.saving), full: formatRupees(saving.full) })}</Text>
+                <Text style={styles.text24}>{t('subscription.offer.annualSaving', { amount: formatRupees(saving.saving), full: formatRupees(saving.full) })}</Text>
               ) : null}
-              {premium ? <Text className="mt-2 text-xs font-bold text-slate-300">{t('subscription.offer.PREMIUM_ANNUAL.inherits')}</Text> : null}
+              {premium ? <Text style={styles.text25}>{t('subscription.offer.PREMIUM_ANNUAL.inherits')}</Text> : null}
               {offerFeatureLines(catalogue, offer, t).map((line) => (
-                <Text key={line} className={`mt-1 text-xs font-semibold ${premium ? 'text-slate-200' : 'text-slate-700'}`}>• {line}</Text>
+                <Text key={line} style={[styles.text19, premium ? styles.text26 : styles.text27]}>• {line}</Text>
               ))}
               {coupon ? (
-                <View className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <View style={styles.view10}>
                   <InfoRow label={t('subscription.coupon.original')} value={formatRupees(coupon.original_amount_paise)} />
                   <InfoRow label={`${t('subscription.coupon.discount')} (${coupon.code || couponQuote?.code || ''})`} value={`− ${formatRupees(coupon.discount_paise)}`} />
                   <InfoRow label={t('subscription.coupon.final')} value={formatRupees(coupon.final_amount_paise)} strong />
@@ -292,7 +293,7 @@ export default function BuilderSubscriptionScreen({ navigation }) {
                 disabled={disabled}
                 busy={busyPlan === key}
                 onPress={() => purchase(offer.planCode, offer.durationCode)}
-                className="mt-3"
+                style={styles.actionButton}
               />
             </View>
           )
@@ -301,17 +302,17 @@ export default function BuilderSubscriptionScreen({ navigation }) {
 
       <Panel title={t('subscription.panel.history')}>
         {!status?.history?.length ? (
-          <Text className="text-[13px] font-semibold text-slate-500">{t('subscription.panel.noHistory')}</Text>
+          <Text style={styles.text28}>{t('subscription.panel.noHistory')}</Text>
         ) : status.history.map((row) => (
-          <View key={row.id} className="border-b border-slate-100 py-2.5">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-[13px] font-extrabold text-graphite">{offerName(row.plan_code, row.duration_code, t)}</Text>
-              <Text className="text-[13px] font-extrabold text-graphite">{formatRupees(row.amount_paise)}</Text>
+          <View key={row.id} style={styles.view11}>
+            <View style={styles.view12}>
+              <Text style={styles.text29}>{offerName(row.plan_code, row.duration_code, t)}</Text>
+              <Text style={styles.text29}>{formatRupees(row.amount_paise)}</Text>
             </View>
-            <Text className="mt-0.5 text-xs text-slate-500">
+            <Text style={styles.text30}>
               {durationName(row.duration_code, t)} · {formatPlanDate(row.period_start)} – {formatPlanDate(row.period_end)}
             </Text>
-            <Text className="mt-0.5 text-xs font-bold text-slate-600">
+            <Text style={styles.text31}>
               {paymentStatusName(row.status === 'REVOKED' ? 'REFUNDED' : row.payment_status, t)}
             </Text>
           </View>
@@ -319,7 +320,7 @@ export default function BuilderSubscriptionScreen({ navigation }) {
       </Panel>
 
       <Section>
-        <Text className="text-center text-[11px] font-semibold text-slate-400">{t('mobile.billing.serverDecides')}</Text>
+        <Text style={styles.text32}>{t('mobile.billing.serverDecides')}</Text>
       </Section>
 
       {/* Live Razorpay Checkout (TEST keys on the server). */}
@@ -339,11 +340,11 @@ export default function BuilderSubscriptionScreen({ navigation }) {
         subtitle={mockOrder ? `${offerName(mockOrder.plan_code, mockOrder.duration_code, t)} · ${durationName(mockOrder.duration_code, t)}` : ''}
         onClose={() => { if (!simulating) simulate('cancel') }}
       >
-        <Text className="text-[13px] font-semibold text-slate-600">
+        <Text style={styles.text33}>
           {t('payments.mockExplain')}
         </Text>
-        <Text className="mt-3 text-xl font-extrabold text-graphite">{formatRupees(mockOrder?.amount_paise)}</Text>
-        <View className="mt-4 gap-2">
+        <Text style={styles.text34}>{formatRupees(mockOrder?.amount_paise)}</Text>
+        <View style={styles.view13}>
           <ActionButton tone="success" label={t('payments.mockSuccess')} busy={simulating} disabled={simulating} onPress={() => simulate('success')} />
           <ActionButton tone="danger" label={t('payments.mockFailure')} disabled={simulating} onPress={() => simulate('failure')} />
           <ActionButton tone="outline" label={t('payments.mockCancel')} disabled={simulating} onPress={() => simulate('cancel')} />
@@ -352,3 +353,55 @@ export default function BuilderSubscriptionScreen({ navigation }) {
     </StackScreenShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  text: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.amberText },
+  text2: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  text3: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.skyText },
+  view: { marginTop: 10.5, flexDirection: 'row', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  text4: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.roseTextStrong },
+  view2: { marginTop: 10.5, flexDirection: 'row', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: c.amberBorder, backgroundColor: c.amberSoft, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  text5: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.amberTextStrong },
+  actionButton: { marginTop: 10.5 },
+  text6: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  text7: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  view3: { marginTop: 14, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.borderStrong, backgroundColor: c.subtle, padding: 10.5 },
+  text8: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  view4: { flexDirection: 'row', gap: 7 },
+  textInput: { height: 35, flex: 1, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, lineHeight: 20, fontWeight: '700', color: c.text },
+  text9: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.emeraldText },
+  text10: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.roseTextSoft },
+  view5: { marginTop: 14, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: 14 },
+  text11: { fontSize: 15, fontWeight: '800', color: c.text },
+  text12: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  view6: { marginTop: 14, borderRadius: 16, borderWidth: 1, padding: 14 },
+  view7: { borderColor: '#1e293b', backgroundColor: '#0f172a' },
+  view8: { borderColor: c.emeraldBorder, backgroundColor: c.card },
+  view9: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text13: { flex: 1, fontSize: 15, fontWeight: '800' },
+  text14: { color: '#ffffff' },
+  text15: { color: c.text },
+  text16: { fontSize: 15, fontWeight: '800' },
+  text17: { color: '#fcd34d' },
+  text18: { color: c.brandTextStrong },
+  text19: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  text20: { color: '#cbd5e1' },
+  text21: { color: c.textMuted },
+  text22: { marginTop: 1.75, fontSize: 12, lineHeight: 16 },
+  text23: { color: c.textFaint },
+  text24: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#fcd34d' },
+  text25: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#cbd5e1' },
+  text26: { color: '#e2e8f0' },
+  text27: { color: c.textSoft },
+  view10: { marginTop: 10.5, borderRadius: 8, borderWidth: 1, borderColor: c.emeraldBorder, backgroundColor: c.emeraldSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text28: { fontSize: 13, fontWeight: '600', color: c.textMuted },
+  view11: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
+  view12: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text29: { fontSize: 13, fontWeight: '800', color: c.text },
+  text30: { marginTop: 1.75, fontSize: 12, lineHeight: 16, color: c.textMuted },
+  text31: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  text32: { textAlign: 'center', fontSize: 11, fontWeight: '600', color: c.textFaint },
+  text33: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
+  text34: { marginTop: 10.5, fontSize: 20, lineHeight: 28, fontWeight: '800', color: c.text },
+  view13: { marginTop: 14, gap: 7 },
+}))

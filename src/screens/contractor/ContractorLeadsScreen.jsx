@@ -242,24 +242,24 @@ export default function ContractorLeadsScreen({ navigation }) {
       <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
         <Section>
                    {/* Underlined tabs, as on the web. */}
-          <View className="flex-row border-b border-slate-200">
+          <View style={styles.view4}>
             {[
               { id: 'houseowners', label: `${t('dash.contractor.tab.houseownerProjects')} (${openOwnerClients.length})`, icon: House },
               { id: 'suppliers', label: `${t('dash.contractor.tab.supplierRequests')} (${openSupplierClients.length})`, icon: Truck },
             ].map(({ id, label, icon: Icon }) => {
               const active = activeTab === id
               return (
-                <Pressable key={id} onPress={() => setActiveTab(id)} className="mr-4 flex-row items-center gap-1.5 pb-2.5 pt-1" style={{ borderBottomWidth: 2.5, borderBottomColor: active ? COLORS.brand[800] : 'transparent' }}>
+                <Pressable key={id} onPress={() => setActiveTab(id)} style={[styles.pressable6, { borderBottomWidth: 2.5, borderBottomColor: active ? COLORS.brand[800] : 'transparent' }]}>
                   <Icon size={14} color={active ? COLORS.brand[900] : COLORS.slate[400]} />
-                  <Text className={`text-[12.5px] font-extrabold ${active ? 'text-brand-900' : 'text-slate-500'}`}>{label}</Text>
+                  <Text style={[styles.text10, active ? styles.text11 : styles.text12]}>{label}</Text>
                 </Pressable>
               )
             })}
           </View>
           {showLocation ? (
-            <Pressable onPress={() => setLocationOpen(true)} className="mt-2 flex-row items-center gap-1.5 self-start rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5">
+            <Pressable onPress={() => setLocationOpen(true)} style={styles.pressable7}>
               <MapPin size={12} color={COLORS.brand[700]} />
-              <Text className="text-[11px] font-extrabold text-brand-800">
+              <Text style={styles.text13}>
                 {user?.pincode ? `${t('location.leadsFor', { pincode: user.pincode })} · ${t('location.change')}` : t('location.setLocation')}
               </Text>
             </Pressable>
@@ -275,33 +275,33 @@ export default function ContractorLeadsScreen({ navigation }) {
                 const sent = state !== 'none'
                 const tint = LEAD_TINTS[index % LEAD_TINTS.length]
                 return (
-                  <Pressable key={`${project.owner_id}-${project.project_id || project.id}`} onPress={() => setProfileTarget(project)} className="mb-3 rounded-3xl border p-4" style={{ backgroundColor: soft(tint.bg, tint.accent), borderColor: line(tint.border, tint.accent) }}>
-                    <View className="flex-row items-start gap-3">
+                  <Pressable key={`${project.owner_id}-${project.project_id || project.id}`} onPress={() => setProfileTarget(project)} style={[styles.pressable8, { backgroundColor: soft(tint.bg, tint.accent), borderColor: line(tint.border, tint.accent) }]}>
+                    <View style={styles.view5}>
                       <Image source={avatarFromPath(project.owner_profile_image_url, 'OWNER')} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
-                      <View className="flex-1">
-                        <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{project.owner_name || project.profile_title || t('dash.contractor.homeowner')}</Text>
-                        <Text className="text-xs font-semibold text-slate-500" numberOfLines={1}>{project.project_title || project.title || t('dash.contractor.homeownerProject')}</Text>
+                      <View style={styles.actionButton}>
+                        <Text style={styles.text14} numberOfLines={1}>{project.owner_name || project.profile_title || t('dash.contractor.homeowner')}</Text>
+                        <Text style={styles.text15} numberOfLines={1}>{project.project_title || project.title || t('dash.contractor.homeownerProject')}</Text>
                       </View>
                       {project.building_type ? (
-                        <View className="rounded-full border border-emerald-100 bg-white/80 px-2.5 py-1">
-                          <Text className="text-[10px] font-extrabold text-emerald-800">{buildingTypeText(project.building_type, t)}</Text>
+                        <View style={styles.view6}>
+                          <Text style={styles.text16}>{buildingTypeText(project.building_type, t)}</Text>
                         </View>
                       ) : null}
                     </View>
-                    <View className="mt-3 flex-row items-center gap-3">
+                    <View style={styles.view7}>
                       <View>
-                        <Text className="text-[16px] font-extrabold text-graphite">{project.land_area ? Number(project.land_area).toLocaleString('en-IN') : '—'}</Text>
-                        <Text className="text-[11px] font-semibold text-slate-500">{t('dash.contractor.sqftUnit')}</Text>
+                        <Text style={styles.text17}>{project.land_area ? Number(project.land_area).toLocaleString('en-IN') : '—'}</Text>
+                        <Text style={styles.text18}>{t('dash.contractor.sqftUnit')}</Text>
                       </View>
-                      <View className="h-9 w-px bg-slate-200" />
-                      <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-slate-100 bg-white/80 px-3 py-2">
-                        <Text className="text-[11px] font-semibold text-slate-500">{t('dash.contractor.budgetAmount')}</Text>
-                        <Text className="flex-1 text-right text-[14px] font-extrabold text-graphite" numberOfLines={1}>{Number(project.budget || 0) > 0 ? money(project.budget, project.project_country) : '—'}</Text>
+                      <View style={styles.view8} />
+                      <View style={styles.view9}>
+                        <Text style={styles.text18}>{t('dash.contractor.budgetAmount')}</Text>
+                        <Text style={styles.text19} numberOfLines={1}>{Number(project.budget || 0) > 0 ? money(project.budget, project.project_country) : '—'}</Text>
                       </View>
                     </View>
-                    <View className="mt-3 flex-row items-center gap-1.5 border-t border-slate-100 pt-3">
+                    <View style={styles.view10}>
                       <MapPin size={13} color="#047857" />
-                      <Text className="flex-1 text-[12px] font-semibold text-slate-600" numberOfLines={2}>
+                      <Text style={styles.text20} numberOfLines={2}>
                         {project.address || t('dash.owner.estimates.locationNotSet')}{project.pincode ? ` - ${project.pincode}` : ''}
                       </Text>
                     </View>
@@ -311,7 +311,7 @@ export default function ContractorLeadsScreen({ navigation }) {
                       tone={sent ? 'outline' : 'primary'}
                       disabled={sent}
                       onPress={() => openSend(project, 'CONTRACTOR_TO_OWNER')}
-                      className="mt-3"
+                      style={styles.view11}
                     />
                   </Pressable>
                 )
@@ -333,36 +333,36 @@ export default function ContractorLeadsScreen({ navigation }) {
                 const band = SUPPLIER_BANDS[supplier.supplier_category] || SUPPLIER_BANDS.other
                 const BandIcon = band.icon
                 return (
-                  <Pressable key={`${supplier.owner_id || supplier.user_id || supplier.id}`} onPress={() => openSupplierProfile(supplier)} className="mb-3 overflow-hidden rounded-3xl border border-slate-200 bg-white">
-                    <View className="flex-row items-center justify-between px-4 py-2" style={{ backgroundColor: soft(band.bg, band.fg) }}>
-                      <View className="flex-row items-center gap-1.5">
+                  <Pressable key={`${supplier.owner_id || supplier.user_id || supplier.id}`} onPress={() => openSupplierProfile(supplier)} style={styles.pressable9}>
+                    <View style={[styles.view12, { backgroundColor: soft(band.bg, band.fg) }]}>
+                      <View style={styles.view13}>
                         <BandIcon size={13} color={ink(band.fg)} />
-                        <Text className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: band.fg }}>{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : t('role.supplier')}</Text>
+                        <Text style={[styles.text21, { color: band.fg }]}>{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : t('role.supplier')}</Text>
                       </View>
                       {supplier.pincode ? (
-                        <View className="flex-row items-center gap-1">
+                        <View style={styles.view14}>
                           <MapPin size={11} color={ink(band.fg)} />
-                          <Text className="text-[11px] font-bold" style={{ color: ink(band.fg) }}>{supplier.pincode}</Text>
+                          <Text style={[styles.text22, { color: ink(band.fg) }]}>{supplier.pincode}</Text>
                         </View>
                       ) : null}
                     </View>
-                    <View className="p-4">
-                      <View className="flex-row items-center gap-3">
+                    <View style={styles.view15}>
+                      <View style={styles.view16}>
                         <Image source={avatarFromPath(supplier.cover_image_url, 'SUPPLIER')} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
-                        <View className="flex-1">
-                          <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{name}</Text>
+                        <View style={styles.actionButton}>
+                          <Text style={styles.text14} numberOfLines={1}>{name}</Text>
                           {store && store !== name ? (
-                            <View className="mt-0.5 flex-row items-center gap-1">
+                            <View style={styles.view17}>
                               <Store size={11} color={COLORS.brand[700]} />
-                              <Text className="text-xs font-semibold text-slate-600" numberOfLines={1}>{store}</Text>
+                              <Text style={styles.text23} numberOfLines={1}>{store}</Text>
                             </View>
                           ) : null}
                         </View>
                       </View>
                       {offerings ? (
-                        <View className="mt-3 flex-row items-start gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                        <View style={styles.view18}>
                           <FileText size={13} color={COLORS.slate[500]} />
-                          <Text className="flex-1 text-xs font-semibold text-slate-600" numberOfLines={2}>{offerings}</Text>
+                          <Text style={styles.text24} numberOfLines={2}>{offerings}</Text>
                         </View>
                       ) : null}
                       <ActionButton
@@ -371,7 +371,7 @@ export default function ContractorLeadsScreen({ navigation }) {
                         tone={sent ? 'outline' : 'primary'}
                         disabled={sent}
                         onPress={() => openSend(supplier, 'CONTRACTOR_TO_SUPPLIER')}
-                        className="mt-3"
+                        style={styles.view11}
                       />
                     </View>
                   </Pressable>
@@ -391,15 +391,15 @@ export default function ContractorLeadsScreen({ navigation }) {
         footer={sendDone ? (
           <ActionButton label={t('dash.contractor.done')} onPress={() => setSendTarget(null)} />
         ) : (
-          <View className="flex-row gap-2">
-            <ActionButton label={t('dash.common.cancel')} tone="outline" onPress={() => setSendTarget(null)} className="flex-1" />
-            <ActionButton label={t('dash.common.sendRequest')} icon={Send} busy={sendBusy} onPress={confirmSend} className="flex-1" />
+          <View style={styles.view19}>
+            <ActionButton label={t('dash.common.cancel')} tone="outline" onPress={() => setSendTarget(null)} style={styles.actionButton} />
+            <ActionButton label={t('dash.common.sendRequest')} icon={Send} busy={sendBusy} onPress={confirmSend} style={styles.actionButton} />
           </View>
         )}
       >
         {sendTarget ? (
           sendDone ? (
-            <Text className="text-[13px] font-semibold text-slate-600">
+            <Text style={styles.text25}>
               {t('dash.contractor.requestSentBody', { name: sendTarget.client.store_name || sendTarget.client.owner_name || sendTarget.client.title || t('dash.contractor.thisClient') })}
             </Text>
           ) : (
@@ -409,20 +409,20 @@ export default function ContractorLeadsScreen({ navigation }) {
               {sendTarget.requestType === 'CONTRACTOR_TO_OWNER' ? (
                 <>
                   <InfoRow label={t('dash.contractor.budgetAmount')} value={Number(sendTarget.client.budget || 0) > 0 ? money(sendTarget.client.budget, sendTarget.client.project_country) : t('dash.common.notSet')} />
-                  <Text className="mb-1 mt-3 text-xs font-extrabold uppercase text-slate-400">{t('dash.contractor.quotationOptional')}</Text>
+                  <Text style={styles.text26}>{t('dash.contractor.quotationOptional')}</Text>
                   <TextInput
                     value={sendAmount}
                     onChangeText={(value) => setSendAmount(value.replace(/\D/g, ''))}
                     keyboardType="number-pad"
                     placeholder={t('ui.contractor.quotationPlaceholder')}
                     placeholderTextColor={COLORS.slate[400]}
-                    className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-[14px] font-bold text-graphite"
+                    style={styles.textInput}
                   />
-                  {Number(sendAmount) > 0 ? <Text className="mt-1 text-xs font-bold text-slate-600">{money(sendAmount, sendTarget.client.project_country)}</Text> : null}
-                  <Text className="mt-1.5 text-[11px] font-semibold text-slate-500">{t('mobile.partners.quoteLaterHint')}</Text>
+                  {Number(sendAmount) > 0 ? <Text style={styles.text27}>{money(sendAmount, sendTarget.client.project_country)}</Text> : null}
+                  <Text style={styles.text28}>{t('mobile.partners.quoteLaterHint')}</Text>
                 </>
               ) : null}
-              {sendError ? <View className="mt-3"><Notice tone="error" text={sendError} /></View> : null}
+              {sendError ? <View style={styles.view11}><Notice tone="error" text={sendError} /></View> : null}
             </>
           )
         ) : null}
@@ -487,20 +487,75 @@ const styles = createStyles((c) => ({
   pressable5: { height: 35, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5.25, borderRadius: 10.5 },
   text8: { fontSize: 11, fontWeight: '800' },
   text9: { color: c.textMuted },
+  view4: { flexDirection: 'row', borderBottomWidth: 1, borderColor: c.border },
+  pressable6: { marginRight: 14, flexDirection: 'row', alignItems: 'center', gap: 5.25, paddingBottom: 8.75, paddingTop: 3.5 },
+  text10: { fontSize: 12.5, fontWeight: '800' },
+  text11: { color: c.brandTextDeep },
+  text12: { color: c.textMuted },
+  pressable7: { marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 5.25, alignSelf: 'flex-start', borderRadius: 9999, borderWidth: 1, borderColor: c.brandBorderStrong, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 5.25 },
+  text13: { fontSize: 11, fontWeight: '800', color: c.brandTextStrong },
+  pressable8: { marginBottom: 10.5, borderRadius: 24, borderWidth: 1, padding: 14 },
+  view5: { flexDirection: 'row', alignItems: 'flex-start', gap: 10.5 },
+  actionButton: { flex: 1 },
+  text14: { fontSize: 15, fontWeight: '800', color: c.text },
+  text15: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view6: { borderRadius: 9999, borderWidth: 1, borderColor: c.emeraldBorderSoft, backgroundColor: 'rgba(255, 255, 255, 0.8)', paddingHorizontal: 8.75, paddingVertical: 3.5 },
+  text16: { fontSize: 10, fontWeight: '800', color: c.emeraldTextStrong },
+  view7: { marginTop: 10.5, flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  text17: { fontSize: 16, fontWeight: '800', color: c.text },
+  text18: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  view8: { height: 31.5, width: 1, backgroundColor: c.mutedStrong },
+  view9: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: c.borderSoft, backgroundColor: 'rgba(255, 255, 255, 0.8)', paddingHorizontal: 10.5, paddingVertical: 7 },
+  text19: { flex: 1, textAlign: 'right', fontSize: 14, fontWeight: '800', color: c.text },
+  view10: { marginTop: 10.5, flexDirection: 'row', alignItems: 'center', gap: 5.25, borderTopWidth: 1, borderColor: c.borderSoft, paddingTop: 10.5 },
+  text20: { flex: 1, fontSize: 12, fontWeight: '600', color: c.textSecondary },
+  view11: { marginTop: 10.5 },
+  pressable9: { marginBottom: 10.5, overflow: 'hidden', borderRadius: 24, borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
+  view12: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 7 },
+  view13: { flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text21: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
+  view14: { flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text22: { fontSize: 11, fontWeight: '700' },
+  view15: { padding: 14 },
+  view16: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  view17: { marginTop: 1.75, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text23: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  view18: { marginTop: 10.5, flexDirection: 'row', alignItems: 'flex-start', gap: 7, borderRadius: 12, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text24: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  view19: { flexDirection: 'row', gap: 7 },
+  text25: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
+  text26: { marginBottom: 3.5, marginTop: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '800', textTransform: 'uppercase', color: c.textFaint },
+  textInput: { height: 38.5, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '700', color: c.text },
+  text27: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  text28: { marginTop: 5.25, fontSize: 11, fontWeight: '600', color: c.textMuted },
+  view20: { marginBottom: 7, borderRadius: 16, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  text29: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: c.textFaint },
+  text30: { marginTop: 3.5, fontSize: 13, fontWeight: '700', color: c.text },
+  view21: { marginTop: 3.5, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text31: { fontSize: 10, fontWeight: '700', color: c.textMuted },
+  text32: { fontSize: 13, lineHeight: 17.5, color: c.textSecondary },
+  text33: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.text },
+  view22: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 5.25 },
+  text34: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSoft },
+  text35: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.text },
+  actionButton2: { marginTop: 7 },
+  text36: { marginBottom: 7, marginTop: 14, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.text },
+  textInput2: { height: 38.5, flex: 1, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 15, fontWeight: '700', color: c.text },
+  text37: { marginBottom: 5.25, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
 }))
 function ContactRow({ icon: Icon, label, value, canView }) {
   const { t } = useLanguage()
   return (
-    <View className="mb-2 rounded-2xl border border-brand-100 bg-white px-3 py-2.5">
-      <View className="flex-row items-center gap-1.5">
+    <View style={styles.view20}>
+      <View style={styles.view13}>
         <Icon size={12} color={COLORS.brand[700]} />
-        <Text className="text-[10px] font-bold uppercase text-slate-400">{label}</Text>
+        <Text style={styles.text29}>{label}</Text>
       </View>
-      <Text className="mt-1 text-[13px] font-bold text-graphite">{canView ? (value || t('dash.common.notSet')) : '••••••••••'}</Text>
+      <Text style={styles.text30}>{canView ? (value || t('dash.common.notSet')) : '••••••••••'}</Text>
       {!canView ? (
-        <View className="mt-1 flex-row items-center gap-1">
+        <View style={styles.view21}>
           <Lock size={10} color={COLORS.slate[500]} />
-          <Text className="text-[10px] font-bold text-slate-500">{t('dash.contractor.visibleAfterAcceptance')}</Text>
+          <Text style={styles.text31}>{t('dash.contractor.visibleAfterAcceptance')}</Text>
         </View>
       ) : null}
     </View>
@@ -520,8 +575,8 @@ function ClientDetails({ client, state, stateLabel, note, onSend }) {
       {note ? <Notice tone="info" text={note} /> : null}
       {supplier ? (
         <>
-          <Text className="text-[13px] leading-5 text-slate-600">{client.about || client.description || t('dash.owner.supplierModal.aboutFallback')}</Text>
-          <View className="mt-3">
+          <Text style={styles.text32}>{client.about || client.description || t('dash.owner.supplierModal.aboutFallback')}</Text>
+          <View style={styles.view11}>
             <InfoRow label={t('dash.owner.supplierModal.businessType')} value={client.business_type ? optionLabel(t, BUSINESS_TYPE_KEYS, client.business_type) : client.business_type} />
             <InfoRow label={t('dash.common.categories')} value={listOf(client.categories || client.material_types).map((category) => optionLabel(t, SUPPLIER_CATEGORY_KEYS, category)).join(', ')} />
             <InfoRow label={t('dash.owner.supplierModal.deliveryLocations')} value={listOf(client.delivery_locations).join(', ')} />
@@ -531,12 +586,12 @@ function ClientDetails({ client, state, stateLabel, note, onSend }) {
             <InfoRow label={t('dash.contractor.gstLicense')} value={client.gst_number || client.license_number} />
           </View>
           {products.length ? (
-            <View className="mt-3">
-              <Text className="mb-1 text-xs font-extrabold text-graphite">{t('dash.owner.supplierModal.products')}</Text>
+            <View style={styles.view11}>
+              <Text style={styles.text33}>{t('dash.owner.supplierModal.products')}</Text>
               {products.slice(0, 12).map((product, index) => (
-                <View key={product.id || index} className="flex-row justify-between border-b border-slate-100 py-1.5">
-                  <Text className="flex-1 text-xs font-semibold text-slate-700" numberOfLines={1}>{product.name || product.product_name || product.title || t('dash.owner.supplierModal.productN', { n: index + 1 })}</Text>
-                  <Text className="text-xs font-bold text-graphite">
+                <View key={product.id || index} style={styles.view22}>
+                  <Text style={styles.text34} numberOfLines={1}>{product.name || product.product_name || product.title || t('dash.owner.supplierModal.productN', { n: index + 1 })}</Text>
+                  <Text style={styles.text35}>
                     {Number(product.price || product.unit_price || 0) > 0 ? money(product.price || product.unit_price) : t('dash.owner.supplierModal.priceNotSet')}
                     {product.unit ? ` / ${product.unit}` : ''}
                   </Text>
@@ -548,9 +603,9 @@ function ClientDetails({ client, state, stateLabel, note, onSend }) {
       ) : (
         <>
           {client.project_description || client.description ? (
-            <Text className="text-[13px] leading-5 text-slate-600">{client.project_description || client.description}</Text>
+            <Text style={styles.text32}>{client.project_description || client.description}</Text>
           ) : null}
-          <View className="mt-2">
+          <View style={styles.actionButton2}>
             <InfoRow label={t('dash.contractor.homeowner')} value={client.owner_name || client.profile_title} strong />
             <InfoRow label={t('dash.common.location')} value={`${client.address || ''}${client.pincode ? ` - ${client.pincode}` : ''}`} />
             <InfoRow label={t('cpp.landArea')} value={client.land_area ? t('cpp.sqFt', { area: client.land_area }) : ''} />
@@ -562,7 +617,7 @@ function ClientDetails({ client, state, stateLabel, note, onSend }) {
           </View>
         </>
       )}
-      <Text className="mb-2 mt-4 text-xs font-extrabold text-graphite">{canViewContact ? t('dash.contractor.contactUnlocked') : t('dash.contractor.contactLocked')}</Text>
+      <Text style={styles.text36}>{canViewContact ? t('dash.contractor.contactUnlocked') : t('dash.contractor.contactLocked')}</Text>
       <ContactRow icon={Phone} label={t('ps.phoneShort')} value={client.phone} canView={canViewContact} />
       <ContactRow icon={Mail} label={t('ps.email')} value={client.email} canView={canViewContact} />
       {supplier ? <ContactRow icon={MapPin} label={t('ps.address')} value={client.address} canView={canViewContact} /> : null}
@@ -572,7 +627,7 @@ function ClientDetails({ client, state, stateLabel, note, onSend }) {
         tone={sent || canViewContact ? 'outline' : 'primary'}
         disabled={sent || canViewContact}
         onPress={onSend}
-        className="mt-2"
+        style={styles.actionButton2}
       />
     </View>
   )
@@ -639,7 +694,7 @@ function LocationSheet({ visible, currentPincode, onClose, onSaved }) {
       onClose={onClose}
       footer={<ActionButton label={t('location.prompt.save')} busy={busy} disabled={!selectedArea} onPress={save} />}
     >
-      <View className="flex-row gap-2">
+      <View style={styles.view19}>
         <TextInput
           value={pincode}
           onChangeText={(value) => { setPincode(value.replace(/\D/g, '')); setAreas([]); setAreaDetails(null); setSelectedArea('') }}
@@ -647,17 +702,17 @@ function LocationSheet({ visible, currentPincode, onClose, onSaved }) {
           maxLength={6}
           placeholder={t('ui.shared.sixDigitPincode')}
           placeholderTextColor={COLORS.slate[400]}
-          className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[15px] font-bold text-graphite"
+          style={styles.textInput2}
         />
         <ActionButton label={t('ce.find')} busy={busy && !areas.length} onPress={lookup} />
       </View>
       {areas.length ? (
-        <View className="mt-3">
-          <Text className="mb-1.5 text-xs font-bold text-slate-600">{t('location.selectBranch')}</Text>
+        <View style={styles.view11}>
+          <Text style={styles.text37}>{t('location.selectBranch')}</Text>
           <SegmentTabs dense tabs={areas.map((area) => ({ id: area.name, label: area.name }))} active={selectedArea} onChange={setSelectedArea} />
         </View>
       ) : null}
-      {error ? <View className="mt-3"><Notice tone="error" text={error} /></View> : null}
+      {error ? <View style={styles.view11}><Notice tone="error" text={error} /></View> : null}
     </SheetModal>
   )
 }

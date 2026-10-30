@@ -40,6 +40,7 @@ import { constructionTypeLabel } from '../../utils/roleLabels'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { ink, soft } from '../../theme/tint'
+import { createStyles } from '../../theme/createStyles'
 
 const FILTERS = [
   { id: 'all', labelKey: 'dash.contractor.filter.all' },
@@ -279,7 +280,7 @@ export default function ContractorRequestsScreen({ navigation }) {
         </Section>
 
         <Section>
-          <View className="rounded-2xl border border-slate-200 bg-white p-3">
+          <View style={styles.view}>
             {/* Status chips, in the web's colours. */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
               {FILTERS.map((item) => {
@@ -289,20 +290,20 @@ export default function ContractorRequestsScreen({ navigation }) {
                   <Pressable
                     key={item.id}
                     onPress={() => setFilter(item.id)}
-                    className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"                    style={{ backgroundColor: on ? tone.onBg : soft(tone.bg, tone.fg) }}
+                    style={[styles.pressable, { backgroundColor: on ? tone.onBg : soft(tone.bg, tone.fg) }]}
                   >
-                    <Text className="text-[12px] font-extrabold" style={{ color: on ? tone.onFg : ink(tone.fg) }}>{t(item.labelKey)}</Text>
-                    <View className={`min-w-[18px] items-center rounded-full px-1 ${on ? 'bg-glass/90' : 'bg-white/70'}`}>
-                      <Text className="text-[10px] font-extrabold" style={{ color: on ? tone.onBg : ink(tone.fg) }}>{counts[item.id] || 0}</Text>
+                    <Text style={[styles.text, { color: on ? tone.onFg : ink(tone.fg) }]}>{t(item.labelKey)}</Text>
+                    <View style={[styles.view2, on ? styles.view3 : styles.view4]}>
+                      <Text style={[styles.text2, { color: on ? tone.onBg : ink(tone.fg) }]}>{counts[item.id] || 0}</Text>
                     </View>
                   </Pressable>
                 )
               })}
             </ScrollView>
-            <View className="mt-2">
+            <View style={styles.view5}>
               <SearchBox value={search} onChangeText={setSearch} placeholder={t('req.board.searchPh')} />
             </View>
-            <View className="mt-2 flex-row flex-wrap items-center gap-2">
+            <View style={styles.view6}>
               <ViewToggle
                 options={[{ id: 'cards', label: t('dash.supplier.cards'), icon: LayoutGrid }, { id: 'table', label: t('dash.supplier.table'), icon: List }]}
                 active={view}
@@ -316,7 +317,7 @@ export default function ContractorRequestsScreen({ navigation }) {
                 onChange={(value) => setSortOrder(value || 'newest')}
                 options={SORTS.filter((item) => item.id !== 'newest').map((item) => ({ value: item.id, label: t(item.labelKey) }))}
               />
-              <View className="flex-1 items-end">
+              <View style={styles.view7}>
                 {/* New Request opens Find Clients, where a builder sends a request (web). */}
                 <ActionButton label={t('req.board.newRequest')} icon={Plus} small onPress={() => navigation.navigate('ContractorMoreTab', { section: 'clients' })} />
               </View>
@@ -352,16 +353,16 @@ export default function ContractorRequestsScreen({ navigation }) {
               if (view === 'table') {
                 // Table row (web board table): counterparty, project, budget, status, action.
                 return (
-                  <Pressable key={request.id} onPress={() => setDetailsRequest(request)} className="border-b border-slate-100 bg-white px-1 py-3">
-                    <View className="flex-row items-center gap-3">
+                  <Pressable key={request.id} onPress={() => setDetailsRequest(request)} style={styles.pressable2}>
+                    <View style={styles.view8}>
                       <Image source={userAvatarSource(request, isOwnerTab ? 'OWNER' : 'SUPPLIER')} style={{ width: 28, height: 28, borderRadius: 14 }} contentFit="cover" />
-                      <View className="flex-1">
-                        <Text className="text-[13px] font-extrabold text-graphite" numberOfLines={1}>{request.sender_name}</Text>
-                        <Text className="text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+                      <View style={styles.actionButton}>
+                        <Text style={styles.text3} numberOfLines={1}>{request.sender_name}</Text>
+                        <Text style={styles.text4} numberOfLines={1}>
                           {[request.project_title, location].filter(Boolean).join(' · ')}
                         </Text>
                         {isOwnerTab ? (
-                          <Text className="text-[11px] font-semibold text-slate-600" numberOfLines={1}>
+                          <Text style={styles.text5} numberOfLines={1}>
                             {request.budget ? money(request.budget) : '—'}{request.land_area ? ` · ${request.land_area} ${t('dash.contractor.sqft')}` : ''}{hasQuote ? ` · ${t('request.flow.builderQuotation')}: ${money(request.quotation_amount)}` : ''}
                           </Text>
                         ) : null}
@@ -369,7 +370,7 @@ export default function ContractorRequestsScreen({ navigation }) {
                       {flow ? <FlowBadge flow={flow} /> : <RequestStatusBadge category={category} sentLabel={t(isOwnerTab ? 'dash.contractor.status.proposalSent' : 'dash.common.requestSent')} />}
                     </View>
                     {pendingIncoming || canWithdraw ? (
-                      <View className="ml-10 mt-2 flex-row flex-wrap gap-2">
+                      <View style={styles.view9}>
                         {pendingIncoming && isOwnerTab ? (
                           <>
                             <ActionButton small label={t('dash.contractor.quoteAccept')} disabled={busy} onPress={() => startQuote(request)} />
@@ -389,56 +390,56 @@ export default function ContractorRequestsScreen({ navigation }) {
                 )
               }
               return (
-                <View key={request.id} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                  <View className="flex-row items-start gap-3">
+                <View key={request.id} style={styles.view10}>
+                  <View style={styles.view11}>
                                         <Image source={userAvatarSource(request, isOwnerTab ? 'OWNER' : 'SUPPLIER')} style={{ width: 40, height: 40, borderRadius: 20 }} contentFit="cover" />
-                    <View className="flex-1">
-                      <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{request.sender_name}</Text>
+                    <View style={styles.actionButton}>
+                      <Text style={styles.text6} numberOfLines={1}>{request.sender_name}</Text>
                       {!isOwnerTab && request.profile_title && request.profile_title !== request.sender_name ? (
-                        <Text className="text-[11px] font-semibold text-slate-500" numberOfLines={1}>{request.profile_title}</Text>
+                        <Text style={styles.text4} numberOfLines={1}>{request.profile_title}</Text>
                       ) : (
-                        <Text className="text-[11px] font-semibold text-slate-500">{t(rowNotes[category])}</Text>
+                        <Text style={styles.text4}>{t(rowNotes[category])}</Text>
                       )}
                     </View>
                     {flow ? <FlowBadge flow={flow} /> : <RequestStatusBadge category={category} sentLabel={t(isOwnerTab ? 'dash.contractor.status.proposalSent' : 'dash.common.requestSent')} />}
                   </View>
 
                   {(isOwnerTab || request.project_id) ? (
-                    <Text className="mt-3 text-[14px] font-extrabold text-graphite" numberOfLines={1}>{request.project_title}</Text>
+                    <Text style={styles.text7} numberOfLines={1}>{request.project_title}</Text>
                   ) : null}
-                  <View className="mt-1 flex-row items-center gap-1">
+                  <View style={styles.view12}>
                     <MapPin size={12} color={COLORS.slate[400]} />
-                    <Text className="flex-1 text-xs font-semibold text-slate-500" numberOfLines={1}>{location}</Text>
+                    <Text style={styles.text8} numberOfLines={1}>{location}</Text>
                   </View>
                   {isOwnerTab ? (
-                    <Text className="mt-1 text-xs font-semibold text-slate-600">
-                      {t('dash.common.budget')}: <Text className="font-extrabold text-graphite">{request.budget ? money(request.budget) : '—'}</Text>
+                    <Text style={styles.text9}>
+                      {t('dash.common.budget')}: <Text style={styles.text10}>{request.budget ? money(request.budget) : '—'}</Text>
                       {request.land_area ? ` · ${request.land_area} ${t('dash.contractor.sqft')}` : ''}
                     </Text>
                   ) : null}
                   {hasQuote ? (
-                    <Text className="mt-0.5 text-xs font-semibold text-slate-600">
-                      {t('request.flow.builderQuotation')}: <Text className="font-extrabold text-graphite">{money(request.quotation_amount)}</Text>
+                    <Text style={styles.text11}>
+                      {t('request.flow.builderQuotation')}: <Text style={styles.text10}>{money(request.quotation_amount)}</Text>
                     </Text>
                   ) : null}
                   {dateLine ? (
-                    <View className="mt-1 flex-row items-center gap-1">
+                    <View style={styles.view12}>
                       <CalendarDays size={12} color={COLORS.slate[400]} />
-                      <Text className="text-[11px] font-semibold text-slate-400">{dateLine}</Text>
+                      <Text style={styles.text12}>{dateLine}</Text>
                     </View>
                   ) : null}
 
-                  <View className="mt-3 flex-row flex-wrap gap-2">
+                  <View style={styles.view13}>
                     {pendingIncoming && isOwnerTab ? (
                       <>
-                        <ActionButton small tone="outline" label={t('dash.contractor.notInterested')} disabled={busy} onPress={() => reject(request)} className="flex-1" />
-                        <ActionButton small label={t('dash.contractor.quoteAccept')} icon={ArrowRight} disabled={busy} onPress={() => startQuote(request)} className="flex-1" />
+                        <ActionButton small tone="outline" label={t('dash.contractor.notInterested')} disabled={busy} onPress={() => reject(request)} style={styles.actionButton} />
+                        <ActionButton small label={t('dash.contractor.quoteAccept')} icon={ArrowRight} disabled={busy} onPress={() => startQuote(request)} style={styles.actionButton} />
                       </>
                     ) : null}
                     {pendingIncoming && !isOwnerTab ? (
                       <>
-                        <ActionButton small tone="danger" label={t('ce.reject')} icon={X} disabled={busy} onPress={() => reject(request)} className="flex-1" />
-                        <ActionButton small label={t('ce.accept')} icon={Check} disabled={busy} onPress={() => accept(request)} className="flex-1" />
+                        <ActionButton small tone="danger" label={t('ce.reject')} icon={X} disabled={busy} onPress={() => reject(request)} style={styles.actionButton} />
+                        <ActionButton small label={t('ce.accept')} icon={Check} disabled={busy} onPress={() => accept(request)} style={styles.actionButton} />
                       </>
                     ) : null}
                     {canWithdraw ? (
@@ -466,14 +467,14 @@ export default function ContractorRequestsScreen({ navigation }) {
         subtitle={quoteFor?.project_title}
         onClose={() => setQuoteFor(null)}
         footer={(
-          <View className="flex-row gap-2">
-            <ActionButton label={t('dash.common.cancel')} tone="outline" onPress={() => setQuoteFor(null)} className="flex-1" />
-            <ActionButton label={t('dash.contractor.quoteAccept')} icon={Check} onPress={confirmQuote} className="flex-1" />
+          <View style={styles.view14}>
+            <ActionButton label={t('dash.common.cancel')} tone="outline" onPress={() => setQuoteFor(null)} style={styles.actionButton} />
+            <ActionButton label={t('dash.contractor.quoteAccept')} icon={Check} onPress={confirmQuote} style={styles.actionButton} />
           </View>
         )}
       >
         {quoteFor?.budget ? <InfoRow label={t('owner.pa.ownerBudget')} value={money(quoteFor.budget)} strong /> : null}
-        <Text className="mb-1 mt-3 text-xs font-bold text-slate-600">{t('dash.contractor.amount')}</Text>
+        <Text style={styles.text13}>{t('dash.contractor.amount')}</Text>
         <TextInput
           value={quoteAmount}
           onChangeText={(value) => { setQuoteError(''); setQuoteAmount(value.replace(/[^\d.]/g, '')) }}
@@ -481,10 +482,10 @@ export default function ContractorRequestsScreen({ navigation }) {
           placeholder={`${t('dash.contractor.amount')} (₹)`}
           placeholderTextColor={COLORS.slate[400]}
           autoFocus
-          className="h-12 rounded-xl border border-brand-300 bg-white px-3 text-[16px] font-extrabold text-graphite"
+          style={styles.textInput}
         />
-        {Number(quoteAmount) > 0 ? <Text className="mt-1 text-xs font-bold text-slate-600">{money(quoteAmount)}</Text> : null}
-        {quoteError ? <Text className="mt-2 text-xs font-bold text-rose-600">{quoteError}</Text> : null}
+        {Number(quoteAmount) > 0 ? <Text style={styles.text14}>{money(quoteAmount)}</Text> : null}
+        {quoteError ? <Text style={styles.text15}>{quoteError}</Text> : null}
       </SheetModal>
 
       {/* Request details, with the assignment / negotiation for an accepted owner request. */}
@@ -515,7 +516,7 @@ function RequestDetails({ request, variant, award, onAwardChanged }) {
   const negotiation = variant === 'owner' && hasAssignmentFlow(request)
   return (
     <View>
-      <View className="mb-3">
+      <View style={styles.view15}>
         {flow ? <FlowBadge flow={flow} /> : <RequestStatusBadge category={category} sentLabel={t(variant === 'owner' ? 'dash.contractor.status.proposalSent' : 'dash.common.requestSent')} />}
       </View>
       <InfoRow label={t(variant === 'owner' ? 'dash.contractor.homeowner' : 'role.supplier')} value={request.sender_name} strong />
@@ -529,16 +530,57 @@ function RequestDetails({ request, variant, award, onAwardChanged }) {
         <InfoRow label={t(request.is_sender ? 'mobile.dashboard.sentOn' : 'mobile.dashboard.receivedOn')} value={formatDisplayDate(request.created_at_iso || request.created_at, '')} />
       ) : null}
       {request.project_description ? (
-        <View className="mt-3">
-          <Text className="mb-1 text-[10px] font-extrabold uppercase text-slate-400">{t('dash.common.description')}</Text>
-          <Text className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">{request.project_description}</Text>
+        <View style={styles.view16}>
+          <Text style={styles.text16}>{t('dash.common.description')}</Text>
+          <Text style={styles.text17}>{request.project_description}</Text>
         </View>
       ) : null}
       {negotiation ? (
-        <View className="mt-4">
+        <View style={styles.view17}>
           <AwardPanel projectId={request.project_id} requestId={request.id} onChanged={onAwardChanged} />
         </View>
       ) : null}
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10.5 },
+  pressable: { flexDirection: 'row', alignItems: 'center', gap: 5.25, borderRadius: 9999, paddingHorizontal: 10.5, paddingVertical: 5.25 },
+  text: { fontSize: 12, fontWeight: '800' },
+  view2: { minWidth: 18, alignItems: 'center', borderRadius: 9999, paddingHorizontal: 3.5 },
+  view3: { backgroundColor: 'rgba(255, 255, 255, 0.9)' },
+  view4: { backgroundColor: 'rgba(255, 255, 255, 0.7)' },
+  text2: { fontSize: 10, fontWeight: '800' },
+  view5: { marginTop: 7 },
+  view6: { marginTop: 7, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
+  view7: { flex: 1, alignItems: 'flex-end' },
+  pressable2: { borderBottomWidth: 1, borderColor: c.borderSoft, backgroundColor: c.card, paddingHorizontal: 3.5, paddingVertical: 10.5 },
+  view8: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  actionButton: { flex: 1 },
+  text3: { fontSize: 13, fontWeight: '800', color: c.text },
+  text4: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  text5: { fontSize: 11, fontWeight: '600', color: c.textSecondary },
+  view9: { marginLeft: 35, marginTop: 7, flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  view10: { marginBottom: 10.5, borderRadius: 24, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view11: { flexDirection: 'row', alignItems: 'flex-start', gap: 10.5 },
+  text6: { fontSize: 14, fontWeight: '800', color: c.text },
+  text7: { marginTop: 10.5, fontSize: 14, fontWeight: '800', color: c.text },
+  view12: { marginTop: 3.5, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text8: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  text9: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  text10: { fontWeight: '800', color: c.text },
+  text11: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  text12: { fontSize: 11, fontWeight: '600', color: c.textFaint },
+  view13: { marginTop: 10.5, flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  view14: { flexDirection: 'row', gap: 7 },
+  text13: { marginBottom: 3.5, marginTop: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  textInput: { height: 42, borderRadius: 12, borderWidth: 1, borderColor: '#9dc5af', backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 16, fontWeight: '800', color: c.text },
+  text14: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  text15: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.roseTextSoft },
+  view15: { marginBottom: 10.5 },
+  view16: { marginTop: 10.5 },
+  text16: { marginBottom: 3.5, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: c.textFaint },
+  text17: { borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7, fontSize: 12, lineHeight: 17.5, color: c.textSecondary },
+  view17: { marginTop: 14 },
+}))

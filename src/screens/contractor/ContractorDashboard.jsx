@@ -35,6 +35,7 @@ import {
 import { requestTypeLabel } from '../../utils/roleLabels'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { ink, line, soft, softStrong } from '../../theme/tint'
+import { createStyles } from '../../theme/createStyles'
 
 // web contractorConstants.defaultProjectImage
 const DEFAULT_PROJECT_IMAGE = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80'
@@ -63,25 +64,25 @@ const CATEGORY_ROWS = {
 
 function Bar({ value, color = COLORS.brand[600] }) {
   return (
-    <View className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-      <View className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: color }} />
+    <View style={styles.view}>
+      <View style={[styles.view2, { width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: color }]} />
     </View>
   )
 }
 
 function EmptyPanel({ title, body }) {
   return (
-    <View className="items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-7">
-      <Text className="text-center text-[14px] font-extrabold text-graphite">{title}</Text>
-      {body ? <Text className="mt-1 text-center text-xs font-semibold text-slate-500">{body}</Text> : null}
+    <View style={styles.view3}>
+      <Text style={styles.text}>{title}</Text>
+      {body ? <Text style={styles.text2}>{body}</Text> : null}
     </View>
   )
 }
 
 function ViewAll({ label, onPress }) {
   return (
-    <Pressable onPress={onPress} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1">
-      <Text className="text-[11px] font-bold text-graphite">{label}</Text>
+    <Pressable onPress={onPress} style={styles.pressable}>
+      <Text style={styles.text3}>{label}</Text>
     </Pressable>
   )
 }
@@ -199,7 +200,7 @@ export default function ContractorDashboard({ navigation }) {
 
         {/* The four coloured figure cards, as on the web. */}
         <Section>
-          <View className="flex-row flex-wrap justify-between gap-y-2.5">
+          <View style={styles.view4}>
             <StatCard theme="blue" icon={Layers} title={t('dash.bld.totalProjects')} value={String(projectList.length)} sub={t('dash.bld.currentProjectsSub', { count: groups.current.length })} onPress={goProjects} />
             <StatCard theme="purple" icon={ClipboardList} title={t('dash.bld.acceptedRequests')} value={String(counts.accepted)} sub={t('dash.contractor.analytics.pendingSub', { count: counts.pending })} onPress={goRequests} />
             <StatCard theme="green" icon={Send} title={t('dash.bld.proposalsSent')} value={String(counts.sent)} sub={t('dash.contractor.analytics.rejectedSub', { count: counts.rejected })} onPress={goRequests} />
@@ -223,11 +224,11 @@ export default function ContractorDashboard({ navigation }) {
             const share = projectList.length ? Math.round((row.count / projectList.length) * 100) : 0
             const Icon = meta.icon
             return (
-              <View key={row.id} className="mb-2.5 flex-row items-center gap-2">
+              <View key={row.id} style={styles.view5}>
                 <Icon size={14} color={meta.color} />
-                <Text className="w-24 text-xs font-semibold text-graphite" numberOfLines={1}>{t(meta.labelKey)}</Text>
+                <Text style={styles.text4} numberOfLines={1}>{t(meta.labelKey)}</Text>
                 <Bar value={share} color={meta.color} />
-                <Text className="w-16 text-right text-xs font-semibold text-graphite">{row.count} ({share}%)</Text>
+                <Text style={styles.text5}>{row.count} ({share}%)</Text>
               </View>
             )
           })}
@@ -242,10 +243,10 @@ export default function ContractorDashboard({ navigation }) {
           ) : recentRequests.map((request) => {
                        const state = categorizeRequest(request)
             return (
-              <View key={request.id} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
-                <View className="flex-1">
-                  <Text className="text-[13px] font-bold text-graphite" numberOfLines={1}>{requestTypeLabel(request.request_type, t)}</Text>
-                  <Text className="text-[11px] text-slate-500" numberOfLines={1}>
+              <View key={request.id} style={styles.view6}>
+                <View style={styles.view7}>
+                  <Text style={styles.text6} numberOfLines={1}>{requestTypeLabel(request.request_type, t)}</Text>
+                  <Text style={styles.text7} numberOfLines={1}>
                     {request.project_title || (request.is_sender ? request.receiver_name : request.sender_name) || t('dash.common.request')}
                     {request.created_at ? ` · ${relativeAge(request.created_at_iso || request.created_at, undefined, t)}` : ''}
                   </Text>
@@ -258,18 +259,17 @@ export default function ContractorDashboard({ navigation }) {
 
         {/* Quick Actions */}
         <Panel title={t('dash.engineer.quickActions')}>
-          <View className="flex-row flex-wrap justify-between gap-y-2.5">
+          <View style={styles.view4}>
                        {quickActions.map(({ id, label, icon: Icon, bg, chip, border, fg, onPress }) => (
               <Pressable
                 key={id}
                 onPress={onPress}
-                className="w-[48.5%] items-center rounded-2xl border px-2 py-4"
-                style={{ backgroundColor: soft(bg, fg), borderColor: line(border, fg) }}
+                style={[styles.pressable2, { backgroundColor: soft(bg, fg), borderColor: line(border, fg) }]}
               >
-                <View className="h-10 w-10 items-center justify-center rounded-full border" style={{ backgroundColor: softStrong(chip, fg), borderColor: line(border, fg) }}>
+                <View style={[styles.view8, { backgroundColor: softStrong(chip, fg), borderColor: line(border, fg) }]}>
                   <Icon size={18} color={ink(fg)} />
                 </View>
-                <Text className="mt-2 text-center text-[12px] font-extrabold" style={{ color: ink(fg) }} numberOfLines={2}>{label}</Text>
+                <Text style={[styles.text8, { color: ink(fg) }]} numberOfLines={2}>{label}</Text>
               </Pressable>
             ))}
           </View>
@@ -285,18 +285,18 @@ export default function ContractorDashboard({ navigation }) {
             const started = project.work_started === true
             const percent = started ? scheduleWidth(project) : 0
             return (
-              <View key={project.id} className="mb-3 flex-row items-center gap-3">
+              <View key={project.id} style={styles.view9}>
                 <Image
                   source={project.cover_image_url ? imageSource(project.cover_image_url) : { uri: DEFAULT_PROJECT_IMAGE }}
                   style={{ width: 46, height: 46, borderRadius: 12 }}
                   contentFit="cover"
                 />
-                <View className="flex-1">
-                  <Text className="text-[13px] font-bold text-graphite" numberOfLines={1}>{project.title || project.project_title}</Text>
-                  <Text className="text-[11px] text-slate-500" numberOfLines={1}>{project.project_city || project.address || project.pincode || ''}</Text>
-                  <View className="mt-1 flex-row items-center gap-2">
+                <View style={styles.view7}>
+                  <Text style={styles.text6} numberOfLines={1}>{project.title || project.project_title}</Text>
+                  <Text style={styles.text7} numberOfLines={1}>{project.project_city || project.address || project.pincode || ''}</Text>
+                  <View style={styles.view10}>
                     <Bar value={percent} />
-                    <Text className="w-20 text-right text-[11px] font-semibold text-slate-600" numberOfLines={1}>
+                    <Text style={styles.text9} numberOfLines={1}>
                       {!started ? t('progress.scheduleNotStarted') : ['in_progress', 'end_date_passed'].includes(project.schedule_status) ? formatPercent(percent) : t('progress.notAvailable')}
                     </Text>
                   </View>
@@ -313,16 +313,16 @@ export default function ContractorDashboard({ navigation }) {
           ) : !totalRequests ? (
             <EmptyPanel title={t('dash.contractor.empty.allTitle')} body={t('dash.contractor.analytics.noRequestData')} />
           ) : (
-            <View className="flex-row items-center gap-4">
+            <View style={styles.view11}>
               <DonutChart slices={slices} centerValue={String(totalRequests)} centerLabel={t('dash.bld.totalRequests')} />
-              <View className="flex-1 gap-1.5">
+              <View style={styles.view12}>
                 {slices.map((slice) => {
                   const share = totalRequests ? Math.round((slice.value / totalRequests) * 100) : 0
                   return (
-                    <View key={slice.id} className="flex-row items-center gap-2">
-                      <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
-                      <Text className="flex-1 text-xs font-semibold text-graphite" numberOfLines={1}>{t(SLICE_LABELS[slice.id])}</Text>
-                      <Text className="text-xs font-semibold text-slate-600">{slice.value} ({share}%)</Text>
+                    <View key={slice.id} style={styles.view13}>
+                      <View style={[styles.view14, { backgroundColor: slice.color }]} />
+                      <Text style={styles.text10} numberOfLines={1}>{t(SLICE_LABELS[slice.id])}</Text>
+                      <Text style={styles.text11}>{slice.value} ({share}%)</Text>
                     </View>
                   )
                 })}
@@ -340,22 +340,22 @@ export default function ContractorDashboard({ navigation }) {
           ) : budget.budget <= 0 && budget.spent <= 0 ? (
             <EmptyPanel title={t('dash.bld.budgetOverview')} body={t('dash.engineer.analytics.noBudgetYet')} />
           ) : (
-            <View className="flex-row items-center gap-4">
+            <View style={styles.view11}>
               <BudgetRing share={spentShare} centerValue={money(budget.budget, country)} centerLabel={t('dash.bld.totalBudget')} />
-              <View className="flex-1 gap-2">
+              <View style={styles.view15}>
                 <View>
-                  <View className="flex-row items-center gap-2">
-                    <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#1f7a4d' }} />
-                    <Text className="text-xs font-bold text-slate-500">{t('dash.engineer.analytics.spent')} ({spentShare}%)</Text>
+                  <View style={styles.view13}>
+                    <View style={[styles.view14, { backgroundColor: '#1f7a4d' }]} />
+                    <Text style={styles.text12}>{t('dash.engineer.analytics.spent')} ({spentShare}%)</Text>
                   </View>
-                  <Text className="ml-4 text-[14px] font-extrabold text-graphite">{money(budget.spent, country)}</Text>
+                  <Text style={styles.text13}>{money(budget.spent, country)}</Text>
                 </View>
                 <View>
-                  <View className="flex-row items-center gap-2">
-                    <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#f5b31b' }} />
-                    <Text className="text-xs font-bold text-slate-500">{t('dash.engineer.analytics.remaining')} ({Math.max(0, 100 - spentShare)}%)</Text>
+                  <View style={styles.view13}>
+                    <View style={[styles.view14, { backgroundColor: '#f5b31b' }]} />
+                    <Text style={styles.text12}>{t('dash.engineer.analytics.remaining')} ({Math.max(0, 100 - spentShare)}%)</Text>
                   </View>
-                  <Text className="ml-4 text-[14px] font-extrabold text-graphite">{money(Math.max(0, budget.budget - budget.spent), country)}</Text>
+                  <Text style={styles.text13}>{money(Math.max(0, budget.budget - budget.spent), country)}</Text>
                 </View>
               </View>
             </View>
@@ -366,3 +366,36 @@ export default function ContractorDashboard({ navigation }) {
     </>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { height: 7, flex: 1, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
+  view2: { height: '100%', borderRadius: 9999 },
+  view3: { alignItems: 'center', borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 14, paddingVertical: 24.5 },
+  text: { textAlign: 'center', fontSize: 14, fontWeight: '800', color: c.text },
+  text2: { marginTop: 3.5, textAlign: 'center', fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  pressable: { borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 8.75, paddingVertical: 3.5 },
+  text3: { fontSize: 11, fontWeight: '700', color: c.text },
+  view4: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8.75 },
+  view5: { marginBottom: 8.75, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text4: { width: 84, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.text },
+  text5: { width: 56, textAlign: 'right', fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.text },
+  view6: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
+  view7: { flex: 1 },
+  text6: { fontSize: 13, fontWeight: '700', color: c.text },
+  text7: { fontSize: 11, color: c.textMuted },
+  pressable2: { width: '48.5%', alignItems: 'center', borderRadius: 16, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 14 },
+  view8: { height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, borderWidth: 1 },
+  text8: { marginTop: 7, textAlign: 'center', fontSize: 12, fontWeight: '800' },
+  view9: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  view10: { marginTop: 3.5, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text9: { width: 70, textAlign: 'right', fontSize: 11, fontWeight: '600', color: c.textSecondary },
+  view11: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  view12: { flex: 1, gap: 5.25 },
+  view13: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  view14: { height: 8.75, width: 8.75, borderRadius: 9999 },
+  text10: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.text },
+  text11: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  view15: { flex: 1, gap: 7 },
+  text12: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textMuted },
+  text13: { marginLeft: 14, fontSize: 14, fontWeight: '800', color: c.text },
+}))

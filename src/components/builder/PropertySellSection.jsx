@@ -21,6 +21,7 @@ import { apiErrorText, asList, money } from '../../utils/builderHelpers'
 import { ActionButton, Badge, LabeledInput, Notice, SegmentTabs, SheetModal } from './BuilderUi'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { createStyles } from '../../theme/createStyles'
 
 // [stored code, label key] -- the code is what is saved; only the label is translated.
 const PROPERTY_TYPES = ['HOUSE', 'INDEPENDENT_HOUSE', 'VILLA', 'APARTMENT', 'PLOT', 'COMMERCIAL'].map((code) => [code, `property.type.${code}`])
@@ -149,11 +150,11 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
   return (
     <View>
       <LabeledInput label={`${t('property.form.titlePh')} *`} value={details.title} onChangeText={(value) => update('title', value)} />
-      <Text className="mb-1.5 text-xs font-bold text-slate-600">{t('property.type')}</Text>
+      <Text style={styles.text}>{t('property.type')}</Text>
       <SegmentTabs dense tabs={PROPERTY_TYPES.map(([id, key]) => ({ id, label: t(key) }))} active={details.property_type} onChange={(value) => update('property_type', value)} />
-      <Text className="mb-1.5 mt-3 text-xs font-bold text-slate-600">{t('mobile.account.property.listingFor')}</Text>
+      <Text style={styles.text2}>{t('mobile.account.property.listingFor')}</Text>
       <SegmentTabs dense tabs={LISTING_TYPES.map(([id, key]) => ({ id, label: t(key) }))} active={details.listing_type} onChange={(value) => update('listing_type', value)} />
-      <View className="mt-3">
+      <View style={styles.view}>
         <LabeledInput label={t('dash.common.description')} value={details.description} onChangeText={(value) => update('description', value)} multiline />
         <LabeledInput label={`${t('property.form.addressPh')} *`} value={details.address} onChangeText={(value) => update('address', value)} />
         <LabeledInput label={`${t('dash.common.pincode')} *`} value={details.pincode} onChangeText={(value) => update('pincode', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} />
@@ -161,8 +162,8 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
         <LabeledInput label={t('property.form.statePh')} value={details.state} onChangeText={(value) => update('state', value)} />
         <LabeledInput label={`${t('property.price')} *`} value={details.price} onChangeText={numeric('price')} keyboardType="numeric" hint={Number(details.price) > 0 ? money(details.price, details.country) : ''} />
       </View>
-      <View className="mb-3 flex-row items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
-        <Text className="text-[13px] font-bold text-slate-700">{t('property.negotiable')}</Text>
+      <View style={styles.view2}>
+        <Text style={styles.text3}>{t('property.negotiable')}</Text>
         <Switch value={details.is_negotiable} onValueChange={(value) => update('is_negotiable', value)} trackColor={{ true: COLORS.brand[500] }} />
       </View>
       <LabeledInput label={t('property.form.carpetPh')} value={details.carpet_area} onChangeText={numeric('carpet_area')} keyboardType="numeric" />
@@ -172,13 +173,13 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
       <LabeledInput label={t('property.bathrooms')} value={details.bathrooms} onChangeText={numeric('bathrooms')} keyboardType="number-pad" />
       <LabeledInput label={t('property.floors')} value={details.floors} onChangeText={numeric('floors')} keyboardType="number-pad" />
       <LabeledInput label={t('property.age')} value={details.age_years} onChangeText={numeric('age_years')} keyboardType="number-pad" />
-      <Text className="mb-1.5 text-xs font-bold text-slate-600">{t('property.furnishing')}</Text>
+      <Text style={styles.text}>{t('property.furnishing')}</Text>
       <SegmentTabs dense tabs={FURNISHING.map(([id, key]) => ({ id, label: t(key) }))} active={details.furnishing} onChange={(value) => update('furnishing', value)} />
-      <Text className="mb-1.5 mt-3 text-xs font-bold text-slate-600">{t('property.facing')}</Text>
+      <Text style={styles.text2}>{t('property.facing')}</Text>
       <SegmentTabs dense tabs={FACING.map(([id, key]) => ({ id, label: t(key) }))} active={details.facing} onChange={(value) => update('facing', value)} />
       {projects.length ? (
         <>
-          <Text className="mb-1.5 mt-3 text-xs font-bold text-slate-600">{t('mobile.account.property.sourceProject')}</Text>
+          <Text style={styles.text2}>{t('mobile.account.property.sourceProject')}</Text>
           <SegmentTabs
             dense
             tabs={[{ id: '', label: t('property.form.noSourceProject') }, ...projects.map((project) => ({ id: String(project.id), label: project.title || project.project_title || t('ui.requests.project', { n: project.id }) }))]}
@@ -188,26 +189,26 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
         </>
       ) : null}
 
-      <Text className="mb-1.5 mt-4 text-xs font-bold text-slate-600">{t('mobile.account.property.coverPhoto')}</Text>
-      <View className="flex-row items-center gap-3">
+      <Text style={styles.text4}>{t('mobile.account.property.coverPhoto')}</Text>
+      <View style={styles.view3}>
         {coverImageUrl ? <Image source={{ uri: imageUrl(coverImageUrl) }} style={{ width: 84, height: 64, borderRadius: 10 }} contentFit="cover" /> : null}
         <ActionButton small tone="brandOutline" icon={ImagePlus} label={coverImageUrl ? t('mobile.account.property.changeCover') : t('property.form.uploadCover')} disabled={uploading} onPress={() => addPhotos(true)} />
       </View>
-      <Text className="mb-1.5 mt-3 text-xs font-bold text-slate-600">{t('cps.gallery')} ({galleryUrls.length})</Text>
-      <View className="flex-row flex-wrap gap-2">
+      <Text style={styles.text2}>{t('cps.gallery')} ({galleryUrls.length})</Text>
+      <View style={styles.view4}>
         {galleryUrls.map((url) => (
-          <Pressable key={url} onPress={() => setGalleryUrls((current) => current.filter((item) => item !== url))} className="overflow-hidden rounded-lg">
+          <Pressable key={url} onPress={() => setGalleryUrls((current) => current.filter((item) => item !== url))} style={styles.pressable}>
             <Image source={{ uri: imageUrl(url) }} style={{ width: 64, height: 64 }} contentFit="cover" />
           </Pressable>
         ))}
-        <Pressable onPress={() => addPhotos(false)} disabled={uploading} className={`h-16 w-16 items-center justify-center rounded-lg border border-dashed border-brand-300 bg-brand-50 ${uploading ? 'opacity-50' : ''}`}>
+        <Pressable onPress={() => addPhotos(false)} disabled={uploading} style={[styles.pressable2, uploading ? styles.pressable3 : null]}>
           <ImagePlus size={18} color={COLORS.brand[700]} />
         </Pressable>
       </View>
-      {galleryUrls.length ? <Text className="mt-1 text-[10px] text-slate-400">{t('mobile.account.tapPhotoToRemove')}</Text> : null}
+      {galleryUrls.length ? <Text style={styles.text5}>{t('mobile.account.tapPhotoToRemove')}</Text> : null}
 
-      {message ? <View className="mt-3"><Notice tone="error" text={message} /></View> : null}
-      <View className="mt-4 gap-2">
+      {message ? <View style={styles.view}><Notice tone="error" text={message} /></View> : null}
+      <View style={styles.view5}>
         <ActionButton label={editing ? t('property.form.saveChanges') : t('property.form.saveDraft')} tone="outline" busy={saving === 'save'} disabled={Boolean(saving) || uploading} onPress={() => submit(false)} />
         {canPublish ? <ActionButton label={t('property.form.saveAndPublish')} busy={saving === 'publish'} disabled={Boolean(saving) || uploading} onPress={() => submit(true)} /> : null}
         <ActionButton label={t('dash.common.cancel')} tone="outline" disabled={Boolean(saving)} onPress={onCancel} />
@@ -311,23 +312,23 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
         <Notice tone={message?.tone} text={message?.text} />
         <PanelState loading={mine.loading} error={mine.error} empty={!listings.length} emptyText={`${t('property.empty.mineTitle')}\n${t('property.empty.mineMessage')}`}>
           {listings.map((listing) => (
-            <View key={listing.id} className="mb-3 rounded-2xl border border-slate-200 p-3">
-              <View className="flex-row gap-3">
+            <View key={listing.id} style={styles.view6}>
+              <View style={styles.view7}>
                 {listing.cover_image_url ? (
                   <Image source={{ uri: imageUrl(listing.cover_image_url) }} style={{ width: 72, height: 60, borderRadius: 10 }} contentFit="cover" />
                 ) : null}
-                <View className="flex-1">
-                  <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{listing.title}</Text>
-                  <Text className="text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+                <View style={styles.view8}>
+                  <Text style={styles.text6} numberOfLines={1}>{listing.title}</Text>
+                  <Text style={styles.text7} numberOfLines={1}>
                     {[listing.city, listing.pincode].filter(Boolean).join(' · ')} · {listing.listing_type === 'RENT' ? t('property.listing.RENT') : t('property.listing.SALE')}
                   </Text>
-                  <Text className="mt-0.5 text-[13px] font-extrabold text-brand-800">
+                  <Text style={styles.text8}>
                     {money(listing.price, listing.country)}{listing.is_negotiable ? ` · ${t('property.negotiable')}` : ''}
                   </Text>
                 </View>
                 <Badge label={STATUS_LABEL_KEYS[listing.status] ? t(STATUS_LABEL_KEYS[listing.status]) : listing.status} />
               </View>
-              <View className="mt-3 flex-row flex-wrap gap-2">
+              <View style={styles.view9}>
                 {(STATUS_ACTIONS[listing.status] || []).map((action) => (
                   <ActionButton
                     key={action.status}
@@ -369,3 +370,26 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
     </>
   )
 }
+
+const styles = createStyles((c) => ({
+  text: { marginBottom: 5.25, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  text2: { marginBottom: 5.25, marginTop: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  view: { marginTop: 10.5 },
+  view2: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text3: { fontSize: 13, fontWeight: '700', color: c.textSoft },
+  text4: { marginBottom: 5.25, marginTop: 14, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  view3: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  view4: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  pressable: { overflow: 'hidden', borderRadius: 8 },
+  pressable2: { height: 56, width: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: '#9dc5af', backgroundColor: c.brandSoft },
+  pressable3: { opacity: 0.5 },
+  text5: { marginTop: 3.5, fontSize: 10, color: c.textFaint },
+  view5: { marginTop: 14, gap: 7 },
+  view6: { marginBottom: 10.5, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: 10.5 },
+  view7: { flexDirection: 'row', gap: 10.5 },
+  view8: { flex: 1 },
+  text6: { fontSize: 14, fontWeight: '800', color: c.text },
+  text7: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  text8: { marginTop: 1.75, fontSize: 13, fontWeight: '800', color: c.brandTextStrong },
+  view9: { marginTop: 10.5, flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+}))

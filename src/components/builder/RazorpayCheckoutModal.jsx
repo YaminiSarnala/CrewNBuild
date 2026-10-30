@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import { WEB_BASE_URL } from '../../api/subscription'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { createStyles } from '../../theme/createStyles'
 
 const CHECKOUT_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js'
 
@@ -90,9 +91,9 @@ export default function RazorpayCheckoutModal({ order, description, onSuccess, o
   return (
     <Modal visible animationType="slide" onRequestClose={() => finish(onDismiss)}>
       <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: '#f8fafc' }}>
-        <View className="flex-row items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-          <Text className="text-[15px] font-extrabold text-graphite">{t('mobile.billing.checkout.title')}</Text>
-          <Pressable onPress={() => finish(onDismiss)} accessibilityLabel={t('mobile.billing.checkout.close')} className="h-9 w-9 items-center justify-center rounded-full bg-slate-100">
+        <View style={styles.view}>
+          <Text style={styles.text}>{t('mobile.billing.checkout.title')}</Text>
+          <Pressable onPress={() => finish(onDismiss)} accessibilityLabel={t('mobile.billing.checkout.close')} style={styles.pressable}>
             <X size={18} color="#334155" />
           </Pressable>
         </View>
@@ -105,7 +106,7 @@ export default function RazorpayCheckoutModal({ order, description, onSuccess, o
           setSupportMultipleWindows={false}
           startInLoadingState
           renderLoading={() => (
-            <View className="absolute inset-0 items-center justify-center">
+            <View style={styles.view2}>
               <ActivityIndicator color="#134127" />
             </View>
           )}
@@ -124,3 +125,10 @@ export default function RazorpayCheckoutModal({ order, description, onSuccess, o
     </Modal>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 14, paddingVertical: 10.5 },
+  text: { fontSize: 15, fontWeight: '800', color: c.text },
+  pressable: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.muted },
+  view2: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
+}))

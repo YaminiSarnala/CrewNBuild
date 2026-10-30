@@ -31,6 +31,7 @@ import { fetchConversations } from '../../api/messages'
 import { useLiveEventsConnection, useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { asList } from '../../utils/builderHelpers'
+import { createStyles } from '../../theme/createStyles'
 
 const POLL_MS = 15000
 const TOAST_MS = 9000
@@ -223,23 +224,31 @@ function NewRequestBanner({ toast, onDismiss }) {
   const title = t(toast.count === 1 ? 'ui.requestInbox.newRequestsReceivedOne' : 'ui.requestInbox.newRequestsReceivedMany', { count: toast.count })
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 8, left: 12, right: 12 }}>
-      <View className="flex-row items-center gap-3 rounded-2xl bg-brand-800 px-4 py-3" style={{ elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+      <View style={[styles.view, { elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }]}>
         <BellRing size={18} color="#fff" />
-        <View className="flex-1">
-          <Text className="text-[13px] font-extrabold text-white">{title}</Text>
+        <View style={styles.view2}>
+          <Text style={styles.text}>{title}</Text>
           <Pressable
             onPress={() => {
               onDismiss()
               navigation.navigate('ContractorHome', { screen: 'ContractorRequestsTab' })
             }}
           >
-            <Text className="mt-0.5 text-xs font-bold text-brand-200 underline">{t('ui.requestInbox.viewRequests')}</Text>
+            <Text style={styles.text2}>{t('ui.requestInbox.viewRequests')}</Text>
           </Pressable>
         </View>
-        <Pressable onPress={onDismiss} accessibilityLabel={t('ui.requestInbox.dismiss')} className="h-8 w-8 items-center justify-center">
+        <Pressable onPress={onDismiss} accessibilityLabel={t('ui.requestInbox.dismiss')} style={styles.pressable}>
           <X size={16} color="#fff" />
         </Pressable>
       </View>
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderRadius: 16, backgroundColor: '#134127', paddingHorizontal: 14, paddingVertical: 10.5 },
+  view2: { flex: 1 },
+  text: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+  text2: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#c3dccd', textDecorationLine: 'underline' },
+  pressable: { height: 28, width: 28, alignItems: 'center', justifyContent: 'center' },
+}))

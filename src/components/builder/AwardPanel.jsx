@@ -18,6 +18,7 @@ import { formatMoney } from '../../utils/countryConfig'
 import { awardWorkStartedUnconfirmed } from '../../utils/awardFlow'
 import { ActionButton, ConfirmDialog, LabeledInput, Notice } from './BuilderUi'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { createStyles } from '../../theme/createStyles'
 
 const OFFER_STATUS = { open: 'award.offerStatus.open', accepted: 'award.offerStatus.accepted', rejected: 'award.offerStatus.rejected', superseded: 'award.offerStatus.superseded', withdrawn: 'award.offerStatus.withdrawn' }
 
@@ -37,20 +38,20 @@ const stamp = (value) => {
 function OfferTimeline({ offers, money }) {
   const { t } = useLanguage()
   return (
-    <View className="mt-2">
+    <View style={styles.view}>
       {offers.map((offer) => (
-        <View key={offer.id} className="flex-row gap-3 border-b border-slate-100 py-2.5">
-          <View className={`mt-1 h-3 w-3 rounded-full border-2 border-brand-600 ${offer.proposed_by === 'owner' ? 'bg-white' : 'bg-brand-600'}`} />
-          <View className="flex-1">
-            <Text className="text-[13px] font-bold text-graphite">
+        <View key={offer.id} style={styles.view2}>
+          <View style={[styles.view3, styles[offer.proposed_by === 'owner' ? 'view4' : 'view5']]} />
+          <View style={styles.actionButton}>
+            <Text style={styles.text}>
               {t(offer.proposed_by === 'owner' ? 'award.byOwner' : 'award.byBuilder')} · {offer.proposer_name || '—'}
             </Text>
-            <Text className="text-xs text-slate-500">{offer.note || '—'}</Text>
-            {offer.created_at ? <Text className="mt-0.5 text-[10px] text-slate-400">{stamp(offer.created_at)}</Text> : null}
+            <Text style={styles.text2}>{offer.note || '—'}</Text>
+            {offer.created_at ? <Text style={styles.text3}>{stamp(offer.created_at)}</Text> : null}
           </View>
-          <View className="items-end">
-            <Text className="text-[13px] font-extrabold text-graphite">{money(offer.amount)}</Text>
-            <Text className="mt-0.5 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold uppercase text-slate-500">
+          <View style={styles.view6}>
+            <Text style={styles.text4}>{money(offer.amount)}</Text>
+            <Text style={styles.text5}>
               {OFFER_STATUS[offer.status] ? t(OFFER_STATUS[offer.status]) : offer.status}
             </Text>
           </View>
@@ -102,9 +103,9 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
   const award = data?.award
   if (loading) {
     return (
-      <View className="flex-row items-center gap-2 py-3">
+      <View style={styles.view7}>
         <ActivityIndicator size="small" color="#134127" />
-        <Text className="text-xs font-semibold text-slate-500">{t('award.loading')}</Text>
+        <Text style={styles.text6}>{t('award.loading')}</Text>
       </View>
     )
   }
@@ -193,14 +194,14 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
 
   const ended = award.phase === 'declined' || award.phase === 'cancelled'
   const banner = award.locked
-    ? { box: 'border-slate-200 bg-slate-50', dot: '#64748b', Icon: Lock }
+    ? { box: 'tone', dot: '#64748b', Icon: Lock }
     : headline?.done
-      ? { box: 'border-emerald-200 bg-emerald-50', dot: '#059669', Icon: CircleCheckBig }
+      ? { box: 'view8', dot: '#059669', Icon: CircleCheckBig }
       : ended
-        ? { box: 'border-red-200 bg-red-50', dot: '#ef4444', Icon: CircleX }
+        ? { box: 'tone2', dot: '#ef4444', Icon: CircleX }
         : actionRequired
-          ? { box: 'border-amber-200 bg-amber-50', dot: '#f59e0b', Icon: CircleAlert }
-          : { box: 'border-sky-200 bg-sky-50', dot: '#0284c7', Icon: Clock }
+          ? { box: 'view9', dot: '#f59e0b', Icon: CircleAlert }
+          : { box: 'tone3', dot: '#0284c7', Icon: Clock }
   const BannerIcon = banner.Icon
   const instructions = [
     award.locked ? t('award.lockedNote') : null,
@@ -235,50 +236,50 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
   return (
     <View>
       {/* Status banner */}
-      <View className={`flex-row items-start gap-2.5 rounded-xl border px-3 py-2.5 ${banner.box}`}>
-        <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: banner.dot }}>
+      <View style={[styles.view10, styles[banner.box]]}>
+        <View style={[styles.view11, { backgroundColor: banner.dot }]}>
           <BannerIcon size={14} color="#fff" />
         </View>
-        <View className="flex-1">
-          <Text className="text-[10px] font-bold uppercase text-slate-500">{t(negotiationOnly ? 'award.titleNegotiation' : 'award.title')}</Text>
-          <Text className="text-[13px] font-extrabold text-graphite">
-            {actionRequired ? <Text className="text-red-700">{t('award.actionRequired')} · </Text> : null}
+        <View style={styles.actionButton}>
+          <Text style={styles.text7}>{t(negotiationOnly ? 'award.titleNegotiation' : 'award.title')}</Text>
+          <Text style={styles.text4}>
+            {actionRequired ? <Text style={styles.text8}>{t('award.actionRequired')} · </Text> : null}
             {phaseText}
           </Text>
           {instructions.map((line) => (
-            <Text key={line} className="mt-0.5 text-xs text-slate-500">{line}</Text>
+            <Text key={line} style={styles.text9}>{line}</Text>
           ))}
         </View>
       </View>
 
       {/* Amounts */}
-      <View className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-        <Text className="text-xs font-extrabold text-brand-800">{t('dash.common.amount')}</Text>
-        <View className="mt-1.5 flex-row flex-wrap gap-x-5 gap-y-2">
+      <View style={styles.view12}>
+        <Text style={styles.text10}>{t('dash.common.amount')}</Text>
+        <View style={styles.view13}>
           {amountRows.map(([label, value]) => (
             <View key={label}>
-              <Text className="text-[11px] text-slate-500">{label}</Text>
-              <Text className="text-[13px] font-extrabold text-graphite">{value}</Text>
+              <Text style={styles.text11}>{label}</Text>
+              <Text style={styles.text4}>{value}</Text>
             </View>
           ))}
         </View>
         {headline ? (
-          <View className={`mt-2.5 self-start rounded-lg border px-2.5 py-1.5 ${headline.done ? 'border-emerald-200 bg-emerald-50' : headline.action ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-brand-50'}`}>
-            <Text className="text-[10px] font-extrabold uppercase text-brand-800">{headline.label}</Text>
-            <Text className="text-[15px] font-extrabold text-graphite">{money(headline.amount)}</Text>
-            {headline.sub ? <Text className="mt-0.5 text-[11px] font-semibold text-slate-600">{headline.sub}</Text> : null}
+          <View style={[styles.view14, styles[headline.done ? 'view8' : headline.action ? 'view9' : 'view15']]}>
+            <Text style={styles.text12}>{headline.label}</Text>
+            <Text style={styles.text13}>{money(headline.amount)}</Text>
+            {headline.sub ? <Text style={styles.text14}>{headline.sub}</Text> : null}
           </View>
         ) : null}
         {openOffer?.note ? (
-          <Text className="mt-2 rounded-lg bg-slate-50 px-2.5 py-1 text-xs text-slate-500">
-            <Text className="font-bold">{t('award.form.reason')}: </Text>{openOffer.note}
+          <Text style={styles.text15}>
+            <Text style={styles.text16}>{t('award.form.reason')}: </Text>{openOffer.note}
           </Text>
         ) : null}
       </View>
 
       {/* Actions — exactly the ones the server allows */}
       {actions.length > 0 ? (
-        <View className="mt-3 gap-2">
+        <View style={styles.view16}>
           {isBuilder && actions.includes('confirm') ? (
             <ActionButton
               icon={FileText}
@@ -311,48 +312,48 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
             <ActionButton icon={CircleX} tone="danger" disabled={busy || releaseBlocked} label={t(negotiationOnly ? 'award.cancelNegotiation' : 'award.cancel')} onPress={() => setDialog('cancel')} />
           ) : null}
           {releaseBlocked && (actions.includes('decline') || actions.includes('cancel')) ? (
-            <Text className="text-xs font-semibold text-amber-800">{award.release_blocked_reason}</Text>
+            <Text style={styles.text17}>{award.release_blocked_reason}</Text>
           ) : null}
         </View>
       ) : null}
 
       {showCounter ? (
-        <View className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <Text className="text-[11px] font-extrabold uppercase text-slate-500">{t('award.form.title')}</Text>
-          <Text className="mb-2 mt-1 text-xs font-semibold text-slate-500">
-            {openOffer && !openIsMine ? t('award.form.ownerOffer') : t('award.currentAgreed')}: <Text className="font-extrabold text-graphite">{money(theirCurrent)}</Text>
-            {myPrevious ? <Text> · {t('award.form.yourPrevious')}: <Text className="font-extrabold text-graphite">{money(myPrevious.amount)}</Text></Text> : null}
+        <View style={styles.view17}>
+          <Text style={styles.text18}>{t('award.form.title')}</Text>
+          <Text style={styles.text19}>
+            {openOffer && !openIsMine ? t('award.form.ownerOffer') : t('award.currentAgreed')}: <Text style={styles.text20}>{money(theirCurrent)}</Text>
+            {myPrevious ? <Text> · {t('award.form.yourPrevious')}: <Text style={styles.text20}>{money(myPrevious.amount)}</Text></Text> : null}
           </Text>
           <LabeledInput label={t('award.form.proposedAmount')} value={counterAmount} onChangeText={(value) => setCounterAmount(value.replace(/[^\d.]/g, ''))} keyboardType="numeric" placeholder={t('dash.common.amount')} />
-          {Number(counterAmount) > 0 ? <Text className="-mt-2 mb-2 text-xs font-bold text-graphite">{money(counterAmount)}</Text> : null}
+          {Number(counterAmount) > 0 ? <Text style={styles.text21}>{money(counterAmount)}</Text> : null}
           <LabeledInput label={t('award.form.reason')} value={counterNote} onChangeText={setCounterNote} multiline maxLength={1000} placeholder={t('mobile.dashboard.award.reasonPlaceholder')} />
-          <View className="flex-row gap-2">
-            <ActionButton label={t('dash.common.cancel')} tone="outline" disabled={busy} onPress={() => setShowCounter(false)} className="flex-1" />
-            <ActionButton label={t('award.form.submit')} busy={busy} onPress={submitCounter} className="flex-1" />
+          <View style={styles.view18}>
+            <ActionButton label={t('dash.common.cancel')} tone="outline" disabled={busy} onPress={() => setShowCounter(false)} style={styles.actionButton} />
+            <ActionButton label={t('award.form.submit')} busy={busy} onPress={submitCounter} style={styles.actionButton} />
           </View>
         </View>
       ) : null}
 
-      {message ? <View className="mt-3"><Notice tone="info" text={message} /></View> : null}
+      {message ? <View style={styles.view19}><Notice tone="info" text={message} /></View> : null}
 
       {/* History */}
-      <View className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
-        <Text className="text-[13px] font-extrabold text-graphite">{t('award.history')}</Text>
+      <View style={styles.view20}>
+        <Text style={styles.text4}>{t('award.history')}</Text>
         {(award.offers || []).length === 0
-          ? <Text className="mt-2 text-xs text-slate-500">{t('award.noHistory')}</Text>
+          ? <Text style={styles.text22}>{t('award.noHistory')}</Text>
           : <OfferTimeline offers={award.offers} money={money} />}
         {(award.earlier_rounds || []).length > 0 ? (
-          <View className="mt-3 border-t border-slate-100 pt-2">
-            <Text className="text-[11px] font-extrabold uppercase text-slate-500">{t('award.earlierRounds')}</Text>
+          <View style={styles.view21}>
+            <Text style={styles.text18}>{t('award.earlierRounds')}</Text>
             {award.earlier_rounds.map((round, index) => (
-              <View key={round.award_id} className="mt-2 rounded-lg bg-slate-50 p-2.5">
-                <Text className="text-xs font-bold text-graphite">
+              <View key={round.award_id} style={styles.view22}>
+                <Text style={styles.text23}>
                   {t('award.roundLabel', { n: index + 1 })} · {t(round.status === 'declined' ? 'award.roundDeclined' : 'award.roundCancelled')}
                 </Text>
-                <Text className="text-[11px] text-slate-500">{t('award.roundAgreed', { amount: money(round.agreed_amount) })}{round.ended_at ? ` · ${stamp(round.ended_at)}` : ''}</Text>
+                <Text style={styles.text11}>{t('award.roundAgreed', { amount: money(round.agreed_amount) })}{round.ended_at ? ` · ${stamp(round.ended_at)}` : ''}</Text>
                 {round.offers?.length
                   ? <OfferTimeline offers={round.offers} money={money} />
-                  : <Text className="mt-1 text-[11px] text-slate-500">{t('award.roundNoOffers')}</Text>}
+                  : <Text style={styles.text24}>{t('award.roundNoOffers')}</Text>}
               </View>
             ))}
           </View>
@@ -377,3 +378,56 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
     </View>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginTop: 7 },
+  view2: { flexDirection: 'row', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
+  view3: { marginTop: 3.5, height: 10.5, width: 10.5, borderRadius: 9999, borderWidth: 2, borderColor: '#236645' },
+  view4: { backgroundColor: c.card },
+  view5: { backgroundColor: '#236645' },
+  actionButton: { flex: 1 },
+  text: { fontSize: 13, fontWeight: '700', color: c.text },
+  text2: { fontSize: 12, lineHeight: 16, color: c.textMuted },
+  text3: { marginTop: 1.75, fontSize: 10, color: c.textFaint },
+  view6: { alignItems: 'flex-end' },
+  text4: { fontSize: 13, fontWeight: '800', color: c.text },
+  text5: { marginTop: 1.75, borderRadius: 9999, backgroundColor: c.muted, paddingHorizontal: 7, paddingVertical: 1.75, fontSize: 9, fontWeight: '700', textTransform: 'uppercase', color: c.textMuted },
+  view7: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 10.5 },
+  text6: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  tone: { borderColor: c.border, backgroundColor: c.subtle },
+  view8: { borderColor: c.emeraldBorder, backgroundColor: c.emeraldSoft },
+  tone2: { borderColor: c.redBorder, backgroundColor: c.redSoft },
+  view9: { borderColor: c.amberBorder, backgroundColor: c.amberSoft },
+  tone3: { borderColor: c.skyBorder, backgroundColor: c.skySoft },
+  view10: { flexDirection: 'row', alignItems: 'flex-start', gap: 8.75, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  view11: { height: 24.5, width: 24.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999 },
+  text7: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: c.textMuted },
+  text8: { color: c.redText },
+  text9: { marginTop: 1.75, fontSize: 12, lineHeight: 16, color: c.textMuted },
+  view12: { marginTop: 10.5, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  text10: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.brandTextStrong },
+  view13: { marginTop: 5.25, flexDirection: 'row', flexWrap: 'wrap', columnGap: 17.5, rowGap: 7 },
+  text11: { fontSize: 11, color: c.textMuted },
+  view14: { marginTop: 8.75, alignSelf: 'flex-start', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8.75, paddingVertical: 5.25 },
+  view15: { borderColor: c.brandBorder, backgroundColor: c.brandSoft },
+  text12: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: c.brandTextStrong },
+  text13: { fontSize: 15, fontWeight: '800', color: c.text },
+  text14: { marginTop: 1.75, fontSize: 11, fontWeight: '600', color: c.textSecondary },
+  text15: { marginTop: 7, borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 8.75, paddingVertical: 3.5, fontSize: 12, lineHeight: 16, color: c.textMuted },
+  text16: { fontWeight: '700' },
+  view16: { marginTop: 10.5, gap: 7 },
+  text17: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.amberTextStrong },
+  view17: { marginTop: 10.5, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, padding: 10.5 },
+  text18: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', color: c.textMuted },
+  text19: { marginBottom: 7, marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  text20: { fontWeight: '800', color: c.text },
+  text21: { marginTop: -7, marginBottom: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.text },
+  view18: { flexDirection: 'row', gap: 7 },
+  view19: { marginTop: 10.5 },
+  view20: { marginTop: 10.5, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10.5 },
+  text22: { marginTop: 7, fontSize: 12, lineHeight: 16, color: c.textMuted },
+  view21: { marginTop: 10.5, borderTopWidth: 1, borderColor: c.borderSoft, paddingTop: 7 },
+  view22: { marginTop: 7, borderRadius: 8, backgroundColor: c.subtle, padding: 8.75 },
+  text23: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.text },
+  text24: { marginTop: 3.5, fontSize: 11, color: c.textMuted },
+}))

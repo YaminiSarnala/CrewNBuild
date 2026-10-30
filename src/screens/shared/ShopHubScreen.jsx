@@ -219,11 +219,9 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
                 key={supplier.supplier_id || supplier.id}
                 onPress={() => checkout(supplier.supplier_id || supplier.id)}
                 disabled={checkoutSupplierId !== null}
-                className={`mt-3 h-11 items-center justify-center rounded-xl bg-brand-700 ${
-                  checkoutSupplierId !== null ? 'opacity-60' : ''
-                }`}
+                style={[styles.pressable7, checkoutSupplierId !== null ? styles.pressable8 : null]}
               >
-                <Text className="text-[13px] font-extrabold text-white">
+                <Text style={styles.text16}>
                   {checkoutSupplierId === (supplier.supplier_id || supplier.id)
                     ? 'Sending request…'
                     : `Send buy request · ${supplier.supplier_name || supplier.name || 'Supplier'}`}
@@ -270,4 +268,7 @@ const styles = createStyles((c) => ({
   pressable5: { height: 28, width: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.roseSoft },
   pressable6: { marginTop: 10.5, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
   text15: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+  pressable7: { marginTop: 10.5, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#1a5038' },
+  pressable8: { opacity: 0.6 },
+  text16: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
 }))

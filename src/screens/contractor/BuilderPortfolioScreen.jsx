@@ -20,6 +20,7 @@ import { hasFeature, lockedMessage, lockedReason } from '../../utils/subscriptio
 import { formatDisplayDate, money } from '../../utils/builderHelpers'
 import { shareCsvFile } from '../../utils/shareCsv'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { createStyles } from '../../theme/createStyles'
 
 // [field, labelKey] as the web's COST_FIELDS.
 const COST_FIELDS = [
@@ -34,17 +35,17 @@ const sumCosts = (totals) => COST_FIELDS.reduce((total, [field]) => total + Numb
 function Bar({ value }) {
   const width = Math.max(0, Math.min(100, Number(value) || 0))
   return (
-    <View className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-      <View className="h-full rounded-full bg-emerald-500" style={{ width: `${width}%` }} />
+    <View style={styles.view}>
+      <View style={[styles.view2, { width: `${width}%` }]} />
     </View>
   )
 }
 
 function Figure({ label, value }) {
   return (
-    <View className="w-[48%] rounded-xl bg-slate-50 px-3 py-2.5">
-      <Text className="text-[10px] font-bold uppercase text-slate-400">{label}</Text>
-      <Text className="mt-0.5 text-[15px] font-extrabold text-graphite">{value}</Text>
+    <View style={styles.view3}>
+      <Text style={styles.text}>{label}</Text>
+      <Text style={styles.text2}>{value}</Text>
     </View>
   )
 }
@@ -121,7 +122,7 @@ export default function BuilderPortfolioScreen({ navigation }) {
               emptyText={t('subscription.portfolio.empty')}
             >
               {summary ? (
-                <View className="flex-row flex-wrap justify-between gap-y-2">
+                <View style={styles.view4}>
                   <Figure label={t('subscription.portfolio.projects')} value={String(summary.project_count ?? 0)} />
                   <Figure label={t('subscription.portfolio.activeProjects')} value={String(summary.active_projects ?? 0)} />
                   <Figure label={t('subscription.portfolio.avgCompletion')} value={summary.average_completion == null ? '—' : `${summary.average_completion}%`} />
@@ -136,19 +137,19 @@ export default function BuilderPortfolioScreen({ navigation }) {
           {advanced && summary ? (
             <Panel title={t('subscription.portfolio.costSummary')}>
               {COST_FIELDS.map(([field, labelKey]) => (
-                <View key={field} className="flex-row items-center justify-between border-b border-slate-100 py-2">
-                  <Text className="text-xs font-semibold text-slate-500">{t(labelKey)}</Text>
-                  <View className="items-end">
-                    <Text className="text-[13px] font-extrabold text-graphite">{money(summary.adjusted_totals?.[field])}</Text>
+                <View key={field} style={styles.view5}>
+                  <Text style={styles.text3}>{t(labelKey)}</Text>
+                  <View style={styles.view6}>
+                    <Text style={styles.text4}>{money(summary.adjusted_totals?.[field])}</Text>
                     {Number(summary.adjusted_totals?.[field] || 0) !== Number(summary.original_totals?.[field] || 0) ? (
-                      <Text className="text-[10px] text-slate-400">{t('subscription.portfolio.original')}: {money(summary.original_totals?.[field])}</Text>
+                      <Text style={styles.text5}>{t('subscription.portfolio.original')}: {money(summary.original_totals?.[field])}</Text>
                     ) : null}
                   </View>
                 </View>
               ))}
-              <View className="flex-row items-center justify-between pt-2">
-                <Text className="text-xs font-extrabold text-graphite">{t('subscription.portfolio.total')}</Text>
-                <Text className="text-[14px] font-extrabold text-brand-800">{money(sumCosts(summary.adjusted_totals))}</Text>
+              <View style={styles.view7}>
+                <Text style={styles.text6}>{t('subscription.portfolio.total')}</Text>
+                <Text style={styles.text7}>{money(sumCosts(summary.adjusted_totals))}</Text>
               </View>
               <ActionButton
                 label={canExportAll ? t('subscription.portfolio.exportAll') : t('mobile.billing.portfolio.exportAllLocked')}
@@ -157,27 +158,27 @@ export default function BuilderPortfolioScreen({ navigation }) {
                 busy={exporting === 'all'}
                 disabled={!canExportAll || Boolean(exporting)}
                 onPress={() => shareCsv('all', fetchPortfolioExportCsv, 'builder-portfolio.csv')}
-                className="mt-3"
+                style={styles.actionButton}
               />
-              <Text className="mt-1 text-[11px] font-semibold text-slate-400">{t('subscription.portfolio.reportHint')}</Text>
+              <Text style={styles.text8}>{t('subscription.portfolio.reportHint')}</Text>
             </Panel>
           ) : null}
 
           <Panel title={t('subscription.portfolio.projects')} action={<FolderKanban size={18} color="#1a5038" />}>
             <PanelState loading={loading && !data} empty={!projects.length} emptyText={t('subscription.portfolio.empty')}>
               {projects.map((row) => (
-                <View key={row.project_id} className="border-b border-slate-100 py-3">
-                  <View className="flex-row items-center gap-2">
-                    <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={1}>{row.title || t('dash.common.project')}</Text>
-                    <Text className="text-[13px] font-extrabold text-brand-800">{money(row.contract_or_budget, row.project_country)}</Text>
+                <View key={row.project_id} style={styles.view8}>
+                  <View style={styles.view9}>
+                    <Text style={styles.text9} numberOfLines={1}>{row.title || t('dash.common.project')}</Text>
+                    <Text style={styles.text10}>{money(row.contract_or_budget, row.project_country)}</Text>
                   </View>
-                  {row.owner_name ? <Text className="mt-0.5 text-xs font-semibold text-slate-500">{t('subscription.portfolio.colOwner')}: {row.owner_name}</Text> : null}
-                  <Text className="mt-1 text-[11px] font-semibold text-slate-500">
+                  {row.owner_name ? <Text style={styles.text11}>{t('subscription.portfolio.colOwner')}: {row.owner_name}</Text> : null}
+                  <Text style={styles.text12}>
                     {t('subscription.portfolio.colProgress')} {row.completion_percentage == null ? '—' : `${row.completion_percentage}%`} · {t('subscription.portfolio.colSpent')} {money(row.adjusted_spent ?? row.original_spent, row.project_country)}
                     {row.adjusted_spent != null && Number(row.adjusted_spent) !== Number(row.original_spent) ? ` (${t('subscription.portfolio.original')}: ${money(row.original_spent, row.project_country)})` : ''}
                   </Text>
                   <Bar value={row.completion_percentage} />
-                  <Text className="mt-1 text-[11px] text-slate-400">
+                  <Text style={styles.text13}>
                     {t('subscription.portfolio.recordedDays')}: {row.recorded_days || 0}{row.adjusted_days ? ` · ${t('subscription.portfolio.colCorrected')}: ${row.adjusted_days}` : ''} · {t('subscription.portfolio.colLastRecord')}: {formatDisplayDate(row.last_record_date, '—')}
                   </Text>
                   <ActionButton
@@ -188,7 +189,7 @@ export default function BuilderPortfolioScreen({ navigation }) {
                     busy={exporting === `p-${row.project_id}`}
                     disabled={!canExportProject || Boolean(exporting)}
                     onPress={() => shareCsv(`p-${row.project_id}`, () => fetchProjectSummaryCsv(row.project_id), `project-${row.project_id}-summary.csv`)}
-                    className="mt-2 self-start"
+                    style={styles.actionButton2}
                   />
                 </View>
               ))}
@@ -202,3 +203,30 @@ export default function BuilderPortfolioScreen({ navigation }) {
     </StackScreenShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginTop: 3.5, height: 5.25, width: '100%', overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
+  view2: { height: '100%', borderRadius: 9999, backgroundColor: '#10b981' },
+  view3: { width: '48%', borderRadius: 12, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  text: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: c.textFaint },
+  text2: { marginTop: 1.75, fontSize: 15, fontWeight: '800', color: c.text },
+  view4: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 7 },
+  view5: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 7 },
+  text3: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view6: { alignItems: 'flex-end' },
+  text4: { fontSize: 13, fontWeight: '800', color: c.text },
+  text5: { fontSize: 10, color: c.textFaint },
+  view7: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 7 },
+  text6: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.text },
+  text7: { fontSize: 14, fontWeight: '800', color: c.brandTextStrong },
+  actionButton: { marginTop: 10.5 },
+  text8: { marginTop: 3.5, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  view8: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  view9: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text9: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  text10: { fontSize: 13, fontWeight: '800', color: c.brandTextStrong },
+  text11: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  text12: { marginTop: 3.5, fontSize: 11, fontWeight: '600', color: c.textMuted },
+  text13: { marginTop: 3.5, fontSize: 11, color: c.textFaint },
+  actionButton2: { marginTop: 7, alignSelf: 'flex-start' },
+}))

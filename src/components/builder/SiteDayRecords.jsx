@@ -31,6 +31,7 @@ import { formatPlanDate, hasFeature, lockedReason, subscriptionErrorMessage } fr
 import { ActionButton, InfoRow, LabeledInput, LockedFeature, Notice, SegmentTabs, Badge } from './BuilderUi'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { createStyles } from '../../theme/createStyles'
 
 // [field, labelKey] — the label is translated at render time.
 const COST_FIELDS = [
@@ -102,53 +103,53 @@ export function BuilderCostAdjustments({ registerId, country, onViewPlans }) {
   }
 
   return (
-    <View className="mt-3 overflow-hidden rounded-2xl border border-emerald-200">
-      <View className="flex-row items-center gap-2 border-b border-emerald-100 bg-emerald-50 px-3 py-2.5">
+    <View style={styles.view}>
+      <View style={styles.view2}>
         <ClipboardList size={14} color="#047857" />
-        <Text className="text-[10px] font-extrabold uppercase text-emerald-800">{t('subscription.adjust.title')}</Text>
+        <Text style={styles.text}>{t('subscription.adjust.title')}</Text>
       </View>
-      <View className="bg-white p-3">
-        <Text className="mb-2 text-xs font-semibold text-slate-500">{t('subscription.adjust.hint')}</Text>
-        <View className="flex-row flex-wrap justify-between gap-y-2">
+      <View style={styles.view3}>
+        <Text style={styles.text2}>{t('subscription.adjust.hint')}</Text>
+        <View style={styles.view4}>
           {COST_FIELDS.map(([key, labelKey]) => {
             const values = record.fields?.[key] || {}
             return (
-              <View key={key} className="w-[48%] rounded-lg bg-slate-50 px-3 py-2">
-                <Text className="text-[11px] font-bold text-slate-600">{t(labelKey)}</Text>
-                <Text className="text-[13px] font-extrabold text-graphite">{money(values.effective)}</Text>
-                {values.effective !== values.original ? <Text className="text-[10px] text-slate-500">{t('subscription.adjust.recorded')}: {money(values.original)}</Text> : null}
+              <View key={key} style={styles.view5}>
+                <Text style={styles.text3}>{t(labelKey)}</Text>
+                <Text style={styles.text4}>{money(values.effective)}</Text>
+                {values.effective !== values.original ? <Text style={styles.text5}>{t('subscription.adjust.recorded')}: {money(values.original)}</Text> : null}
               </View>
             )
           })}
         </View>
-        {!record.locked ? <Text className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">{t('subscription.adjust.openDay')}</Text> : null}
+        {!record.locked ? <Text style={styles.text6}>{t('subscription.adjust.openDay')}</Text> : null}
         {record.locked && (locked || !entitled) ? (
-          <View className="mt-2">
+          <View style={styles.view6}>
             <LockedFeature compact reason={locked || { kind: status?.status === 'EXPIRED' ? 'expired' : 'required', requiredPlan: 'PROFESSIONAL' }} onViewPlans={onViewPlans} />
           </View>
         ) : null}
         {record.locked && entitled && !locked ? (
-          <View className="mt-3">
-            <Text className="mb-1.5 text-xs font-bold text-slate-600">{t('subscription.adjust.field')}</Text>
+          <View style={styles.view7}>
+            <Text style={styles.text7}>{t('subscription.adjust.field')}</Text>
             <SegmentTabs dense tabs={COST_FIELDS.map(([id, labelKey]) => ({ id, label: t(labelKey) }))} active={field} onChange={setField} />
-            <View className="mt-2">
+            <View style={styles.view6}>
               <LabeledInput label={t('subscription.adjust.newAmount')} value={amount} onChangeText={(value) => setAmount(value.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" />
               <LabeledInput label={t('subscription.adjust.reason')} value={reason} onChangeText={setReason} multiline maxLength={500} />
             </View>
             <ActionButton label={t('subscription.adjust.save')} busy={busy} onPress={submit} />
           </View>
         ) : null}
-        {message ? <View className="mt-2"><Notice tone={message.tone} text={message.text} /></View> : null}
+        {message ? <View style={styles.view6}><Notice tone={message.tone} text={message.text} /></View> : null}
         {(record.adjustments || []).length ? (
-          <View className="mt-2">
-            <Text className="mb-1 text-xs font-extrabold text-slate-700">{t('subscription.adjust.history')}</Text>
+          <View style={styles.view6}>
+            <Text style={styles.text8}>{t('subscription.adjust.history')}</Text>
             {record.adjustments.map((row) => (
-              <View key={row.id} className="mb-1.5 rounded-lg border border-slate-100 px-3 py-2">
-                <Text className="text-xs font-bold text-graphite">
+              <View key={row.id} style={styles.view8}>
+                <Text style={styles.text9}>
                   {t((COST_FIELDS.find(([key]) => key === row.field_name) || [null, 'se.form.otherExpenses'])[1])}: {money(row.original_value)} → {money(row.adjusted_value)}
                 </Text>
-                <Text className="text-xs text-slate-600">{row.reason}</Text>
-                <Text className="text-[10px] text-slate-400">{t('subscription.adjust.by', { name: row.builder_name, date: formatPlanDate(`${row.created_at}Z`) })}</Text>
+                <Text style={styles.text10}>{row.reason}</Text>
+                <Text style={styles.text11}>{t('subscription.adjust.by', { name: row.builder_name, date: formatPlanDate(`${row.created_at}Z`) })}</Text>
               </View>
             ))}
           </View>
@@ -252,39 +253,39 @@ export default function SiteDayRecords({ project, onViewPlans }) {
   return (
     <View>
       {/* Date picker: step a day, or jump to a recorded date */}
-      <View className="flex-row items-center gap-2">
-        <Pressable onPress={() => setWorkDate((value) => shiftDate(value, -1))} accessibilityLabel={t('mobile.projects.day.previous')} className="h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
+      <View style={styles.view9}>
+        <Pressable onPress={() => setWorkDate((value) => shiftDate(value, -1))} accessibilityLabel={t('mobile.projects.day.previous')} style={styles.pressable}>
           <ChevronLeft size={18} color={COLORS.brand[700]} />
         </Pressable>
-        <View className="flex-1 items-center">
-          <Text className="text-[15px] font-extrabold text-graphite">{formatDisplayDate(workDate, undefined, t)}</Text>
-          {workDate === todayCalendarDate() ? <Text className="text-[10px] font-bold uppercase text-brand-700">{t('se.cal.today')}</Text> : null}
+        <View style={styles.view10}>
+          <Text style={styles.text12}>{formatDisplayDate(workDate, undefined, t)}</Text>
+          {workDate === todayCalendarDate() ? <Text style={styles.text13}>{t('se.cal.today')}</Text> : null}
         </View>
         <Pressable
           onPress={() => setWorkDate((value) => (value >= todayCalendarDate() ? value : shiftDate(value, 1)))}
           accessibilityLabel={t('mobile.projects.day.next')}
-          className="h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white"
+          style={styles.pressable}
         >
           <ChevronRight size={18} color={COLORS.brand[700]} />
         </Pressable>
       </View>
       {recordedDates.length ? (
-        <View className="mt-2">
-          <Text className="mb-1 text-[11px] font-bold text-slate-500">{t('subscription.portfolio.recordedDays')}</Text>
+        <View style={styles.view6}>
+          <Text style={styles.text14}>{t('subscription.portfolio.recordedDays')}</Text>
           <SegmentTabs dense tabs={recordedDates.slice(0, 30).map((date) => ({ id: date, label: formatDisplayDate(date, undefined, t) }))} active={workDate} onChange={setWorkDate} />
         </View>
       ) : null}
 
-      <View className="mt-3">
+      <View style={styles.view7}>
         {locked ? <LockedFeature reason={locked} onViewPlans={onViewPlans} /> : null}
         {error ? <Notice tone="error" text={error} /> : null}
-        {loading && !day ? <Text className="py-4 text-center text-xs font-semibold text-slate-400">{t('se.form.loadingDay')}</Text> : null}
+        {loading && !day ? <Text style={styles.text15}>{t('se.form.loadingDay')}</Text> : null}
 
         {!locked && !error && day ? (
           register ? (
-            <View className="rounded-2xl border border-slate-200 bg-white p-3">
-              <View className="mb-1 flex-row items-center justify-between">
-                <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={2}>{register.work_type || t('se.dailySiteRecord')}</Text>
+            <View style={styles.view11}>
+              <View style={styles.view12}>
+                <Text style={styles.text16} numberOfLines={2}>{register.work_type || t('se.dailySiteRecord')}</Text>
                 <Badge label={register.status === 'CLOSED' || register.status === 'COMPLETED' ? t('se.cal.closed') : register.status === 'IN_PROGRESS' ? t('ui.status.inProgress') : (register.status || t('ui.status.open'))} />
               </View>
               {register.activity_category || register.boq_reference ? (
@@ -299,33 +300,33 @@ export default function SiteDayRecords({ project, onViewPlans }) {
               {register.equipment_used ? <InfoRow label={t('se.form.equipmentUsed')} value={register.equipment_used} /> : null}
               {register.progress_note ? <InfoRow label={t('se.detailedRemarks')} value={register.progress_note} /> : null}
               {register.inspection_remarks ? <InfoRow label={t('se.inspectionRemarks')} value={register.inspection_remarks} /> : null}
-              {register.created_by_name ? <Text className="mt-2 text-[10px] font-semibold text-slate-400">{t('mobile.projects.day.recordedBy', { name: register.created_by_name })}</Text> : null}
+              {register.created_by_name ? <Text style={styles.text17}>{t('mobile.projects.day.recordedBy', { name: register.created_by_name })}</Text> : null}
               <BuilderCostAdjustments registerId={register.id} country={country} onViewPlans={onViewPlans} />
             </View>
           ) : (
-            <Text className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs font-semibold text-slate-400">
+            <Text style={styles.text18}>
               {t('mobile.projects.day.noRecord')}
             </Text>
           )
         ) : null}
 
         {dayNotes.length ? (
-          <View className="mt-3">
+          <View style={styles.view7}>
             {dayNotes.map((entry, index) => (
-              <View key={entry.id || index} className="border-b border-slate-100 py-2">
-                <Text className="text-xs font-extrabold text-brand-700">{entry.title || t('mobile.projects.day.siteUpdate')}</Text>
-                {entry.description ? <Text className="mt-0.5 text-[13px] font-semibold text-graphite">{entry.description}</Text> : null}
+              <View key={entry.id || index} style={styles.view13}>
+                <Text style={styles.text19}>{entry.title || t('mobile.projects.day.siteUpdate')}</Text>
+                {entry.description ? <Text style={styles.text20}>{entry.description}</Text> : null}
               </View>
             ))}
           </View>
         ) : null}
 
         {photos.length ? (
-          <View className="mt-3">
-            <Text className="mb-1.5 text-xs font-extrabold text-graphite">{t('se.sitePhotos')} ({photos.length})</Text>
+          <View style={styles.view7}>
+            <Text style={styles.text21}>{t('se.sitePhotos')} ({photos.length})</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {photos.map((photo, index) => (
-                <Pressable key={photo.id || photo.image_url || index} onPress={() => setViewer(photo)} className="overflow-hidden rounded-xl border border-slate-200">
+                <Pressable key={photo.id || photo.image_url || index} onPress={() => setViewer(photo)} style={styles.pressable2}>
                   <Image source={{ uri: imageUrl(photo.image_url) }} style={{ width: 120, height: 96 }} contentFit="cover" />
                 </Pressable>
               ))}
@@ -333,18 +334,18 @@ export default function SiteDayRecords({ project, onViewPlans }) {
           </View>
         ) : null}
         {videos.length ? (
-          <View className="mt-3">
-            <Text className="mb-1.5 text-xs font-extrabold text-graphite">{t('se.siteVideos')} ({videos.length})</Text>
+          <View style={styles.view7}>
+            <Text style={styles.text21}>{t('se.siteVideos')} ({videos.length})</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {videos.map((video, index) => (
                 <Pressable
                   key={video.id || video.image_url || index}
                   onPress={() => setVideoViewer(video)}
                   accessibilityLabel={t('mobile.projects.day.playVideo', { index: index + 1 })}
-                  className="h-24 w-32 items-center justify-center rounded-xl border border-slate-200 bg-slate-900"
+                  style={styles.pressable3}
                 >
                   <CirclePlay size={30} color="#fff" />
-                  <Text className="mt-1 text-[10px] font-bold text-white/80">{t('mobile.projects.day.videoN', { index: index + 1 })}</Text>
+                  <Text style={styles.text22}>{t('mobile.projects.day.videoN', { index: index + 1 })}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -352,14 +353,14 @@ export default function SiteDayRecords({ project, onViewPlans }) {
         ) : null}
 
         {dayLabour.length || dayRentals.length ? (
-          <View className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-            <Text className="mb-1 text-xs font-extrabold text-graphite">{t('mobile.projects.day.labourEquipment')}</Text>
+          <View style={styles.view14}>
+            <Text style={styles.text23}>{t('mobile.projects.day.labourEquipment')}</Text>
             {dayLabour.map((request) => {
               const record = (logs.labour[request.id] || []).find((row) => dateKey(row.work_date) === workDate)
               return (
-                <View key={`l-${request.id}`} className="border-b border-slate-100 py-2">
-                  <Text className="text-[13px] font-bold text-graphite">{request.trade || t('dash.common.labour')} · {request.supplier_name || t('dash.common.supplier')}</Text>
-                  <Text className="text-[11px] text-slate-500">
+                <View key={`l-${request.id}`} style={styles.view13}>
+                  <Text style={styles.text24}>{request.trade || t('dash.common.labour')} · {request.supplier_name || t('dash.common.supplier')}</Text>
+                  <Text style={styles.text25}>
                     {record
                       ? `${t('mobile.projects.day.present')} ${record.present_count ?? 0} · ${t('mobile.projects.day.absent')} ${record.absent_count ?? 0} · ${t('mobile.projects.day.halfDay')} ${record.half_day_count ?? 0}${record.overtime_hours ? ` · ${t('mobile.projects.day.overtime', { hours: record.overtime_hours })}` : ''}`
                       : t('mobile.projects.day.noAttendance')}
@@ -370,30 +371,30 @@ export default function SiteDayRecords({ project, onViewPlans }) {
             {dayRentals.map((rental) => {
               const log = (logs.equipment[rental.id] || []).find((row) => dateKey(row.usage_date) === workDate)
               return (
-                <View key={`e-${rental.id}`} className="border-b border-slate-100 py-2">
-                  <Text className="text-[13px] font-bold text-graphite">{rental.item_name || t('se.res.glanceEquipment')} · {rental.supplier_name || t('dash.common.supplier')}</Text>
-                  <Text className="text-[11px] text-slate-500">
+                <View key={`e-${rental.id}`} style={styles.view13}>
+                  <Text style={styles.text24}>{rental.item_name || t('se.res.glanceEquipment')} · {rental.supplier_name || t('dash.common.supplier')}</Text>
+                  <Text style={styles.text25}>
                     {log ? t('mobile.projects.day.hoursUsed', { hours: log.hours_used }) : t('mobile.projects.day.noUsage')}
                     {rental.unit_price ? ` · ${money(rental.unit_price)} / ${String(rental.rate_unit || '').toLowerCase()}` : ''}
                   </Text>
                 </View>
               )
             })}
-            <Text className="mt-1 text-[10px] font-semibold text-slate-400">{t('mobile.projects.day.resourcesHint')}</Text>
+            <Text style={styles.text26}>{t('mobile.projects.day.resourcesHint')}</Text>
           </View>
         ) : null}
       </View>
 
       <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
-        <View className="flex-1 items-center justify-center bg-black/90">
-          <Pressable onPress={() => setViewer(null)} accessibilityLabel={t('dash.common.close')} className="absolute right-5 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-glass/20">            <X size={20} color="#fff" />
+        <View style={styles.view15}>
+          <Pressable onPress={() => setViewer(null)} accessibilityLabel={t('dash.common.close')} style={styles.pressable4}>            <X size={20} color="#fff" />
           </Pressable>
           {viewer ? <Image source={{ uri: imageUrl(viewer.image_url) }} style={{ width: '100%', height: '75%' }} contentFit="contain" /> : null}
         </View>
       </Modal>
       <Modal visible={!!videoViewer} transparent animationType="fade" onRequestClose={() => setVideoViewer(null)}>
-        <View className="flex-1 items-center justify-center bg-black/90">
-          <Pressable onPress={() => setVideoViewer(null)} accessibilityLabel={t('dash.common.close')} className="absolute right-5 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-glass/20">            <X size={20} color="#fff" />
+        <View style={styles.view15}>
+          <Pressable onPress={() => setVideoViewer(null)} accessibilityLabel={t('dash.common.close')} style={styles.pressable4}>            <X size={20} color="#fff" />
           </Pressable>
           {videoViewer ? <SiteVideo uri={imageUrl(videoViewer.image_url)} /> : null}
         </View>
@@ -407,3 +408,51 @@ function SiteVideo({ uri }) {
   const player = useVideoPlayer({ uri }, (instance) => { instance.loop = false; instance.play() })
   return <VideoView player={player} style={{ width: '100%', height: '70%' }} allowsFullscreen nativeControls contentFit="contain" />
 }
+
+const styles = createStyles((c) => ({
+  view: { marginTop: 10.5, overflow: 'hidden', borderRadius: 16, borderWidth: 1, borderColor: c.emeraldBorder },
+  view2: { flexDirection: 'row', alignItems: 'center', gap: 7, borderBottomWidth: 1, borderColor: c.emeraldBorderSoft, backgroundColor: c.emeraldSoft, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  text: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: c.emeraldTextStrong },
+  view3: { backgroundColor: c.card, padding: 10.5 },
+  text2: { marginBottom: 7, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view4: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 7 },
+  view5: { width: '48%', borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text3: { fontSize: 11, fontWeight: '700', color: c.textSecondary },
+  text4: { fontSize: 13, fontWeight: '800', color: c.text },
+  text5: { fontSize: 10, color: c.textMuted },
+  text6: { marginTop: 7, borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  view6: { marginTop: 7 },
+  view7: { marginTop: 10.5 },
+  text7: { marginBottom: 5.25, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  text8: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.textSoft },
+  view8: { marginBottom: 5.25, borderRadius: 8, borderWidth: 1, borderColor: c.borderSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text9: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.text },
+  text10: { fontSize: 12, lineHeight: 16, color: c.textSecondary },
+  text11: { fontSize: 10, color: c.textFaint },
+  view9: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  pressable: { height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
+  view10: { flex: 1, alignItems: 'center' },
+  text12: { fontSize: 15, fontWeight: '800', color: c.text },
+  text13: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: c.brandText },
+  text14: { marginBottom: 3.5, fontSize: 11, fontWeight: '700', color: c.textMuted },
+  text15: { paddingVertical: 14, textAlign: 'center', fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textFaint },
+  view11: { borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10.5 },
+  view12: { marginBottom: 3.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text16: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  text17: { marginTop: 7, fontSize: 10, fontWeight: '600', color: c.textFaint },
+  text18: { borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 14, paddingVertical: 21, textAlign: 'center', fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textFaint },
+  view13: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 7 },
+  text19: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.brandText },
+  text20: { marginTop: 1.75, fontSize: 13, fontWeight: '600', color: c.text },
+  text21: { marginBottom: 5.25, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.text },
+  pressable2: { overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: c.border },
+  pressable3: { height: 84, width: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: '#0f172a' },
+  text22: { marginTop: 3.5, fontSize: 10, fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)' },
+  view14: { marginTop: 10.5, borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10.5 },
+  text23: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.text },
+  text24: { fontSize: 13, fontWeight: '700', color: c.text },
+  text25: { fontSize: 11, color: c.textMuted },
+  text26: { marginTop: 3.5, fontSize: 10, fontWeight: '600', color: c.textFaint },
+  view15: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.9)' },
+  pressable4: { position: 'absolute', right: 17.5, top: 42, zIndex: 10, height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: 'rgba(255, 255, 255, 0.2)' },
+}))

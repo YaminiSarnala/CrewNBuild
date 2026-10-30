@@ -14,6 +14,7 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import {
   dashboardBanner, formatPlanDate, isPremium, lockedMessage, offerName, statusName, currentTier,
 } from '../../utils/subscriptionFormat'
+import { createStyles } from '../../theme/createStyles'
 
 /**
  * Chrome for a Builder screen pushed on the root stack (Plan & billing,
@@ -24,23 +25,23 @@ export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefres
   const insets = useSafeAreaInsets()
   const { t } = useLanguage()
   return (
-    <View className="flex-1 bg-surface-deep">
-      <View style={{ paddingTop: insets.top }} className="bg-brand-800 pb-4">
+    <View style={styles.view}>
+      <View style={[styles.view2, { paddingTop: insets.top }]}>
         <ContentWrap>
-          <View className="flex-row items-center gap-3 px-4 pt-3">
-            <Pressable onPress={onBack} accessibilityLabel={t('dash.common.back')} className="h-10 w-10 items-center justify-center rounded-full bg-glass/10">              <ArrowLeft size={20} color="#ffffff" />
+          <View style={styles.view3}>
+            <Pressable onPress={onBack} accessibilityLabel={t('dash.common.back')} style={styles.pressable}>              <ArrowLeft size={20} color="#ffffff" />
             </Pressable>
-            <View className="flex-1">
-              <Text className="text-[17px] font-extrabold text-white" numberOfLines={1}>{title}</Text>
-              {subtitle ? <Text className="text-xs font-semibold text-brand-300" numberOfLines={1}>{subtitle}</Text> : null}
+            <View style={styles.view4}>
+              <Text style={styles.text} numberOfLines={1}>{title}</Text>
+              {subtitle ? <Text style={styles.text2} numberOfLines={1}>{subtitle}</Text> : null}
             </View>
             {right}
           </View>
         </ContentWrap>
       </View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.view4}>
         <ScrollView
-          className="flex-1"
+          style={styles.view4}
           contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 28 }}
           keyboardShouldPersistTaps="handled"
           refreshControl={onRefresh ? (
@@ -55,10 +56,10 @@ export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefres
 }
 
 /** Horizontal gutter wrapper for content that is not inside a Panel. */
-export function Section({ children, className = '', style }) {
+export function Section({ children, style }) {
   const { gutter } = useResponsive()
   return (
-    <View className={`mb-4 ${className}`} style={[{ marginHorizontal: gutter }, style]}>
+    <View style={[styles.view5, [{ marginHorizontal: gutter }, style]]}>
       {children}
     </View>
   )
@@ -76,10 +77,10 @@ export function SegmentTabs({ tabs, active, onChange, dense = false }) {
             onPress={() => onChange(id)}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            className={`flex-row items-center gap-1.5 rounded-xl ${dense ? 'px-3 py-2' : 'px-3.5 py-2.5'} ${on ? 'bg-brand-700' : 'border border-slate-200 bg-white'}`}
+            style={[styles.pressable2, dense ? styles.pressable3 : styles.pressable4, on ? styles.pressable5 : styles.pressable6]}
           >
             {Icon ? <Icon size={13} color={on ? '#fff' : COLORS.slate[500]} /> : null}
-            <Text className={`text-xs font-extrabold ${on ? 'text-white' : 'text-slate-600'}`}>
+            <Text style={[styles.text3, on ? styles.text4 : styles.text5]}>
               {label}{count !== undefined && count !== null ? ` (${count})` : ''}
             </Text>
           </Pressable>
@@ -91,8 +92,8 @@ export function SegmentTabs({ tabs, active, onChange, dense = false }) {
 export function Badge({ label, bg = '#f0f6f2', fg = '#134127' }) {
   // Fixed light colours; soft()/ink() give their dark-theme versions.
   return (
-    <View className="self-start rounded-full px-2.5 py-1" style={{ backgroundColor: soft(bg, fg) }}>
-      <Text className="text-[10px] font-extrabold uppercase" style={{ color: ink(fg), letterSpacing: 0.4 }}>{label}</Text>
+    <View style={[styles.view6, { backgroundColor: soft(bg, fg) }]}>
+      <Text style={[styles.text6, { color: ink(fg), letterSpacing: 0.4 }]}>{label}</Text>
     </View>
   )
 }
@@ -113,13 +114,13 @@ export function RequestStatusBadge({ category, sentLabel }) {
   return <Badge label={category === 'sent' && sentLabel ? sentLabel : t(tone.labelKey)} bg={tone.bg} fg={tone.fg} />
 }
 
-export function ActionButton({ label, onPress, tone = 'primary', disabled, busy, icon: Icon, className = '', small = false }) {
-  const styles = {
-    primary: { box: 'bg-brand-700', text: 'text-white', icon: '#fff' },
-    dark: { box: 'bg-slate-800', text: 'text-white', icon: '#fff' },
-    outline: { box: 'border border-slate-300 bg-white', text: 'text-slate-700', icon: COLORS.slate[600] },
-    brandOutline: { box: 'border border-brand-700 bg-white', text: 'text-brand-800', icon: COLORS.brand[700] },
-    danger: { box: 'border border-rose-200 bg-rose-50', text: 'text-rose-700', icon: ink('#be123c') },    success: { box: 'bg-emerald-600', text: 'text-white', icon: '#fff' },
+export function ActionButton({ label, onPress, tone = 'primary', disabled, busy, icon: Icon, style, small = false }) {
+  const look = {
+    primary: { box: 'pressable5', text: 'text4', icon: '#fff' },
+    dark: { box: 'tone', text: 'text4', icon: '#fff' },
+    outline: { box: 'tone2', text: 'tone3', icon: COLORS.slate[600] },
+    brandOutline: { box: 'tone4', text: 'text7', icon: COLORS.brand[700] },
+    danger: { box: 'tone5', text: 'tone6', icon: ink('#be123c') },    success: { box: 'view7', text: 'text4', icon: '#fff' },
   }[tone] || {}
   const off = disabled || busy
   return (
@@ -127,27 +128,26 @@ export function ActionButton({ label, onPress, tone = 'primary', disabled, busy,
       onPress={onPress}
       disabled={off}
       accessibilityRole="button"
-      className={`flex-row items-center justify-center gap-1.5 rounded-xl ${small ? 'h-9 px-3' : 'h-11 px-4'} ${styles.box} ${off ? 'opacity-50' : ''} ${className}`}
+      style={[styles.pressable7, small ? styles.pressable8 : styles.pressable9, styles[look.box], off ? styles.pressable10 : null, style]}
     >
-      {busy ? <ActivityIndicator size="small" color={styles.icon} /> : Icon ? <Icon size={small ? 13 : 15} color={styles.icon} /> : null}
-      <Text className={`${small ? 'text-[11px]' : 'text-[13px]'} font-extrabold ${styles.text}`} numberOfLines={1}>{label}</Text>
+      {busy ? <ActivityIndicator size="small" color={look.icon} /> : Icon ? <Icon size={small ? 13 : 15} color={look.icon} /> : null}
+      <Text style={[small ? styles.text8 : styles.text9, styles.text10, styles[look.text]]} numberOfLines={1}>{label}</Text>
     </Pressable>
   )
 }
 
 export function LabeledInput({ label, hint, multiline, style, ...props }) {
   return (
-    <View className="mb-3">
-      {label ? <Text className="mb-1 text-xs font-bold text-slate-600">{label}</Text> : null}
+    <View style={styles.view8}>
+      {label ? <Text style={styles.text11}>{label}</Text> : null}
       <TextInput
         {...props}
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
         placeholderTextColor={COLORS.slate[400]}
-        className={`rounded-xl border border-slate-200 bg-white px-3 text-[14px] font-semibold text-graphite ${multiline ? 'min-h-20 py-3' : 'h-11'}`}
-        style={style}
+        style={[styles.textInput, multiline ? styles.textInput2 : styles.textInput3, style]}
       />
-      {hint ? <Text className="mt-1 text-[11px] font-semibold text-slate-400">{hint}</Text> : null}
+      {hint ? <Text style={styles.text12}>{hint}</Text> : null}
     </View>
   )
 }
@@ -155,7 +155,7 @@ export function LabeledInput({ label, hint, multiline, style, ...props }) {
 export function SearchBox({ value, onChangeText, placeholder }) {
   const { t } = useLanguage()
   return (
-    <View className="h-11 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
+    <View style={styles.view9}>
       <Search size={15} color={COLORS.slate[400]} />
       <TextInput
         value={value}
@@ -163,7 +163,7 @@ export function SearchBox({ value, onChangeText, placeholder }) {
         placeholder={placeholder ?? t('mobile.billing.ui.search')}
         placeholderTextColor={COLORS.slate[400]}
         autoCorrect={false}
-        className="h-11 flex-1 text-[14px] font-semibold text-graphite"
+        style={styles.textInput4}
       />
     </View>
   )
@@ -172,9 +172,9 @@ export function SearchBox({ value, onChangeText, placeholder }) {
 export function InfoRow({ label, value, strong = false }) {
   const { t } = useLanguage()
   return (
-    <View className="flex-row items-start justify-between gap-3 border-b border-slate-100 py-2">
-      <Text className="text-xs font-semibold text-slate-400">{label}</Text>
-      <Text className={`flex-1 text-right text-xs ${strong ? 'font-extrabold text-graphite' : 'font-bold text-slate-700'}`}>
+    <View style={styles.view10}>
+      <Text style={styles.text13}>{label}</Text>
+      <Text style={[styles.text14, strong ? styles.text15 : styles.text16]}>
         {value === null || value === undefined || value === '' ? t('dash.common.notSet') : String(value)}
       </Text>
     </View>
@@ -182,10 +182,10 @@ export function InfoRow({ label, value, strong = false }) {
 }
 
 const NOTICE_TONES = {
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  error: 'border-rose-200 bg-rose-50 text-rose-800',
-  info: 'border-brand-100 bg-brand-50 text-brand-800',
-  warn: 'border-amber-200 bg-amber-50 text-amber-800',
+  success: 'tone7',
+  error: 'tone8',
+  info: 'tone9',
+  warn: 'tone10',
 }
 
 export function Notice({ tone = 'info', text }) {
@@ -193,8 +193,8 @@ export function Notice({ tone = 'info', text }) {
   const classes = NOTICE_TONES[tone] || NOTICE_TONES.info
   const [box, bg, color] = classes.split(' ')
   return (
-    <View className={`mb-3 rounded-xl border px-3 py-2.5 ${box} ${bg}`}>
-      <Text className={`text-xs font-bold ${color}`}>{text}</Text>
+    <View style={[styles.view11, styles[box], styles[bg]]}>
+      <Text style={[styles.text17, styles[color]]}>{text}</Text>
     </View>
   )
 }
@@ -205,25 +205,24 @@ export function SheetModal({ visible, title, subtitle, onClose, children, footer
   const { t } = useLanguage()
   return (
     <Modal visible={!!visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-        <Pressable className="flex-1 bg-black/40" onPress={onClose} accessibilityLabel={t('dash.common.close')} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.view4}>
+        <Pressable style={styles.pressable11} onPress={onClose} accessibilityLabel={t('dash.common.close')} />
         <View
-          className="rounded-t-3xl bg-white"
-          style={[{ maxHeight: tall ? '92%' : '85%', paddingBottom: Math.max(insets.bottom, 12) }, SHADOW.card]}
+          style={[styles.view12, [{ maxHeight: tall ? '92%' : '85%', paddingBottom: Math.max(insets.bottom, 12) }, SHADOW.card]]}
         >
-          <View className="flex-row items-start gap-3 border-b border-slate-100 px-5 pb-3 pt-4">
-            <View className="flex-1">
-              <Text className="text-[16px] font-extrabold text-graphite" numberOfLines={2}>{title}</Text>
-              {subtitle ? <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={2}>{subtitle}</Text> : null}
+          <View style={styles.view13}>
+            <View style={styles.view4}>
+              <Text style={styles.text18} numberOfLines={2}>{title}</Text>
+              {subtitle ? <Text style={styles.text19} numberOfLines={2}>{subtitle}</Text> : null}
             </View>
-            <Pressable onPress={onClose} accessibilityLabel={t('dash.common.close')} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100">
+            <Pressable onPress={onClose} accessibilityLabel={t('dash.common.close')} style={styles.pressable12}>
               <X size={16} color={COLORS.slate[600]} />
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 12 }} keyboardShouldPersistTaps="handled">
             {children}
           </ScrollView>
-          {footer ? <View className="border-t border-slate-100 px-5 pt-3">{footer}</View> : null}
+          {footer ? <View style={styles.view14}>{footer}</View> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -243,10 +242,10 @@ export function SelectChip({ placeholder, value = '', options, onChange, icon: I
     <>
       <Pressable
         onPress={() => setOpen(true)}
-        className={`h-10 flex-row items-center gap-1.5 rounded-xl border px-3 ${active ? 'border-brand-700 bg-brand-50' : 'border-slate-200 bg-white'}`}
+        style={[styles.pressable13, active ? styles.pressable14 : styles.pressable15]}
       >
         {Icon ? <Icon size={13} color={active ? COLORS.brand[800] : COLORS.slate[500]} /> : null}
-        <Text className={`text-[12px] font-extrabold ${active ? 'text-brand-800' : 'text-graphite'}`} numberOfLines={1}>{chosen && active ? chosen.label : placeholder}</Text>
+        <Text style={[styles.text20, active ? styles.text7 : styles.text21]} numberOfLines={1}>{chosen && active ? chosen.label : placeholder}</Text>
         <ChevronDown size={14} color={COLORS.slate[500]} />
       </Pressable>
       <SheetModal visible={open} title={placeholder} onClose={() => setOpen(false)}>
@@ -256,9 +255,9 @@ export function SelectChip({ placeholder, value = '', options, onChange, icon: I
             <Pressable
               key={`${option.value}`}
               onPress={() => { onChange(option.value); setOpen(false) }}
-              className="flex-row items-center justify-between border-b border-slate-100 py-3"
+              style={styles.pressable16}
             >
-              <Text className={`text-[14px] ${on ? 'font-extrabold text-brand-800' : 'font-semibold text-graphite'}`}>{option.label}</Text>
+              <Text style={[styles.text22, on ? styles.text23 : styles.text24]}>{option.label}</Text>
               {on ? <Check size={16} color={COLORS.brand[700]} /> : null}
             </Pressable>
           )
@@ -271,13 +270,13 @@ export function SelectChip({ placeholder, value = '', options, onChange, icon: I
 /** Two-way view switch (web Cards / Table, Grid / List). `options`: [{ id, label, icon }]. */
 export function ViewToggle({ options, active, onChange }) {
   return (
-    <View className="h-10 flex-row items-center rounded-xl border border-slate-200 bg-white p-1">
+    <View style={styles.view15}>
       {options.map(({ id, label, icon: Icon }) => {
         const on = active === id
         return (
-          <Pressable key={id} onPress={() => onChange(id)} className={`h-8 flex-row items-center gap-1 rounded-lg px-2.5 ${on ? 'bg-brand-800' : ''}`}>
+          <Pressable key={id} onPress={() => onChange(id)} style={[styles.pressable17, on ? styles.pressable18 : null]}>
             {Icon ? <Icon size={13} color={on ? '#fff' : COLORS.slate[500]} /> : null}
-            <Text className={`text-[12px] font-extrabold ${on ? 'text-white' : 'text-slate-600'}`}>{label}</Text>
+            <Text style={[styles.text20, on ? styles.text4 : styles.text5]}>{label}</Text>
           </Pressable>
         )
       })}
@@ -290,18 +289,18 @@ export function ConfirmDialog({ visible, title, body, rows = [], confirmLabel, t
   const { t } = useLanguage()
   return (
     <Modal visible={!!visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View className="flex-1 items-center justify-center bg-black/40 px-6">
-        <View className="w-full rounded-3xl bg-white p-5">
-          <Text className="text-[16px] font-extrabold text-graphite">{title}</Text>
+      <View style={styles.view16}>
+        <View style={styles.view17}>
+          <Text style={styles.text18}>{title}</Text>
           {rows.length ? (
-            <View className="mt-2">
+            <View style={styles.view18}>
               {rows.map(([label, value]) => <InfoRow key={label} label={label} value={value} strong />)}
             </View>
           ) : null}
-          {body ? <Text className="mt-3 text-[13px] font-semibold leading-5 text-slate-600">{body}</Text> : null}
-          <View className="mt-4 flex-row gap-2">
-            <ActionButton label={t('dash.contractor.goBack')} tone="outline" onPress={onCancel} disabled={busy} className="flex-1" />
-            <ActionButton label={confirmLabel} tone={tone} onPress={onConfirm} busy={busy} className="flex-1" />
+          {body ? <Text style={styles.text25}>{body}</Text> : null}
+          <View style={styles.view19}>
+            <ActionButton label={t('dash.contractor.goBack')} tone="outline" onPress={onCancel} disabled={busy} style={styles.view4} />
+            <ActionButton label={confirmLabel} tone={tone} onPress={onConfirm} busy={busy} style={styles.view4} />
           </View>
         </View>
       </View>
@@ -317,21 +316,21 @@ export function ConfirmDialog({ visible, title, body, rows = [], confirmLabel, t
 export function LockedFeature({ reason, onViewPlans, compact = false }) {
   const { t } = useLanguage()
   return (
-    <View className={`rounded-2xl border border-emerald-200 bg-emerald-50 ${compact ? 'p-3' : 'p-4'}`}>
-      <View className="flex-row items-start gap-3">
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-600">
+    <View style={[styles.view20, compact ? styles.view21 : styles.view22]}>
+      <View style={styles.view23}>
+        <View style={styles.view24}>
           <Lock size={15} color="#fff" />
         </View>
-        <View className="flex-1">
-          <Text className="text-sm font-extrabold text-emerald-900">{t('subscription.locked.title')}</Text>
-          <Text className="mt-1 text-[13px] font-semibold text-emerald-800">{lockedMessage(reason, t)}</Text>
+        <View style={styles.view4}>
+          <Text style={styles.text26}>{t('subscription.locked.title')}</Text>
+          <Text style={styles.text27}>{lockedMessage(reason, t)}</Text>
           {onViewPlans ? (
             <ActionButton
               label={reason?.kind === 'expired' ? t('subscription.cta.renew') : t('subscription.locked.cta')}
               tone="success"
               small
               onPress={onViewPlans}
-              className="mt-3 self-start"
+              style={styles.actionButton}
             />
           ) : null}
         </View>
@@ -348,9 +347,9 @@ export function FreeAccessBanner({ status, onViewPlans }) {
   if (banner.kind === 'trial') {
     return (
       <Section>
-        <View className="flex-row items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+        <View style={styles.view25}>
          <Clock size={16} color={ink('#0369a1')} />
-          <Text className="flex-1 text-[13px] font-bold text-sky-900">
+          <Text style={styles.text28}>
             {t('subscription.freeAccess.daysLeft', { days: banner.days, date: formatPlanDate(status.free_access_until) })}
           </Text>
           <ActionButton label={t('subscription.banner.upgradeCta')} tone="outline" small onPress={onViewPlans} />
@@ -361,19 +360,19 @@ export function FreeAccessBanner({ status, onViewPlans }) {
   const planExpired = banner.kind === 'planExpired'
   return (
     <Section>
-      <View className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3">
-        <View className="flex-row items-start gap-3">
+      <View style={styles.view26}>
+        <View style={styles.view23}>
 <Lock size={16} color={ink('#b45309')} />
-          <View className="flex-1">
-            <Text className="text-[13px] font-extrabold text-amber-900">
+          <View style={styles.view4}>
+            <Text style={styles.text29}>
               {t(planExpired ? 'subscription.planExpired.title' : 'subscription.freeAccess.expiredTitle')}
             </Text>
-            <Text className="mt-0.5 text-xs font-semibold text-amber-900">
+            <Text style={styles.text30}>
               {t(planExpired ? 'subscription.planExpired.body' : 'subscription.locked.freeExpired')}
             </Text>
           </View>
         </View>
-        <ActionButton label={t(planExpired ? 'subscription.banner.renewCta' : 'subscription.banner.upgradeCta')} tone="success" small onPress={onViewPlans} className="mt-3 self-start" />
+        <ActionButton label={t(planExpired ? 'subscription.banner.renewCta' : 'subscription.banner.upgradeCta')} tone="success" small onPress={onViewPlans} style={styles.actionButton} />
       </View>
     </Section>
   )
@@ -387,10 +386,10 @@ export function PremiumBadge({ status }) {
   return (
     <View
       accessibilityLabel={t(`subscription.badge.${premium ? 'PREMIUM' : 'PRO'}.title`)}
-      className={`flex-row items-center gap-1 self-start rounded-full px-2.5 py-1 ${premium ? 'bg-slate-900' : 'bg-emerald-600'}`}
+      style={[styles.view27, premium ? styles.view28 : styles.view7]}
     >
       <ShieldCheck size={12} color={premium ? '#fcd34d' : '#fff'} />
-      <Text className={`text-[10px] font-extrabold ${premium ? 'text-amber-300' : 'text-white'}`}>{t(premium ? 'subscription.badge.PREMIUM' : 'subscription.badge.PRO')}</Text>
+      <Text style={[styles.text31, premium ? styles.text32 : styles.text4]}>{t(premium ? 'subscription.badge.PREMIUM' : 'subscription.badge.PRO')}</Text>
     </View>
   )
 }
@@ -405,7 +404,7 @@ export function PlanSummaryCard({ subscription, onOpen }) {
     if (loading) {
       return (
         <Section>
-          <View accessibilityLabel={t('subscription.panel.loading')} className="h-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100">
+          <View accessibilityLabel={t('subscription.panel.loading')} style={styles.view29}>
             <ActivityIndicator color={COLORS.brand[800]} />
           </View>
         </Section>
@@ -414,8 +413,8 @@ export function PlanSummaryCard({ subscription, onOpen }) {
     if (error) {
       return (
         <Section>
-          <View className="flex-row items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5">
-            <Text className="flex-1 text-[13px] font-bold text-rose-800">{t('subscription.panel.loadFailed')}</Text>
+          <View style={styles.view30}>
+            <Text style={styles.text33}>{t('subscription.panel.loadFailed')}</Text>
             <ActionButton label={t('subscription.retry')} tone="outline" small onPress={refresh} />
           </View>
         </Section>
@@ -428,25 +427,25 @@ export function PlanSummaryCard({ subscription, onOpen }) {
   const planName = paid ? offerName(status.plan_code, status.current_period?.duration_code, t) : t('subscription.plan.FREE')
   return (
     <Section>
-      <View className="rounded-2xl border border-slate-200 bg-white px-4 py-3" style={SHADOW.card}>
-        <View className="flex-row items-center gap-3">
-          <View className="flex-1">
-            <Text className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">{t('subscription.summary.title')}</Text>
-            <View className="mt-0.5 flex-row flex-wrap items-center gap-2">
-              <Text className="text-[15px] font-extrabold text-graphite">{planName}</Text>
+      <View style={[styles.view31, SHADOW.card]}>
+        <View style={styles.view32}>
+          <View style={styles.view4}>
+            <Text style={styles.text34}>{t('subscription.summary.title')}</Text>
+            <View style={styles.view33}>
+              <Text style={styles.text35}>{planName}</Text>
               <PremiumBadge status={status} />
             </View>
-            <View className="mt-1 flex-row items-center gap-1">
+            <View style={styles.view34}>
               <CalendarClock size={12} color={COLORS.slate[400]} />
-              <Text className="text-xs font-semibold text-slate-600">
+              <Text style={styles.text36}>
                 {paid ? t('subscription.panel.validUntil', { date: formatPlanDate(status.coverage_end) }) : statusName(status.status, t)}
               </Text>
             </View>
             {status.status === 'GRACE' ? (
-              <Text className="mt-0.5 text-xs font-bold text-amber-600">{t('subscription.panel.graceUntil', { date: formatPlanDate(status.grace_until) })}</Text>
+              <Text style={styles.text37}>{t('subscription.panel.graceUntil', { date: formatPlanDate(status.grace_until) })}</Text>
             ) : null}
             {(status.queued_periods || []).map((period) => (
-              <Text key={period.id} className="mt-0.5 text-xs text-slate-500">{t('subscription.panel.renewalQueued', { date: formatPlanDate(period.period_start) })}</Text>
+              <Text key={period.id} style={styles.text38}>{t('subscription.panel.renewalQueued', { date: formatPlanDate(period.period_start) })}</Text>
             ))}
           </View>
           <ActionButton label={paid ? t('subscription.summary.managePlan') : t('subscription.summary.comparePlans')} tone={paid ? 'outline' : 'brandOutline'} small onPress={onOpen} />
@@ -455,3 +454,111 @@ export function PlanSummaryCard({ subscription, onOpen }) {
     </Section>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flex: 1, backgroundColor: c.canvas },
+  view2: { backgroundColor: '#134127', paddingBottom: 14 },
+  view3: { flexDirection: 'row', alignItems: 'center', gap: 10.5, paddingHorizontal: 14, paddingTop: 10.5 },
+  pressable: { height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+  view4: { flex: 1 },
+  text: { fontSize: 17, fontWeight: '800', color: '#ffffff' },
+  text2: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: '#9dc5af' },
+  view5: { marginBottom: 14 },
+  pressable2: { flexDirection: 'row', alignItems: 'center', gap: 5.25, borderRadius: 12 },
+  pressable3: { paddingHorizontal: 10.5, paddingVertical: 7 },
+  pressable4: { paddingHorizontal: 12.25, paddingVertical: 8.75 },
+  pressable5: { backgroundColor: '#1a5038' },
+  pressable6: { borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
+  text3: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  text4: { color: '#ffffff' },
+  text5: { color: c.textSecondary },
+  view6: { alignSelf: 'flex-start', borderRadius: 9999, paddingHorizontal: 8.75, paddingVertical: 3.5 },
+  text6: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  tone: { backgroundColor: '#1e293b' },
+  tone2: { borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.card },
+  tone3: { color: c.textSoft },
+  tone4: { borderWidth: 1, borderColor: '#1a5038', backgroundColor: c.card },
+  text7: { color: c.brandTextStrong },
+  tone5: { borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft },
+  tone6: { color: c.roseText },
+  view7: { backgroundColor: '#059669' },
+  pressable7: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5.25, borderRadius: 12 },
+  pressable8: { height: 31.5, paddingHorizontal: 10.5 },
+  pressable9: { height: 38.5, paddingHorizontal: 14 },
+  pressable10: { opacity: 0.5 },
+  text8: { fontSize: 11 },
+  text9: { fontSize: 13 },
+  text10: { fontWeight: '800' },
+  view8: { marginBottom: 10.5 },
+  text11: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  textInput: { borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
+  textInput2: { minHeight: 70, paddingVertical: 10.5 },
+  textInput3: { height: 38.5 },
+  text12: { marginTop: 3.5, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  view9: { height: 38.5, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5 },
+  textInput4: { height: 38.5, flex: 1, fontSize: 14, fontWeight: '600', color: c.text },
+  view10: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 7 },
+  text13: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textFaint },
+  text14: { flex: 1, textAlign: 'right', fontSize: 12, lineHeight: 16 },
+  text15: { fontWeight: '800', color: c.text },
+  text16: { fontWeight: '700', color: c.textSoft },
+  tone7: { borderColor: c.emeraldBorder, backgroundColor: c.emeraldSoft, color: c.emeraldTextStrong },
+  tone8: { borderColor: c.roseBorder, backgroundColor: c.roseSoft, color: c.roseTextStrong },
+  tone9: { borderColor: c.brandBorder, backgroundColor: c.brandSoft, color: c.brandTextStrong },
+  tone10: { borderColor: c.amberBorder, backgroundColor: c.amberSoft, color: c.amberTextStrong },
+  view11: { marginBottom: 10.5, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  text17: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  pressable11: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)' },
+  view12: { borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: c.card },
+  view13: { flexDirection: 'row', alignItems: 'flex-start', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingHorizontal: 17.5, paddingBottom: 10.5, paddingTop: 14 },
+  text18: { fontSize: 16, fontWeight: '800', color: c.text },
+  text19: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  pressable12: { height: 28, width: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.muted },
+  view14: { borderTopWidth: 1, borderColor: c.borderSoft, paddingHorizontal: 17.5, paddingTop: 10.5 },
+  pressable13: { height: 35, flexDirection: 'row', alignItems: 'center', gap: 5.25, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10.5 },
+  pressable14: { borderColor: '#1a5038', backgroundColor: c.brandSoft },
+  pressable15: { borderColor: c.border, backgroundColor: c.card },
+  text20: { fontSize: 12, fontWeight: '800' },
+  text21: { color: c.text },
+  pressable16: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text22: { fontSize: 14 },
+  text23: { fontWeight: '800', color: c.brandTextStrong },
+  text24: { fontWeight: '600', color: c.text },
+  view15: { height: 35, flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 3.5 },
+  pressable17: { height: 28, flexDirection: 'row', alignItems: 'center', gap: 3.5, borderRadius: 8, paddingHorizontal: 8.75 },
+  pressable18: { backgroundColor: '#134127' },
+  view16: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.4)', paddingHorizontal: 21 },
+  view17: { width: '100%', borderRadius: 24, backgroundColor: c.card, padding: 17.5 },
+  view18: { marginTop: 7 },
+  text25: { marginTop: 10.5, fontSize: 13, fontWeight: '600', lineHeight: 17.5, color: c.textSecondary },
+  view19: { marginTop: 14, flexDirection: 'row', gap: 7 },
+  view20: { borderRadius: 16, borderWidth: 1, borderColor: c.emeraldBorder, backgroundColor: c.emeraldSoft },
+  view21: { padding: 10.5 },
+  view22: { padding: 14 },
+  view23: { flexDirection: 'row', alignItems: 'flex-start', gap: 10.5 },
+  view24: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#059669' },
+  text26: { fontSize: 14, lineHeight: 20, fontWeight: '800', color: c.emeraldTextStrong },
+  text27: { marginTop: 3.5, fontSize: 13, fontWeight: '600', color: c.emeraldTextStrong },
+  actionButton: { marginTop: 10.5, alignSelf: 'flex-start' },
+  view25: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderRadius: 16, borderWidth: 1, borderColor: c.skyBorder, backgroundColor: c.skySoft, paddingHorizontal: 14, paddingVertical: 10.5 },
+  text28: { flex: 1, fontSize: 13, fontWeight: '700', color: c.skyTextStrong },
+  view26: { borderRadius: 16, borderWidth: 1, borderColor: '#fcd34d', backgroundColor: c.amberSoft, paddingHorizontal: 14, paddingVertical: 10.5 },
+  text29: { fontSize: 13, fontWeight: '800', color: c.amberTextStrong },
+  text30: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.amberTextStrong },
+  view27: { flexDirection: 'row', alignItems: 'center', gap: 3.5, alignSelf: 'flex-start', borderRadius: 9999, paddingHorizontal: 8.75, paddingVertical: 3.5 },
+  view28: { backgroundColor: '#0f172a' },
+  text31: { fontSize: 10, fontWeight: '800' },
+  text32: { color: '#fcd34d' },
+  view29: { height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.muted },
+  view30: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderRadius: 16, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 14, paddingVertical: 8.75 },
+  text33: { flex: 1, fontSize: 13, fontWeight: '700', color: c.roseTextStrong },
+  view31: { borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 14, paddingVertical: 10.5 },
+  view32: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  text34: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, color: c.textMuted },
+  view33: { marginTop: 1.75, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
+  text35: { fontSize: 15, fontWeight: '800', color: c.text },
+  view34: { marginTop: 3.5, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text36: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  text37: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.amberTextSoft },
+  text38: { marginTop: 1.75, fontSize: 12, lineHeight: 16, color: c.textMuted },
+}))

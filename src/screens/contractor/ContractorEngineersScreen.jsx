@@ -45,6 +45,7 @@ import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { userCountry } from '../../utils/countryConfig'
 import { BUSINESS_TYPE_KEYS, SUPPLIER_CATEGORY_KEYS, optionLabel } from '../../i18n/optionKeys'
+import { createStyles } from '../../theme/createStyles'
 
 const projectTitle = (project, t) => project?.title || project?.project_title || t('se.project')
 
@@ -92,7 +93,7 @@ const engineerCategory = (t, value) => (value ? optionLabel(t, ENGINEER_CATEGORY
 function Card({ children, onPress }) {
   const Wrapper = onPress ? Pressable : View
   return (
-    <Wrapper onPress={onPress} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
+    <Wrapper onPress={onPress} style={styles.view}>
       {children}
     </Wrapper>
   )
@@ -100,7 +101,7 @@ function Card({ children, onPress }) {
 
 function Meta({ items }) {
   return (
-    <Text className="mt-0.5 text-xs font-semibold text-slate-500" numberOfLines={2}>
+    <Text style={styles.text} numberOfLines={2}>
       {items.filter(Boolean).join(' · ')}
     </Text>
   )
@@ -379,16 +380,16 @@ export default function ContractorEngineersScreen({ navigation }) {
       <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
                 <Section>
           {/* "Invite Site Engineer" at the top right, as on the web. */}
-          <View className="mb-2 flex-row justify-end">
+          <View style={styles.view2}>
             <ActionButton small icon={UserRound} label={t('ce.inviteEngineer')} onPress={() => setInviteOpen(true)} />
           </View>
           <SegmentTabs tabs={tabs} active={tab} onChange={setTab} />
-          <View className="mt-2">
+          <View style={styles.scrollView}>
             <SearchBox value={search} onChangeText={setSearch} placeholder={t('ce.filter.searchPh')} />
           </View>
           {tab === 'team' ? (
             // The web's filter bar: Location, Experience, Projects, Status, Grid / List.
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2" contentContainerStyle={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 8 }}>
               <SelectChip placeholder={t('ce.filter.allLocations')} value={teamLocation} onChange={setTeamLocation} options={locationOptions} />
               <SelectChip placeholder={t('ce.filter.experience')} value={teamExperience} onChange={setTeamExperience} options={EXPERIENCE_BANDS.map((band) => ({ value: band.value, label: band.to === Infinity ? t('ce.filter.yearsPlus', { from: band.from - 1 }) : t('ce.filter.yearsRange', { from: band.from, to: band.to }) }))} />
               <SelectChip placeholder={t('ce.filter.projects')} value={teamProjects} onChange={setTeamProjects} options={[{ value: 'on', label: t('ce.filter.onProject') }, { value: 'off', label: t('ce.filter.notOnProject') }]} />
@@ -412,7 +413,7 @@ export default function ContractorEngineersScreen({ navigation }) {
                 const busy = isBusy(engineer)
                 const area = String(engineer.address || '').split(',').map((part) => part.trim()).filter(Boolean).pop() || ''
                 const action = engineer.working_on_other_project ? (
-                  <Text className="text-center text-[11px] font-bold text-slate-500">{t('ce.workingOnAnotherProject')}</Text>
+                  <Text style={styles.text2}>{t('ce.workingOnAnotherProject')}</Text>
                 ) : assigned.length ? (
                   <ActionButton small tone="danger" label={t('ce.unassign')} onPress={() => setUnassignTarget(engineer)} />
                 ) : (
@@ -420,11 +421,11 @@ export default function ContractorEngineersScreen({ navigation }) {
                 )
                 if (teamView === 'list') {
                   return (
-                    <Pressable key={engineer.user_id} onPress={() => setEngineerProfile(engineer)} className="flex-row items-center gap-3 border-b border-slate-100 bg-white px-1 py-3">
+                    <Pressable key={engineer.user_id} onPress={() => setEngineerProfile(engineer)} style={styles.pressable}>
                       <Image source={userAvatarSource(engineer, 'ENGINEER')} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
-                      <View className="flex-1">
-                        <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
-                        <Text className="text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+                      <View style={styles.actionButton}>
+                        <Text style={styles.text3} numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
+                        <Text style={styles.text4} numberOfLines={1}>
                           {[engineer.pincode, t('ce.yearsCount', { years: engineer.experience_years || 0 }), `${t('ce.filter.projects')}: ${engineer.project_count ?? assigned.length}`].filter(Boolean).join(' · ')}
                         </Text>
                       </View>
@@ -433,34 +434,34 @@ export default function ContractorEngineersScreen({ navigation }) {
                   )
                 }
                 return (
-                  <Pressable key={engineer.user_id} onPress={() => setEngineerProfile(engineer)} className="mb-3 overflow-hidden rounded-3xl border border-slate-200 bg-white">
-                    <View className="flex-row">
+                  <Pressable key={engineer.user_id} onPress={() => setEngineerProfile(engineer)} style={styles.pressable2}>
+                    <View style={styles.view3}>
                       <View style={{ width: 5, backgroundColor: busy ? '#f59e0b' : '#10b981' }} />
-                      <View className="flex-1 p-4">
-                        <View className="flex-row items-center gap-3">
+                      <View style={styles.view4}>
+                        <View style={styles.view5}>
                           <Image source={userAvatarSource(engineer, 'ENGINEER')} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
-                          <View className="flex-1">
-                            <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
-                            <Text className="text-xs font-semibold text-slate-500">{engineerCategory(t, engineer.specialization || engineer.category)}</Text>
+                          <View style={styles.actionButton}>
+                            <Text style={styles.text5} numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
+                            <Text style={styles.text6}>{engineerCategory(t, engineer.specialization || engineer.category)}</Text>
                           </View>
                           {busy ? <Badge label={t('ce.busy')} bg="#fffbeb" fg="#92400e" /> : <Badge label={t('ce.active')} bg="#ecfdf5" fg="#047857" />}
                         </View>
-                        <View className="mt-3 flex-row gap-2">
+                        <View style={styles.view6}>
                           {[
                             [engineer.pincode || '—', area || t('ce.col.location')],
                             [String(engineer.experience_years || 0), t('ce.filter.experience')],
                             [String(engineer.project_count ?? assigned.length), t('ce.filter.projects')],
                           ].map(([value, label]) => (
-                            <View key={label} className="flex-1 rounded-xl bg-slate-50 px-2 py-2">
-                              <Text className="text-[13px] font-extrabold text-graphite" numberOfLines={1}>{value}</Text>
-                              <Text className="text-[10px] font-semibold text-slate-500" numberOfLines={1}>{label}</Text>
+                            <View key={label} style={styles.view7}>
+                              <Text style={styles.text7} numberOfLines={1}>{value}</Text>
+                              <Text style={styles.text8} numberOfLines={1}>{label}</Text>
                             </View>
                           ))}
                         </View>
                         {assigned.length ? (
-                          <Text className="mt-2 text-xs font-semibold text-slate-600" numberOfLines={2}>{assigned.map((item) => projectTitle(item, t)).join(', ')}</Text>
+                          <Text style={styles.text9} numberOfLines={2}>{assigned.map((item) => projectTitle(item, t)).join(', ')}</Text>
                         ) : null}
-                        <View className="mt-3">{action}</View>
+                        <View style={styles.actionButton2}>{action}</View>
                       </View>
                     </View>
                   </Pressable>
@@ -471,9 +472,9 @@ export default function ContractorEngineersScreen({ navigation }) {
 
           {tab === 'find' ? (
             <>
-              <View className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-                <Text className="mb-1 text-xs font-bold text-slate-600">{t('mobile.partners.findPincodeLabel')}</Text>
-                <View className="flex-row gap-2">
+              <View style={styles.view}>
+                <Text style={styles.text10}>{t('mobile.partners.findPincodeLabel')}</Text>
+                <View style={styles.view8}>
                   <TextInput
                     value={findPincode}
                     onChangeText={(value) => {
@@ -484,13 +485,13 @@ export default function ContractorEngineersScreen({ navigation }) {
                     keyboardType="number-pad"
                     placeholder={t('ui.shared.sixDigitPincode')}
                     placeholderTextColor={COLORS.slate[400]}
-                    className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[14px] font-semibold text-graphite"
+                    style={styles.textInput}
                   />
                   <ActionButton label={t('ce.find')} icon={Search} onPress={() => loadNearby()} />
                 </View>
                 {projectList.length ? (
-                  <View className="mt-3">
-                    <Text className="mb-1 text-xs font-bold text-slate-600">{t('mobile.partners.requestsForProject')}</Text>
+                  <View style={styles.actionButton2}>
+                    <Text style={styles.text10}>{t('mobile.partners.requestsForProject')}</Text>
                     <SegmentTabs dense tabs={projectList.map((project) => ({ id: project.id, label: projectTitle(project, t) }))} active={activeProject?.id} onChange={setFindProjectId} />
                   </View>
                 ) : null}
@@ -502,12 +503,12 @@ export default function ContractorEngineersScreen({ navigation }) {
                   const sent = sentIds.has(id)
                   return (
                     <Card key={id} onPress={() => setEngineerProfile(engineer)}>
-                      <Text className="text-[15px] font-extrabold text-graphite" numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
+                      <Text style={styles.text5} numberOfLines={1}>{engineer.name || engineer.full_name}</Text>
                       <Meta items={[engineerCategory(t, engineer.specialization), engineer.pincode, t('ui.contractor.yearsShort', { years: engineer.experience_years || 0 }), t('ui.contractor.projectsWithCount', { count: engineer.project_count || 0 })]} />
                       <ActionButton
                         small
                         icon={Send}
-                        className="mt-3 self-start"
+                        style={styles.actionButton3}
                         tone={status || sent ? 'outline' : 'primary'}
                         disabled={Boolean(status) || sent || sendingId === id}
                         busy={sendingId === id}
@@ -527,15 +528,15 @@ export default function ContractorEngineersScreen({ navigation }) {
                 const assignments = supplier.assigned_projects || []
                 return (
                   <Card key={supplier.user_id || supplier.id} onPress={() => openSupplierProfile(supplier)}>
-                    <Text className="text-[10px] font-extrabold uppercase text-brand-700">{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : t('role.supplier')}</Text>
-                    <Text className="mt-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>{supplier.store_name || supplier.name || t('role.supplier')}</Text>
+                    <Text style={styles.text11}>{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : t('role.supplier')}</Text>
+                    <Text style={styles.text12} numberOfLines={1}>{supplier.store_name || supplier.name || t('role.supplier')}</Text>
                     <Meta items={[(supplier.categories || []).map((category) => optionLabel(t, SUPPLIER_CATEGORY_KEYS, category)).join(', '), supplier.pincode, t('dash.owner.supplierModal.rating', { rating: Number(supplier.rating || 0).toFixed(1) })]} />
                     {assignments.length ? (
-                      <Text className="mt-1 text-xs font-semibold text-slate-600" numberOfLines={2}>{t('ui.projects')}: {assignments.map((row) => row.project_title).join(', ')}</Text>
+                      <Text style={styles.text13} numberOfLines={2}>{t('ui.projects')}: {assignments.map((row) => row.project_title).join(', ')}</Text>
                     ) : null}
-                    <View className="mt-3 flex-row gap-2">
-                      <ActionButton small label={t('ce.assignProject')} tone="brandOutline" onPress={() => setSupplierAssignTarget(supplier)} className="flex-1" />
-                      <ActionButton small label={t('ce.unassign')} tone="danger" disabled={!assignments.length} onPress={() => setSupplierUnassignTarget(supplier)} className="flex-1" />
+                    <View style={styles.view6}>
+                      <ActionButton small label={t('ce.assignProject')} tone="brandOutline" onPress={() => setSupplierAssignTarget(supplier)} style={styles.actionButton} />
+                      <ActionButton small label={t('ce.unassign')} tone="danger" disabled={!assignments.length} onPress={() => setSupplierUnassignTarget(supplier)} style={styles.actionButton} />
                     </View>
                   </Card>
                 )
@@ -545,32 +546,32 @@ export default function ContractorEngineersScreen({ navigation }) {
 
           {tab === 'pending' ? (
             <PanelState loading={team.loading} error={team.error} empty={!pending.length && !invitations.length && !outgoing.length} emptyText={t('ce.noPendingRequests')}>
-              {pending.length ? <Text className="mb-2 text-xs font-extrabold uppercase text-slate-500">{t('ce.pendingJoinRequests')}</Text> : null}
+              {pending.length ? <Text style={styles.text14}>{t('ce.pendingJoinRequests')}</Text> : null}
               {pending.filter((engineer) => matches(engineer.name, engineer.pincode)).map((engineer) => (
                 <Card key={engineer.relationship_id || engineer.user_id}>
-                  <Text className="text-[15px] font-extrabold text-graphite">{engineer.name || engineer.full_name}</Text>
+                  <Text style={styles.text5}>{engineer.name || engineer.full_name}</Text>
                   <Meta items={[engineerCategory(t, engineer.specialization || engineer.category), engineer.pincode, t('ui.contractor.yearsShort', { years: engineer.experience_years || 0 })]} />
-                  <View className="mt-3 flex-row gap-2">
-                    <ActionButton small tone="danger" icon={X} label={t('ce.reject')} disabled={busy} onPress={() => respond(engineer.relationship_id, 'REJECT')} className="flex-1" />
-                    <ActionButton small icon={Check} label={t('ce.accept')} disabled={busy} onPress={() => respond(engineer.relationship_id, 'ACCEPT')} className="flex-1" />
+                  <View style={styles.view6}>
+                    <ActionButton small tone="danger" icon={X} label={t('ce.reject')} disabled={busy} onPress={() => respond(engineer.relationship_id, 'REJECT')} style={styles.actionButton} />
+                    <ActionButton small icon={Check} label={t('ce.accept')} disabled={busy} onPress={() => respond(engineer.relationship_id, 'ACCEPT')} style={styles.actionButton} />
                   </View>
                 </Card>
               ))}
-              {invitations.length ? <Text className="mb-2 mt-1 text-xs font-extrabold uppercase text-slate-500">{t('ce.pendingInvitations')}</Text> : null}
+              {invitations.length ? <Text style={styles.text15}>{t('ce.pendingInvitations')}</Text> : null}
               {invitations.filter((invitation) => matches(invitation.phone, invitation.email, invitation.invite_code)).map((invitation) => (
                 <Card key={invitation.id}>
-                  <Text className="text-[14px] font-extrabold text-graphite">{invitation.phone || invitation.email || t('ce.waitingForEngineer')}</Text>
-                  <Text className="mt-0.5 text-xs font-semibold text-slate-500">{t('ce.pend.inviteCode')}: <Text className="font-extrabold tracking-widest text-brand-900">{invitation.invite_code}</Text></Text>
-                  <View className="mt-3 flex-row gap-2">
-                    <ActionButton small icon={Share2} label={t('mobile.partners.share')} tone="brandOutline" onPress={() => shareInvite(invitation)} className="flex-1" />
-                    <ActionButton small icon={X} label={t('ui.contractor.revoke')} tone="danger" onPress={() => revokeInvitation(invitation)} className="flex-1" />
+                  <Text style={styles.text3}>{invitation.phone || invitation.email || t('ce.waitingForEngineer')}</Text>
+                  <Text style={styles.text}>{t('ce.pend.inviteCode')}: <Text style={styles.text16}>{invitation.invite_code}</Text></Text>
+                  <View style={styles.view6}>
+                    <ActionButton small icon={Share2} label={t('mobile.partners.share')} tone="brandOutline" onPress={() => shareInvite(invitation)} style={styles.actionButton} />
+                    <ActionButton small icon={X} label={t('ui.contractor.revoke')} tone="danger" onPress={() => revokeInvitation(invitation)} style={styles.actionButton} />
                   </View>
                 </Card>
               ))}
-              {outgoing.length ? <Text className="mb-2 mt-1 text-xs font-extrabold uppercase text-slate-500">{t('ce.sentRequests')}</Text> : null}
+              {outgoing.length ? <Text style={styles.text15}>{t('ce.sentRequests')}</Text> : null}
               {outgoing.filter((engineer) => matches(engineer.name, engineer.pincode)).map((engineer) => (
                 <Card key={`out-${engineer.user_id}`} onPress={() => setEngineerProfile(engineer)}>
-                  <Text className="text-[14px] font-extrabold text-graphite">{engineer.name}</Text>
+                  <Text style={styles.text3}>{engineer.name}</Text>
                   <Meta items={[engineerCategory(t, engineer.specialization), engineer.pincode, t('mobile.partners.awaitingAnswer')]} />
                 </Card>
               ))}
@@ -596,7 +597,7 @@ export default function ContractorEngineersScreen({ navigation }) {
             ) : null}
             {!teamStatusOf(engineerProfile) ? (
               <ActionButton
-                className="mt-4"
+                style={styles.actionButton4}
                 icon={Send}
                 label={sentIds.has(engineerProfile.user_id) ? t('ce.requestSent') : t('ce.sendRequest')}
                 disabled={sentIds.has(engineerProfile.user_id) || sendingId === engineerProfile.user_id}
@@ -604,7 +605,7 @@ export default function ContractorEngineersScreen({ navigation }) {
                 onPress={() => sendEngineerRequest(engineerProfile)}
               />
             ) : (
-              <Text className="mt-4 text-xs font-bold text-brand-700">{teamStatusOf(engineerProfile) === 'active' ? t('ce.activeTeamMember') : t('ce.joinRequestPending')}</Text>
+              <Text style={styles.text17}>{teamStatusOf(engineerProfile) === 'active' ? t('ce.activeTeamMember') : t('ce.joinRequestPending')}</Text>
             )}
           </View>
         ) : null}
@@ -617,10 +618,10 @@ export default function ContractorEngineersScreen({ navigation }) {
             const takenBy = assignedEngineerByProject[project.id]
             const mine = (assignTarget?.assigned_projects || []).some((item) => item.id === project.id)
             return (
-              <View key={project.id} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
-                <View className="flex-1">
-                  <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{projectTitle(project, t)}</Text>
-                  <Text className="text-xs font-semibold text-slate-500">
+              <View key={project.id} style={styles.view9}>
+                <View style={styles.actionButton}>
+                  <Text style={styles.text3} numberOfLines={1}>{projectTitle(project, t)}</Text>
+                  <Text style={styles.text6}>
                     {t('ui.contractor.pincodeStatus', { pincode: project.pincode || '—', status: projectStatusText(project.status || 'active', t) })}{takenBy ? ` · ${t('ui.contractor.assignedToName', { name: takenBy })}` : ''}
                   </Text>
                 </View>
@@ -634,10 +635,10 @@ export default function ContractorEngineersScreen({ navigation }) {
       {/* Unassign an engineer from one of their projects */}
       <SheetModal visible={!!unassignTarget} title={t('ce.unassignEngineer')} subtitle={t('ui.contractor.chooseProjectToRemove', { name: unassignTarget?.name || t('ce.thisEngineer') })} onClose={() => setUnassignTarget(null)}>
         {(unassignTarget?.assigned_projects || []).length === 0 ? (
-          <Text className="text-[13px] font-semibold text-slate-500">{t('ce.noAssignedProjects')}</Text>
+          <Text style={styles.text18}>{t('ce.noAssignedProjects')}</Text>
         ) : (unassignTarget?.assigned_projects || []).map((project) => (
-          <View key={project.id} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
-            <Text className="flex-1 text-[14px] font-extrabold text-graphite" numberOfLines={1}>{projectTitle(project, t)}</Text>
+          <View key={project.id} style={styles.view9}>
+            <Text style={styles.text19} numberOfLines={1}>{projectTitle(project, t)}</Text>
             <ActionButton
               small
               tone="danger"
@@ -665,12 +666,12 @@ export default function ContractorEngineersScreen({ navigation }) {
       {/* Unassign a supplier from a project */}
       <SheetModal visible={!!supplierUnassignTarget} title={t('ce.unassignSupplier')} subtitle={t('ui.contractor.chooseProjectToRemove', { name: supplierUnassignTarget?.store_name || supplierUnassignTarget?.name || t('role.supplier') })} onClose={() => setSupplierUnassignTarget(null)}>
         {(supplierUnassignTarget?.assigned_projects || []).length === 0 ? (
-          <Text className="text-[13px] font-semibold text-slate-500">{t('ui.contractor.noProjectsAssigned')}</Text>
+          <Text style={styles.text18}>{t('ui.contractor.noProjectsAssigned')}</Text>
         ) : (supplierUnassignTarget?.assigned_projects || []).map((row) => (
-          <View key={`${row.project_id}-${row.engineer_id}`} className="flex-row items-center gap-3 border-b border-slate-100 py-3">
-            <View className="flex-1">
-              <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{row.project_title || t('se.project')}</Text>
-              <Text className="text-xs font-semibold text-slate-500">{t('ui.contractor.engineerName', { name: row.engineer_name || '—' })}</Text>
+          <View key={`${row.project_id}-${row.engineer_id}`} style={styles.view9}>
+            <View style={styles.actionButton}>
+              <Text style={styles.text3} numberOfLines={1}>{row.project_title || t('se.project')}</Text>
+              <Text style={styles.text6}>{t('ui.contractor.engineerName', { name: row.engineer_name || '—' })}</Text>
             </View>
             <ActionButton
               small
@@ -692,7 +693,7 @@ export default function ContractorEngineersScreen({ navigation }) {
           <View>
             {supplierProfile.loading ? <Notice tone="info" text={t('dash.msg.loadingSupplierProfile')} /> : null}
             {supplierProfile.error ? <Notice tone="error" text={supplierProfile.error} /> : null}
-            {supplierProfile.about ? <Text className="mb-2 text-[13px] leading-5 text-slate-600">{supplierProfile.about}</Text> : null}
+            {supplierProfile.about ? <Text style={styles.text20}>{supplierProfile.about}</Text> : null}
             <InfoRow label={t('dash.owner.supplierModal.businessType')} value={supplierProfile.business_type ? optionLabel(t, BUSINESS_TYPE_KEYS, supplierProfile.business_type) : supplierProfile.business_type} />
             <InfoRow label={t('dash.common.categories')} value={(Array.isArray(supplierProfile.categories) ? supplierProfile.categories : String(supplierProfile.categories || '').split(',')).filter(Boolean).map((category) => optionLabel(t, SUPPLIER_CATEGORY_KEYS, String(category).trim())).join(', ')} />
             <InfoRow label={t('ps.pincode')} value={supplierProfile.pincode} />
@@ -732,33 +733,33 @@ function AssignSupplierSheet({ supplier, projectList, engineers, contractorSuppl
         : t('ui.contractor.chooseProjectToAssignSupplier', { name: supplier?.store_name || supplier?.name || t('role.supplier') })}
       onClose={onClose}
       footer={project ? (
-        <View className="flex-row gap-2">
-          <ActionButton label={t('dash.common.back')} tone="outline" onPress={() => setProject(null)} className="flex-1" />
-          <ActionButton label={t('ce.assign')} busy={busy} disabled={!engineerId} onPress={() => onAssign(project, engineerId)} className="flex-1" />
+        <View style={styles.view8}>
+          <ActionButton label={t('dash.common.back')} tone="outline" onPress={() => setProject(null)} style={styles.actionButton} />
+          <ActionButton label={t('ce.assign')} busy={busy} disabled={!engineerId} onPress={() => onAssign(project, engineerId)} style={styles.actionButton} />
         </View>
       ) : null}
     >
       {!project ? (
         available.length ? available.map((item) => (
-          <Pressable key={item.id} onPress={() => setProject(item)} className="border-b border-slate-100 py-3">
-            <Text className="text-[14px] font-extrabold text-graphite" numberOfLines={1}>{projectTitle(item, t)}</Text>
-            <Text className="text-xs font-semibold text-slate-500">{t('ui.contractor.pincodeStatus', { pincode: item.pincode || '—', status: projectStatusText(item.status || 'active', t) })}</Text>
+          <Pressable key={item.id} onPress={() => setProject(item)} style={styles.pressable3}>
+            <Text style={styles.text3} numberOfLines={1}>{projectTitle(item, t)}</Text>
+            <Text style={styles.text6}>{t('ui.contractor.pincodeStatus', { pincode: item.pincode || '—', status: projectStatusText(item.status || 'active', t) })}</Text>
           </Pressable>
-        )) : <Text className="text-[13px] font-semibold text-slate-500">{t('mobile.partners.supplierOnEveryProject')}</Text>
+        )) : <Text style={styles.text18}>{t('mobile.partners.supplierOnEveryProject')}</Text>
       ) : (
         <>
-          <Text className="mb-2 text-xs font-bold text-slate-600">{t('ui.contractor.selectEngineerFor', { project: projectTitle(project, t) })}</Text>
+          <Text style={styles.text21}>{t('ui.contractor.selectEngineerFor', { project: projectTitle(project, t) })}</Text>
           {engineerOptions.length ? engineerOptions.map((engineer) => {
             const on = engineerId === engineer.user_id
             return (
-              <Pressable key={engineer.user_id} onPress={() => setEngineerId(engineer.user_id)} className={`mb-2 rounded-xl border px-3 py-2.5 ${on ? 'border-brand-700 bg-brand-50' : 'border-slate-200 bg-white'}`}>
-                <Text className="text-[14px] font-extrabold text-graphite">{engineer.name}</Text>
-                <Text className="text-xs font-semibold text-slate-500">
+              <Pressable key={engineer.user_id} onPress={() => setEngineerId(engineer.user_id)} style={[styles.pressable4, on ? styles.pressable5 : styles.pressable6]}>
+                <Text style={styles.text3}>{engineer.name}</Text>
+                <Text style={styles.text6}>
                   {projectEngineerIds.has(engineer.user_id) ? t('mobile.partners.engineerOnThisProject') : (engineer.assigned_projects || []).map((item) => projectTitle(item, t)).join(', ') || t('ui.contractor.noProjectsAssigned')}
                 </Text>
               </Pressable>
             )
-          }) : <Text className="text-[13px] font-semibold text-slate-500">{t('team.noSiteEngineersSub')}</Text>}
+          }) : <Text style={styles.text18}>{t('team.noSiteEngineersSub')}</Text>}
         </>
       )}
     </SheetModal>
@@ -814,11 +815,11 @@ function InviteSheet({ visible, onClose, builderName, onInvited }) {
         : <ActionButton label={t('ce.generateInvitation')} busy={busy} disabled={!phone.trim()} onPress={generate} />}
     >
       {result ? (
-        <View className="rounded-2xl border border-brand-100 bg-brand-50 p-4">
-          <Text className="text-xs font-bold text-brand-800">{t('ce.invitationGenerated')} — {t('ce.shareCode')}</Text>
-          <Text className="mt-1 text-2xl font-extrabold tracking-widest text-brand-900">{result.invite_code || result.code}</Text>
-          {result.invite_link ? <Text className="mt-1 text-xs text-slate-500" numberOfLines={2}>{result.invite_link}</Text> : null}
-          <ActionButton label={t('mobile.partners.shareInvite')} icon={Share2} tone="brandOutline" onPress={share} className="mt-3" />
+        <View style={styles.view10}>
+          <Text style={styles.text22}>{t('ce.invitationGenerated')} — {t('ce.shareCode')}</Text>
+          <Text style={styles.text23}>{result.invite_code || result.code}</Text>
+          {result.invite_link ? <Text style={styles.text24} numberOfLines={2}>{result.invite_link}</Text> : null}
+          <ActionButton label={t('mobile.partners.shareInvite')} icon={Share2} tone="brandOutline" onPress={share} style={styles.actionButton2} />
         </View>
       ) : (
         <>
@@ -830,3 +831,52 @@ function InviteSheet({ visible, onClose, builderName, onInvited }) {
     </SheetModal>
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { marginBottom: 10.5, borderRadius: 24, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  text: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view2: { marginBottom: 7, flexDirection: 'row', justifyContent: 'flex-end' },
+  scrollView: { marginTop: 7 },
+  text2: { textAlign: 'center', fontSize: 11, fontWeight: '700', color: c.textMuted },
+  pressable: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, backgroundColor: c.card, paddingHorizontal: 3.5, paddingVertical: 10.5 },
+  actionButton: { flex: 1 },
+  text3: { fontSize: 14, fontWeight: '800', color: c.text },
+  text4: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  pressable2: { marginBottom: 10.5, overflow: 'hidden', borderRadius: 24, borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
+  view3: { flexDirection: 'row' },
+  view4: { flex: 1, padding: 14 },
+  view5: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  text5: { fontSize: 15, fontWeight: '800', color: c.text },
+  text6: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view6: { marginTop: 10.5, flexDirection: 'row', gap: 7 },
+  view7: { flex: 1, borderRadius: 12, backgroundColor: c.subtle, paddingHorizontal: 7, paddingVertical: 7 },
+  text7: { fontSize: 13, fontWeight: '800', color: c.text },
+  text8: { fontSize: 10, fontWeight: '600', color: c.textMuted },
+  text9: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  actionButton2: { marginTop: 10.5 },
+  text10: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  view8: { flexDirection: 'row', gap: 7 },
+  textInput: { height: 38.5, flex: 1, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
+  actionButton3: { marginTop: 10.5, alignSelf: 'flex-start' },
+  text11: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: c.brandText },
+  text12: { marginTop: 3.5, fontSize: 15, fontWeight: '800', color: c.text },
+  text13: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
+  text14: { marginBottom: 7, fontSize: 12, lineHeight: 16, fontWeight: '800', textTransform: 'uppercase', color: c.textMuted },
+  text15: { marginBottom: 7, marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '800', textTransform: 'uppercase', color: c.textMuted },
+  text16: { fontWeight: '800', letterSpacing: 1.6, color: c.brandTextDeep },
+  actionButton4: { marginTop: 14 },
+  text17: { marginTop: 14, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.brandText },
+  view9: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text18: { fontSize: 13, fontWeight: '600', color: c.textMuted },
+  text19: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  text20: { marginBottom: 7, fontSize: 13, lineHeight: 17.5, color: c.textSecondary },
+  pressable3: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text21: { marginBottom: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  pressable4: { marginBottom: 7, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  pressable5: { borderColor: '#1a5038', backgroundColor: c.brandSoft },
+  pressable6: { borderColor: c.border, backgroundColor: c.card },
+  view10: { borderRadius: 16, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft, padding: 14 },
+  text22: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.brandTextStrong },
+  text23: { marginTop: 3.5, fontSize: 24, lineHeight: 32, fontWeight: '800', letterSpacing: 1.6, color: c.brandTextDeep },
+  text24: { marginTop: 3.5, fontSize: 12, lineHeight: 16, color: c.textMuted },
+}))

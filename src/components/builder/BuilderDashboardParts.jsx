@@ -12,6 +12,7 @@ import { ChevronRight } from 'lucide-react-native'
 import { LinearGradient as Gradient } from 'expo-linear-gradient'
 import { avatarFromPath } from '../../utils/avatars'
 import { ink, line, soft, softStrong, isDarkTheme } from '../../theme/tint'
+import { createStyles } from '../../theme/createStyles'
 
 // ---- Hero construction scene (web HeroConstructionScene, same geometry) -----
 const WHITE = '#ffffff'
@@ -134,17 +135,17 @@ export function WelcomeBanner({ name, subtitle, imagePath, title }) {
       end={{ x: 1, y: 0.7 }}
       style={{ borderRadius: 20, borderWidth: 1, borderColor: '#f97316', overflow: 'hidden', padding: 14 }}
     >
-      <View className="flex-row items-start gap-3">
+      <View style={styles.view}>
         <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(244,183,64,0.5)' }}>
           <Image source={avatarFromPath(imagePath, 'CONTRACTOR')} style={{ width: 36, height: 36 }} contentFit="cover" />
         </View>
-        <View className="flex-1">
-          <Text className="font-display text-[18px]" style={{ color: '#083E2B', letterSpacing: -0.3 }} numberOfLines={2}>{title || name}</Text>
+        <View style={styles.view2}>
+          <Text style={[styles.text, { color: '#083E2B', letterSpacing: -0.3 }]} numberOfLines={2}>{title || name}</Text>
           <Gradient colors={['#f4b740', '#b27d1c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ marginTop: 4, height: 4, width: 26, borderRadius: 2 }} />
-          <Text className="mt-1.5 text-[12px] font-medium leading-[17px]" style={{ color: '#3d5246' }}>{subtitle}</Text>
+          <Text style={[styles.text2, { color: '#3d5246' }]}>{subtitle}</Text>
         </View>
       </View>
-      <View className="mt-1">
+      <View style={styles.view3}>
         <HeroConstructionScene height={64} />
       </View>
     </Gradient>
@@ -167,20 +168,19 @@ export function StatCard({ title, value, sub, theme = 'blue', icon: Icon, onPres
   return (
     <Pressable
       onPress={onPress}
-      className="w-[48.5%] rounded-2xl border p-3"
-      style={{ backgroundColor: soft(colors.card, colors.icon), borderColor: line(colors.border, colors.icon) }}
+      style={[styles.pressable, { backgroundColor: soft(colors.card, colors.icon), borderColor: line(colors.border, colors.icon) }]}
     >
-      <View className="flex-row items-center justify-between">
-        <View className="h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: chip }}>
+      <View style={styles.view4}>
+        <View style={[styles.view5, { backgroundColor: chip }]}>
           {Icon ? <Icon size={19} color={tone} /> : null}
         </View>
-        <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: chip }}>
+        <View style={[styles.view6, { backgroundColor: chip }]}>
           <ChevronRight size={15} color={tone} />
         </View>
       </View>
-      <Text className="mt-2 text-[12px] font-bold text-slate-700" numberOfLines={1}>{title}</Text>
-      <Text className="mt-0.5 text-[22px] font-extrabold text-graphite" numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
-      <Text className="mt-0.5 text-[11px] font-semibold text-slate-500" numberOfLines={1}>{sub}</Text>
+      <Text style={styles.text3} numberOfLines={1}>{title}</Text>
+      <Text style={styles.text4} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      <Text style={styles.text5} numberOfLines={1}>{sub}</Text>
     </Pressable>
   )
 }
@@ -194,7 +194,7 @@ export function DonutChart({ slices, size = 128, thickness = 18, centerValue, ce
   const cx = size / 2
   let start = -Math.PI / 2
   return (
-    <View style={{ width: size, height: size }} className="items-center justify-center">
+    <View style={[styles.view7, { width: size, height: size }]}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Circle cx={cx} cy={cx} r={radius} stroke={isDarkTheme() ? '#1e293b' : '#eef2f0'} strokeWidth={thickness} fill="none" />
         {total > 0 && slices.filter((slice) => slice.value > 0).map((slice) => {
@@ -210,8 +210,8 @@ export function DonutChart({ slices, size = 128, thickness = 18, centerValue, ce
           return <Path key={slice.id} d={d} stroke={slice.color} strokeWidth={thickness} fill="none" />
         })}
       </Svg>
-      <Text className="px-5 text-center text-[18px] font-extrabold text-graphite" numberOfLines={1} adjustsFontSizeToFit>{centerValue}</Text>
-      {centerLabel ? <Text className="text-[10px] font-semibold text-slate-500">{centerLabel}</Text> : null}
+      <Text style={styles.text6} numberOfLines={1} adjustsFontSizeToFit>{centerValue}</Text>
+      {centerLabel ? <Text style={styles.text7}>{centerLabel}</Text> : null}
     </View>
   )
 }
@@ -232,3 +232,21 @@ export function BudgetRing({ share, size = 128, thickness = 16, centerValue, cen
     />
   )
 }
+
+const styles = createStyles((c) => ({
+  view: { flexDirection: 'row', alignItems: 'flex-start', gap: 10.5 },
+  view2: { flex: 1 },
+  text: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18 },
+  text2: { marginTop: 5.25, fontSize: 12, fontWeight: '500', lineHeight: 17 },
+  view3: { marginTop: 3.5 },
+  pressable: { width: '48.5%', borderRadius: 16, borderWidth: 1, padding: 10.5 },
+  view4: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  view5: { height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+  view6: { height: 24.5, width: 24.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999 },
+  text3: { marginTop: 7, fontSize: 12, fontWeight: '700', color: c.textSoft },
+  text4: { marginTop: 1.75, fontSize: 22, fontWeight: '800', color: c.text },
+  text5: { marginTop: 1.75, fontSize: 11, fontWeight: '600', color: c.textMuted },
+  view7: { alignItems: 'center', justifyContent: 'center' },
+  text6: { paddingHorizontal: 17.5, textAlign: 'center', fontSize: 18, fontWeight: '800', color: c.text },
+  text7: { fontSize: 10, fontWeight: '600', color: c.textMuted },
+}))

@@ -50,6 +50,7 @@ import {
 import { constructionTypeLabel } from '../../utils/roleLabels'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { optionLabel } from '../../i18n/optionKeys'
+import { createStyles } from '../../theme/createStyles'
 
 // Tab labels are keys (web contractorConstants.projectDetailTabs), translated at render.
 const TABS = [
@@ -102,11 +103,11 @@ function inr(value) {
 }
 
 function StatusChip({ label, tone = 'brand' }) {
-  const bg = tone === 'positive' ? 'bg-brand-100' : tone === 'muted' ? 'bg-slate-100' : 'bg-brand-50'
-  const fg = tone === 'muted' ? 'text-slate-500' : 'text-brand-800'
+  const bg = tone === 'positive' ? 'tone' : tone === 'muted' ? 'tone2' : 'tone3'
+  const fg = tone === 'muted' ? 'text' : 'tone4'
   return (
-    <View className={`self-start rounded-full px-3 py-1 ${bg}`}>
-      <Text className={`text-[11px] font-extrabold ${fg}`}>{label}</Text>
+    <View style={[styles.view, styles[bg]]}>
+      <Text style={[styles.text2, styles[fg]]}>{label}</Text>
     </View>
   )
 }
@@ -122,48 +123,48 @@ function ProjectCard({ project, onPress }) {
   const schedule = scheduleText(project, t)
   const ownerName = project.owner?.name || project.owner_name || ''
   return (
-    <Pressable onPress={onPress} className="mb-3 rounded-3xl border border-slate-200 bg-white p-4">
-      <View className="flex-row items-center gap-2">
+    <Pressable onPress={onPress} style={styles.pressable}>
+      <View style={styles.view2}>
         <HardHat size={16} color={COLORS.brand[700]} />
-        <Text className="flex-1 text-[15px] font-extrabold text-graphite" numberOfLines={1}>
+        <Text style={styles.text3} numberOfLines={1}>
           {project.project_title || project.title || t('dash.common.project')}
         </Text>
         <StatusChip label={projectStatusText(project.status || 'active', t)} />
       </View>
-      <View className="mt-2 flex-row items-center gap-1.5">
+      <View style={styles.view3}>
         <MapPin size={12} color={COLORS.slate[400]} />
-        <Text className="flex-1 text-xs font-semibold text-slate-500" numberOfLines={1}>
+        <Text style={styles.text4} numberOfLines={1}>
           {project.address || t('dash.owner.estimates.locationNotSet')}{project.pincode ? ` · ${project.pincode}` : ''}
         </Text>
       </View>
-      <Text className="mt-1 text-[11px] font-semibold text-slate-500" numberOfLines={1}>
+      <Text style={styles.text5} numberOfLines={1}>
         {[ownerName, t('dash.owner.sqft', { area: project.land_area ?? 0 }), buildingTypeText(project.building_type, t) || null].filter(Boolean).join(' · ')}
       </Text>
-      <View className="mt-1 flex-row items-center gap-1">
+      <View style={styles.view4}>
         <CalendarDays size={11} color={COLORS.slate[400]} />
-        <Text className="text-[11px] font-semibold text-slate-500">
+        <Text style={styles.text6}>
           {formatDisplayDate(project.start_date, undefined, t)} → {formatDisplayDate(project.end_date, undefined, t)}
         </Text>
       </View>
-      <View className="mt-1.5 flex-row items-center gap-2">
-        <Text className="text-[11px] font-semibold text-slate-500">{t('dash.contractor.siteEngineer')}:</Text>
+      <View style={styles.view5}>
+        <Text style={styles.text6}>{t('dash.contractor.siteEngineer')}:</Text>
         {project.assigned_engineer ? (
           <>
             <Badge label={t('dash.contractor.assigned')} bg="#ecfdf5" fg="#047857" />
-            <Text className="flex-1 text-[11px] font-bold text-slate-700" numberOfLines={1}>{project.assigned_engineer.name}</Text>
+            <Text style={styles.text7} numberOfLines={1}>{project.assigned_engineer.name}</Text>
           </>
         ) : (
           <Badge label={t('dash.contractor.assignmentRequired')} />
         )}
       </View>
-      <View className="mt-2 flex-row items-center justify-between">
-        <Text className="text-[11px] font-semibold text-slate-500">{progress ? `${t('dash.contractor.progress')}: ${progress}` : ''}</Text>
-        <Text className="text-sm font-extrabold text-graphite">{money(project.contract_amount ?? project.awarded_amount ?? project.budget, project.project_country)}</Text>
+      <View style={styles.view6}>
+        <Text style={styles.text6}>{progress ? `${t('dash.contractor.progress')}: ${progress}` : ''}</Text>
+        <Text style={styles.text8}>{money(project.contract_amount ?? project.awarded_amount ?? project.budget, project.project_country)}</Text>
       </View>
-      <View className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <View className="h-full rounded-full bg-brand-600" style={{ width: `${barWidth}%` }} />
+      <View style={styles.view7}>
+        <View style={[styles.view8, { width: `${barWidth}%` }]} />
       </View>
-      {schedule ? <Text className="mt-1 text-[10px] font-semibold text-slate-400" numberOfLines={1}>{t('progress.schedule')}: {schedule}</Text> : null}
+      {schedule ? <Text style={styles.text9} numberOfLines={1}>{t('progress.schedule')}: {schedule}</Text> : null}
     </Pressable>
   )
 }
@@ -171,9 +172,9 @@ function ProjectCard({ project, onPress }) {
 function DetailField({ label, value }) {
   const { t } = useLanguage()
   return (
-    <View className="w-[48%] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-      <Text className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</Text>
-      <Text className="mt-0.5 text-xs font-bold text-graphite" numberOfLines={1}>{value || t('dash.common.notSet')}</Text>
+    <View style={styles.view9}>
+      <Text style={styles.text10}>{label}</Text>
+      <Text style={styles.text11} numberOfLines={1}>{value || t('dash.common.notSet')}</Text>
     </View>
   )
 }
@@ -503,27 +504,27 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
   return (
     <View>
       <Section>
-      <Pressable onPress={onBack} className="mb-3 flex-row items-center gap-1">
+      <Pressable onPress={onBack} style={styles.pressable2}>
         <ChevronLeft size={18} color={COLORS.brand[700]} />
-        <Text className="text-sm font-extrabold text-brand-700">{t('dash.owner.projectDetails.backToProjects')}</Text>
+        <Text style={styles.text12}>{t('dash.owner.projectDetails.backToProjects')}</Text>
       </Pressable>
 
-      <Text className="text-xl font-extrabold text-graphite">{project.project_title || project.title}</Text>
-      <Text className="mt-1 text-xs font-semibold text-slate-500">
+      <Text style={styles.text13}>{project.project_title || project.title}</Text>
+      <Text style={styles.text14}>
         {project.address || t('dash.owner.estimates.locationNotSet')}{project.pincode ? ` · ${project.pincode}` : ''}
       </Text>
 
       {/* Sub-tab strip — same 4 tabs as web ContractorProjectDetail */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4" contentContainerStyle={{ gap: 6 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 6 }}>
         {TABS.map((tab) => {
           const active = activeTab === tab.id
           return (
             <Pressable
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
-              className={`rounded-xl px-4 py-2 ${active ? 'bg-brand-700' : 'bg-white border border-slate-200'}`}
+              style={[styles.pressable3, active ? styles.pressable4 : styles.pressable5]}
             >
-              <Text className={`text-xs font-extrabold ${active ? 'text-white' : 'text-slate-500'}`}>{t(tab.labelKey)}</Text>
+              <Text style={[styles.text15, active ? styles.text16 : styles.text]}>{t(tab.labelKey)}</Text>
             </Pressable>
           )
         })}
@@ -534,7 +535,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
         {activeTab === 'details' && (
           <>
             <Section>
-            <View className="flex-row flex-wrap justify-between gap-y-2.5">
+            <View style={styles.view10}>
             <DetailField
               label={t('dash.common.constructionType')}
               value={CONSTRUCTION_TYPE_LABEL_KEYS[project.construction_type] ? t(CONSTRUCTION_TYPE_LABEL_KEYS[project.construction_type]) : constructionTypeLabel(project.construction_type)}
@@ -556,17 +557,17 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
             <DetailField label={t('dash.owner.projectDetails.endDate')} value={formatDisplayDate(project.end_date, undefined, t)} />
           </View>
           {project.description ? (
-            <View className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <Text className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{t('dash.common.description')}</Text>
-              <Text className="mt-0.5 text-xs font-semibold leading-5 text-graphite">{project.description}</Text>
+            <View style={styles.view11}>
+              <Text style={styles.text10}>{t('dash.common.description')}</Text>
+              <Text style={styles.text17}>{project.description}</Text>
             </View>
           ) : null}
           </Section>
           <Panel title={t('mobile.projects.updateProgress')}>
-            <Text className="mb-2 text-xs font-semibold text-slate-500">
+            <Text style={styles.text18}>
               {t('mobile.projects.updateProgressHint')}
             </Text>
-            <View className="flex-row items-center gap-3">
+            <View style={styles.view12}>
               <TextInput
                 value={progressValue}
                 onChangeText={setProgressValue}
@@ -574,17 +575,15 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                 editable={!savingProgress}
                 maxLength={3}
                 accessibilityLabel={t('se.projectCompletion')}
-                className="h-12 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base font-bold text-graphite"
+                style={styles.textInput}
                 placeholder="0–100"
               />
               <Pressable
                 onPress={saveProgress}
                 disabled={savingProgress}
-                className={`rounded-xl px-4 py-3 ${
-                  savingProgress ? 'bg-slate-400' : 'bg-brand-700'
-                }`}
+                style={[styles.pressable6, savingProgress ? styles.pressable7 : styles.pressable4]}
               >
-                <Text className="text-xs font-extrabold text-white">
+                <Text style={styles.text19}>
                   {savingProgress ? t('se.form.saving') : t('se.form.saveProgress')}
                 </Text>
               </Pressable>
@@ -599,11 +598,11 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
             <SiteDayRecords project={project} onViewPlans={() => navigation?.navigate('BuilderSubscription')} />
           </Panel>
           <Panel title={t('mobile.projects.dailyWorkLog')}>
-            <Text className="mb-2 text-xs font-semibold text-slate-500">
+            <Text style={styles.text18}>
               {t('se.form.requiredHint')}
             </Text>
-            <View className="mb-3">
-              <Text className="mb-1 text-xs font-bold text-slate-600">
+            <View style={styles.view13}>
+              <Text style={styles.text20}>
                 {t('mobile.projects.workDate')}
               </Text>
               <TextInput
@@ -612,7 +611,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                 placeholder="YYYY-MM-DD"
                 editable={!savingDaily}
                 accessibilityLabel={t('mobile.projects.workDate')}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-graphite"
+                style={styles.textInput2}
                 placeholderTextColor={COLORS.slate[400]}
               />
             </View>
@@ -633,8 +632,8 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
               ['equipment_used', t('se.form.equipmentUsed')],
               ['inspection_remarks', t('se.inspectionRemarks')],
             ].map(([key, label]) => (
-              <View key={key} className="mb-3">
-                <Text className="mb-1 text-xs font-bold text-slate-600">{label}</Text>
+              <View key={key} style={styles.view13}>
+                <Text style={styles.text20}>{label}</Text>
                 <TextInput
                   value={dailyForm[key]}
                   onChangeText={(value) => updateDailyField(key, value)}
@@ -646,72 +645,72 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                     'equipment_cost', 'total_expenses',
                   ].includes(key) ? 'decimal-pad' : 'default'}
                   multiline={['detailed_remarks', 'inspection_remarks'].includes(key)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-graphite"
+                  style={styles.textInput2}
                   placeholderTextColor={COLORS.slate[400]}
                 />
               </View>
             ))}
-            <View className="mb-3 gap-2">
+            <View style={styles.view14}>
               <Pressable
                 onPress={() => pickDailyMedia('photo')}
                 disabled={savingDaily}
-                className="items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-3"
+                style={styles.pressable8}
               >
-                <Text className="text-xs font-extrabold text-brand-800">
+                <Text style={styles.text21}>
                   {t('se.addSitePhotos')} ({dailyPhotos.length})
                 </Text>
               </Pressable>
               {dailyPhotos.map((asset, index) => (
-                <View key={`${asset.uri}-${index}`} className="flex-row items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                  <Text numberOfLines={1} className="flex-1 text-xs font-semibold text-graphite">
+                <View key={`${asset.uri}-${index}`} style={styles.view15}>
+                  <Text numberOfLines={1} style={styles.text22}>
                     {asset.fileName || t('se.selectedPhoto', { index: index + 1 })}
                   </Text>
                   <Pressable onPress={() => setDailyPhotos((current) => current.filter((_, i) => i !== index))}>
-                    <Text className="ml-3 text-xs font-extrabold text-rose-600">{t('se.removePhoto')}</Text>
+                    <Text style={styles.text23}>{t('se.removePhoto')}</Text>
                   </Pressable>
                 </View>
               ))}
               <Pressable
                 onPress={() => pickDailyMedia('video')}
                 disabled={savingDaily}
-                className="items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-3"
+                style={styles.pressable8}
               >
-                <Text className="text-xs font-extrabold text-brand-800">
+                <Text style={styles.text21}>
                   {t('se.addSiteVideos')} ({dailyVideos.length})
                 </Text>
               </Pressable>
               {dailyVideos.map((asset, index) => (
-                <View key={`${asset.uri}-${index}`} className="flex-row items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                  <Text numberOfLines={1} className="flex-1 text-xs font-semibold text-graphite">
+                <View key={`${asset.uri}-${index}`} style={styles.view15}>
+                  <Text numberOfLines={1} style={styles.text22}>
                     {asset.fileName || t('mobile.projects.day.videoN', { index: index + 1 })}
                   </Text>
                   <Pressable onPress={() => setDailyVideos((current) => current.filter((_, i) => i !== index))}>
-                    <Text className="ml-3 text-xs font-extrabold text-rose-600">{t('se.removeVideo')}</Text>
+                    <Text style={styles.text23}>{t('se.removeVideo')}</Text>
                   </Pressable>
                 </View>
               ))}
             </View>
-            <View className="flex-row gap-2">
+            <View style={styles.view16}>
               <Pressable
                 onPress={() => saveDailyRecord('IN_PROGRESS')}
                 disabled={savingDaily}
-                className="flex-1 items-center rounded-xl bg-brand-700 px-3 py-3"
+                style={styles.pressable9}
               >
-                <Text className="text-xs font-extrabold text-white">
+                <Text style={styles.text19}>
                   {savingDaily ? t('se.form.saving') : t('se.form.saveProgress')}
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => saveDailyRecord('CLOSED')}
                 disabled={savingDaily}
-                className="flex-1 items-center rounded-xl bg-slate-700 px-3 py-3"
+                style={styles.pressable10}
               >
-                <Text className="text-xs font-extrabold text-white">{t('se.form.closeDay')}</Text>
+                <Text style={styles.text19}>{t('se.form.closeDay')}</Text>
               </Pressable>
             </View>
           </Panel>
           <Panel title={t('ui.siteActivity')}>
-            <Text className="mb-2 text-xs font-semibold text-slate-500">
+            <Text style={styles.text18}>
               {t('mobile.projects.activityHint')}
             </Text>
             <TextInput
@@ -721,32 +720,30 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
               multiline
               editable={!savingActivity}
               accessibilityLabel={t('mobile.projects.activityPlaceholder')}
-              className="min-h-20 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[14px] font-semibold text-graphite"
+              style={styles.textInput3}
               placeholderTextColor={COLORS.slate[400]}
               textAlignVertical="top"
             />
             <Pressable
               onPress={saveActivity}
               disabled={savingActivity}
-              className={`mt-2 items-center rounded-xl px-4 py-3 ${
-                savingActivity ? 'bg-slate-400' : 'bg-brand-700'
-              }`}
+              style={[styles.pressable11, savingActivity ? styles.pressable7 : styles.pressable4]}
             >
-              <Text className="text-xs font-extrabold text-white">
+              <Text style={styles.text19}>
                 {savingActivity ? t('se.form.saving') : t('mobile.projects.saveSiteUpdate')}
               </Text>
             </Pressable>
             <PanelState loading={timeline.loading} error={timeline.error} empty={!timelineList.length} emptyText={t('se.noDailyLogs')}>
               {timelineList.map((entry, index) => (
-                <View key={entry.id || index} className="border-b border-slate-100 py-3">
-                  <Text className="text-xs font-extrabold text-brand-700">
+                <View key={entry.id || index} style={styles.view17}>
+                  <Text style={styles.text24}>
                     {String(entry.date || entry.work_date || '').slice(0, 10)}
                   </Text>
-                  <Text className="mt-1 text-[13px] font-semibold text-graphite">
+                  <Text style={styles.text25}>
                     {entry.work_type || entry.description || t('se.dailySiteRecord')}
                   </Text>
                   {!!(entry.images || []).length && (
-                    <Text className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                    <Text style={styles.text26}>
                       {t((entry.images || []).length === 1 ? 'se.photoOne' : 'se.photoMany', { count: (entry.images || []).length })}
                     </Text>
                   )}
@@ -777,10 +774,10 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
               <Notice tone={engineerMessage?.tone} text={engineerMessage?.text} />
               <PanelState loading={engineer.loading} error={engineer.error} empty={false}>
                 {assignedEngineer ? (
-                  <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <View className="flex-1">
-                      <Text className="text-[15px] font-extrabold text-graphite">{assignedEngineer.name || assignedEngineer.full_name}</Text>
-                      <Text className="mt-0.5 text-xs font-semibold text-slate-500">
+                  <View style={styles.view18}>
+                    <View style={styles.view19}>
+                      <Text style={styles.text27}>{assignedEngineer.name || assignedEngineer.full_name}</Text>
+                      <Text style={styles.text28}>
                         {engineerCategoryLabel(assignedEngineer.category || assignedEngineer.specialization || SITE_ENGINEER_CATEGORY)} · {t('dash.contractor.engineerMeta', { pincode: assignedEngineer.pincode || '—', years: assignedEngineer.experience_years || 0 })}
                       </Text>
                     </View>
@@ -788,7 +785,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                   </View>
                 ) : (
                   <View>
-                    <Text className="mb-2 text-xs font-bold text-slate-600">{t('team.availableSiteEngineers')}</Text>
+                    <Text style={styles.text29}>{t('team.availableSiteEngineers')}</Text>
                     {siteEngineers.length ? siteEngineers.map((member) => {
                       const busyElsewhere = Boolean(member.working_on_project)
                       const on = selectedEngineerId === member.user_id
@@ -797,23 +794,23 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                           key={member.user_id}
                           disabled={busyElsewhere}
                           onPress={() => setSelectedEngineerId(on ? null : member.user_id)}
-                          className={`mb-2 rounded-xl border px-3 py-2.5 ${on ? 'border-brand-700 bg-brand-50' : 'border-slate-200 bg-white'} ${busyElsewhere ? 'opacity-50' : ''}`}
+                          style={[styles.pressable12, on ? styles.pressable13 : styles.pressable14, busyElsewhere ? styles.pressable15 : null]}
                         >
-                          <Text className="text-[14px] font-extrabold text-graphite">{member.name}</Text>
-                          <Text className="text-xs font-semibold text-slate-500">
+                          <Text style={styles.text30}>{member.name}</Text>
+                          <Text style={styles.text31}>
                             {busyElsewhere ? t('ce.workingOnAnotherProject') : (member.pincode || t('dash.contractor.noPincode'))}
                           </Text>
                         </Pressable>
                       )
                     }) : (
-                      <View className="items-center rounded-xl border border-slate-200 px-4 py-6">
-                        <Text className="text-[14px] font-extrabold text-graphite">{t('team.noSiteEngineersTitle')}</Text>
-                        <Text className="mt-1 text-center text-xs font-semibold text-slate-500">{t('team.noSiteEngineersSub')}</Text>
-                        <ActionButton small tone="brandOutline" label={t('team.manageSiteEngineers')} onPress={() => navigation?.navigate('ContractorPartnersTab')} className="mt-3" />
+                      <View style={styles.view20}>
+                        <Text style={styles.text30}>{t('team.noSiteEngineersTitle')}</Text>
+                        <Text style={styles.text32}>{t('team.noSiteEngineersSub')}</Text>
+                        <ActionButton small tone="brandOutline" label={t('team.manageSiteEngineers')} onPress={() => navigation?.navigate('ContractorPartnersTab')} style={styles.actionButton} />
                       </View>
                     )}
                     {siteEngineers.length ? (
-                      <ActionButton icon={UserPlus} label={t('team.assignEngineer')} disabled={!selectedEngineerId} busy={engineerBusy} onPress={assignSiteEngineer} className="mt-1" />
+                      <ActionButton icon={UserPlus} label={t('team.assignEngineer')} disabled={!selectedEngineerId} busy={engineerBusy} onPress={assignSiteEngineer} style={styles.actionButton2} />
                     ) : null}
                   </View>
                 )}
@@ -824,15 +821,15 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
             {teamSection === 'specialists' && (
             <Panel title={t('team.specialists')}>
               {specialistsLoading ? (
-                <Text className="py-3 text-xs font-semibold text-slate-500">
+                <Text style={styles.text33}>
                   {t('specialist.loading')}
                 </Text>
               ) : specialistsError ? (
-                <Text className="py-3 text-xs font-semibold text-rose-600">
+                <Text style={styles.text34}>
                   {specialistsError}
                 </Text>
               ) : specialistRows.length === 0 ? (
-                <Text className="py-3 text-xs font-semibold text-slate-500">
+                <Text style={styles.text33}>
                   {t('mobile.projects.noSpecialistCategories')}
                 </Text>
               ) : (
@@ -843,14 +840,14 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                   return (
                     <View
                       key={category}
-                      className="border-b border-slate-100 py-3"
+                      style={styles.view17}
                     >
-                      <View className="flex-row items-center gap-2">
-                        <View className="flex-1">
-                          <Text className="text-sm font-extrabold text-graphite">
+                      <View style={styles.view2}>
+                        <View style={styles.view19}>
+                          <Text style={styles.text8}>
                             {engineerCategoryLabel(category)}
                           </Text>
-                          <Text className="mt-1 text-xs font-semibold text-slate-500">
+                          <Text style={styles.text14}>
                             {row.engineer?.name || t('specialist.nobodyYet')}
                           </Text>
                         </View>
@@ -868,18 +865,18 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
 
                         <Pressable
                           onPress={() => toggleSpecialistCategory(category)}
-                          className="rounded-lg bg-brand-700 px-3 py-2"
+                          style={styles.pressable16}
                         >
-                          <Text className="text-[10px] font-extrabold text-white">
+                          <Text style={styles.text35}>
                             {isOpen ? t('dash.common.close') : t('specialist.view')}
                           </Text>
                         </Pressable>
                       </View>
 
                       {isOpen && (
-                        <View className="mt-3 border-t border-slate-100 pt-2">
+                        <View style={styles.view21}>
                           {specialistCandidates.length === 0 ? (
-                            <Text className="py-2 text-xs font-semibold text-slate-500">
+                            <Text style={styles.text36}>
                               {t('specialist.noCandidates', { category: engineerCategoryLabel(category) })}
                             </Text>
                           ) : (
@@ -890,22 +887,22 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                               return (
                                 <View
                                   key={id}
-                                  className="flex-row items-center gap-2 border-b border-slate-100 py-3"
+                                  style={styles.view22}
                                 >
-                                  <View className="flex-1">
-                                    <Text className="text-sm font-bold text-graphite">
+                                  <View style={styles.view19}>
+                                    <Text style={styles.text37}>
                                       {candidate.name || t('ce.engineerFallback')}
                                     </Text>
-                                    <Text className="text-xs text-slate-500">
+                                    <Text style={styles.text38}>
                                       {candidate.pincode || t('dash.contractor.noPincode')}
                                     </Text>
                                     {requestStatus === 'accepted' && (
-                                      <Text className="text-xs font-bold text-emerald-700">
+                                      <Text style={styles.text39}>
                                         {t('specialist.assigned')}
                                       </Text>
                                     )}
                                     {requestStatus === 'pending' && (
-                                      <Text className="text-xs font-bold text-amber-700">
+                                      <Text style={styles.text40}>
                                         {t('specialist.pending')}
                                       </Text>
                                     )}
@@ -919,14 +916,10 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                                           specialistBusyId === id ||
                                           candidate.can_request === false
                                         }
-                                        className={`rounded-lg px-3 py-2 ${
-                                          specialistBusyId === id ||
-                                          candidate.can_request === false
-                                            ? 'bg-slate-300'
-                                            : 'bg-brand-700'
-                                        }`}
+                                        style={[styles.pressable17, specialistBusyId === id ||
+                                          candidate.can_request === false ? styles.pressable18 : styles.pressable4]}
                                       >
-                                        <Text className="text-[10px] font-extrabold text-white">
+                                        <Text style={styles.text35}>
                                           {specialistBusyId === id
                                             ? t('ce.sending')
                                             : candidate.can_request === false
@@ -947,7 +940,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
               )}
 
               {!!specialistMessage && (
-                <Text className="mt-2 text-xs font-semibold text-brand-700">
+                <Text style={styles.text41}>
                   {specialistMessage}
                 </Text>
               )}
@@ -961,15 +954,15 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                 {supplierList.map((supplier, index) => {
                   const id = supplier.user_id || supplier.id
                   return (
-                    <View key={id || index} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
-                      <View className="flex-1">
-                        <Text className="text-[14px] font-extrabold text-graphite">{supplier.store_name || supplier.business_name || supplier.name}</Text>
+                    <View key={id || index} style={styles.view23}>
+                      <View style={styles.view19}>
+                        <Text style={styles.text30}>{supplier.store_name || supplier.business_name || supplier.name}</Text>
                         {!!(supplier.supplier_category || supplier.material_types) && (
-                          <Text className="mt-0.5 text-xs font-semibold text-slate-500">{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : String(supplier.material_types)}</Text>
+                          <Text style={styles.text28}>{supplier.supplier_category ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplier.supplier_category) : String(supplier.material_types)}</Text>
                         )}
                       </View>
-                      <Pressable onPress={() => changeSupplier(supplier, false)} disabled={supplierBusyId === id} className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5">
-                        <Text className="text-[10px] font-extrabold text-rose-700">{t('dash.contractor.unassign')}</Text>
+                      <Pressable onPress={() => changeSupplier(supplier, false)} disabled={supplierBusyId === id} style={styles.pressable19}>
+                        <Text style={styles.text42}>{t('dash.contractor.unassign')}</Text>
                       </Pressable>
                     </View>
                   )
@@ -988,22 +981,22 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                     : !SUPPLIER_CATEGORY_ORDER.includes(supplier.supplier_category)))
                   if (!group.length) return null
                   return (
-                    <View key={category || 'other'} className="mb-2">
-                      <Text className="mb-1 mt-1 text-xs font-extrabold text-slate-700">{category ? optionLabel(t, SUPPLIER_TYPE_KEYS, category) : t('team.supplierNoCategory')} <Text className="font-semibold text-slate-400">({group.length})</Text></Text>
+                    <View key={category || 'other'} style={styles.view24}>
+                      <Text style={styles.text43}>{category ? optionLabel(t, SUPPLIER_TYPE_KEYS, category) : t('team.supplierNoCategory')} <Text style={styles.text44}>({group.length})</Text></Text>
                       {group.map((supplier) => {
                         const id = supplier.user_id || supplier.id
                         const assigned = supplierList.some((item) => (item.user_id || item.id) === id)
                         return (
-                          <View key={id} className="flex-row items-center gap-3 border-b border-slate-100 py-2.5">
-                            <View className="flex-1">
-                              <Text className="text-[14px] font-extrabold text-graphite">{supplier.store_name || supplier.business_name || supplier.name}</Text>
-                              <Text className="text-xs font-semibold text-slate-500">{supplier.pincode || '—'}</Text>
+                          <View key={id} style={styles.view23}>
+                            <View style={styles.view19}>
+                              <Text style={styles.text30}>{supplier.store_name || supplier.business_name || supplier.name}</Text>
+                              <Text style={styles.text31}>{supplier.pincode || '—'}</Text>
                             </View>
                             {assigned ? (
                               <Badge label={t('team.assigned')} bg="#ecfdf5" fg="#047857" />
                             ) : (
-                              <Pressable onPress={() => changeSupplier(supplier, true)} disabled={supplierBusyId === id || !assignedEngineer} className={`rounded-lg px-3 py-1.5 ${assignedEngineer ? 'bg-brand-700' : 'bg-slate-300'}`}>
-                                <Text className="text-[10px] font-extrabold text-white">{t('team.assign')}</Text>
+                              <Pressable onPress={() => changeSupplier(supplier, true)} disabled={supplierBusyId === id || !assignedEngineer} style={[styles.pressable20, assignedEngineer ? styles.pressable4 : styles.pressable18]}>
+                                <Text style={styles.text35}>{t('team.assign')}</Text>
                               </Pressable>
                             )}
                           </View>
@@ -1023,10 +1016,10 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
           <Panel title={t('dash.owner.escrow.title')}>
             <PanelState empty={!milestones.length} emptyText={t('dash.owner.projectDetails.noMilestones')}>
               {milestones.map((milestone) => (
-                <View key={milestone.id} className="flex-row items-center justify-between border-b border-slate-100 py-3">
-                  <Text className="flex-1 text-[14px] font-extrabold text-graphite">{milestone.name}</Text>
-                  <View className="items-end">
-                    <Text className="text-[15px] font-extrabold text-brand-700">{inr(milestone.amount)}</Text>
+                <View key={milestone.id} style={styles.view25}>
+                  <Text style={styles.text45}>{milestone.name}</Text>
+                  <View style={styles.view26}>
+                    <Text style={styles.text46}>{inr(milestone.amount)}</Text>
                     <StatusChip label={projectStatusText(milestone.status || 'PENDING', t)} tone={milestone.status === 'RELEASED' ? 'positive' : 'muted'} />
                   </View>
                 </View>
@@ -1060,38 +1053,38 @@ const completion = dashboard.project_completion
 
         return (
           <>
-            <View className="mb-3 rounded-xl border border-slate-200 p-3">
-              <Text className="text-xs font-bold text-slate-500">
+            <View style={styles.view27}>
+              <Text style={styles.text47}>
                 {t('owner.pa.totalBudget')}
               </Text>
-              <Text className="mt-1 text-lg font-extrabold text-graphite">
+              <Text style={styles.text48}>
                 {budget > 0 ? inr(budget) : t('dash.common.notSet')}
               </Text>
             </View>
 
-            <View className="mb-3 rounded-xl border border-slate-200 p-3">
-              <Text className="text-xs font-bold text-slate-500">
+            <View style={styles.view27}>
+              <Text style={styles.text47}>
                 {t('owner.pa.amountSpent')}
               </Text>
-              <Text className="mt-1 text-lg font-extrabold text-graphite">
+              <Text style={styles.text48}>
                 {inr(spent)}
               </Text>
             </View>
 
-            <View className="mb-3 rounded-xl border border-slate-200 p-3">
-              <Text className="text-xs font-bold text-slate-500">
+            <View style={styles.view27}>
+              <Text style={styles.text47}>
                 {t('owner.pa.remainingBudget')}
               </Text>
-              <Text className="mt-1 text-lg font-extrabold text-graphite">
+              <Text style={styles.text48}>
                 {budget > 0 ? inr(budget - spent) : t('progress.notAvailable')}
               </Text>
             </View>
 
-            <View className="rounded-xl border border-slate-200 p-3">
-              <Text className="text-xs font-bold text-slate-500">
+            <View style={styles.view28}>
+              <Text style={styles.text47}>
                 {t('owner.pa.overallProgress')}
               </Text>
-              <Text className="mt-1 text-lg font-extrabold text-graphite">
+              <Text style={styles.text48}>
                 {completion == null
                   ? t('progress.notAvailable')
                   : `${completion}%`}
@@ -1103,19 +1096,19 @@ const completion = dashboard.project_completion
   {budgetBreakdown.map((row) => (
     <View
       key={row.key}
-      className="flex-row items-center justify-between border-b border-slate-100 py-3"
+      style={styles.view25}
     >
-      <View className="flex-1 pr-3">
-        <Text className="font-bold text-graphite">
+      <View style={styles.view29}>
+        <Text style={styles.text49}>
           {row.labelKey ? t(row.labelKey) : row.key.replace('_cost', '').replace('_', ' ')}
         </Text>
-        <Text className="mt-1 text-xs text-slate-500">
+        <Text style={styles.text50}>
           {t('owner.pa.colPlanned')}: {row.planned == null ? t('dash.common.notSet') : inr(row.planned)}
         </Text>
       </View>
-      <View className="items-end">
-        <Text className="font-extrabold text-graphite">{inr(row.actual)}</Text>
-        <Text className="mt-1 text-xs text-slate-500">
+      <View style={styles.view26}>
+        <Text style={styles.text51}>{inr(row.actual)}</Text>
+        <Text style={styles.text50}>
           {row.percent == null ? '—' : `${row.percent}%`}
         </Text>
       </View>
@@ -1128,12 +1121,12 @@ const completion = dashboard.project_completion
     {trend.slice(-8).map((point) => (
       <View
         key={point.date}
-        className="flex-row items-center justify-between border-b border-slate-100 py-2.5"
+        style={styles.view30}
       >
-        <Text className="text-xs text-slate-500">{point.date}</Text>
-        <View className="items-end">
-          <Text className="font-bold text-graphite">{inr(point.daily)}</Text>
-          <Text className="text-xs text-slate-500">
+        <Text style={styles.text38}>{point.date}</Text>
+        <View style={styles.view26}>
+          <Text style={styles.text49}>{inr(point.daily)}</Text>
+          <Text style={styles.text38}>
             {t('owner.pa.cumulative')}: {inr(point.cumulative)}
           </Text>
         </View>
@@ -1147,23 +1140,22 @@ const completion = dashboard.project_completion
     {workItems.map((item) => (
       <View
         key={item.reference}
-        className="border-b border-slate-100 py-3"
+        style={styles.view17}
       >
-        <View className="flex-row items-center justify-between gap-3">
-          <Text className="flex-1 font-bold text-graphite">
+        <View style={styles.view31}>
+          <Text style={styles.text52}>
             {item.label}
           </Text>
-          <Text className="font-extrabold text-brand-700">
+          <Text style={styles.text53}>
             {item.percent}%
           </Text>
         </View>
-        <View className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+        <View style={styles.view32}>
           <View
-            className="h-full rounded-full bg-brand-600"
-            style={{ width: `${item.percent}%` }}
+            style={[styles.view8, { width: `${item.percent}%` }]}
           />
         </View>
-        <Text className="mt-1 text-xs text-slate-500">
+        <Text style={styles.text50}>
           {item.status === 'completed'
             ? t('owner.pa.statusCompleted')
             : item.status === 'ongoing'
@@ -1183,17 +1175,17 @@ empty={!materialDetails.length}
                {materialDetails.map((item) => (
                   <View
                     key={item.id ?? item.material}
-                    className="border-b border-slate-100 py-3"
+                    style={styles.view17}
                   >
-                    <Text className="font-extrabold text-graphite">
+                    <Text style={styles.text51}>
                       {item.material || t('owner.pa.colMaterial')}
                     </Text>
-                    <Text className="mt-1 text-xs text-slate-500">
+                    <Text style={styles.text50}>
                       {t('owner.pa.colReceived')}: {Number(item.received || 0)} {item.unit || ''}
                       {' · '}{t('owner.pa.colUsed')}: {Number(item.used || 0)} {item.unit || ''}
                       {' · '}{t('owner.pa.colRemaining')}: {Number(item.remaining || 0)} {item.unit || ''}
                     </Text>
-                    <Text className="mt-1 text-xs font-bold text-slate-500">
+                    <Text style={styles.text54}>
                       {t('owner.pa.colStatus')}: {t(STOCK_STATUS_KEYS[item.status || 'IN_STOCK'] || 'owner.pa.stockIn')}
                     </Text>
                   </View>
@@ -1208,17 +1200,17 @@ empty={!materialDetails.length}
     {recentExpenseItems.map((expense) => (
       <View
         key={expense.id}
-        className="flex-row items-start justify-between gap-3 border-b border-slate-100 py-3"
+        style={styles.view33}
       >
-        <View className="flex-1">
-          <Text className="font-bold text-graphite">
+        <View style={styles.view19}>
+          <Text style={styles.text49}>
             {expense.description || '—'}
           </Text>
-          <Text className="mt-1 text-xs text-slate-500">
+          <Text style={styles.text50}>
             {expense.expense_date || '—'} · {expense.category || '—'}
           </Text>
         </View>
-        <Text className="font-extrabold text-graphite">
+        <Text style={styles.text51}>
           {inr(expense.amount)}
         </Text>
       </View>
@@ -1235,7 +1227,7 @@ empty={!materialDetails.length}
 
                 {activeTab === 'liveCamera' && (
           <Panel title={t('ui.liveCamera')}>
-            <Text className="text-sm text-slate-600">
+            <Text style={styles.text55}>
               {t('mobile.projects.liveCameraHint')}
             </Text>
 
@@ -1247,9 +1239,9 @@ empty={!materialDetails.length}
                     project.project_title || project.title || t('dash.common.project'),
                 })
               }
-              className="mt-3 items-center rounded-xl bg-brand-700 px-4 py-3"
+              style={styles.pressable21}
             >
-              <Text className="font-extrabold text-white">
+              <Text style={styles.text56}>
                 {t('mobile.projects.openLiveCamera')}
               </Text>
             </Pressable>
@@ -1329,3 +1321,126 @@ export default function ContractorProjectsScreen({ navigation }) {
     </DashboardShell>
   )
 }
+
+const styles = createStyles((c) => ({
+  tone: { backgroundColor: c.brandSoftStrong },
+  tone2: { backgroundColor: c.muted },
+  tone3: { backgroundColor: c.brandSoft },
+  text: { color: c.textMuted },
+  tone4: { color: c.brandTextStrong },
+  view: { alignSelf: 'flex-start', borderRadius: 9999, paddingHorizontal: 10.5, paddingVertical: 3.5 },
+  text2: { fontSize: 11, fontWeight: '800' },
+  pressable: { marginBottom: 10.5, borderRadius: 24, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  view2: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text3: { flex: 1, fontSize: 15, fontWeight: '800', color: c.text },
+  view3: { marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
+  text4: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  text5: { marginTop: 3.5, fontSize: 11, fontWeight: '600', color: c.textMuted },
+  view4: { marginTop: 3.5, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text6: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  view5: { marginTop: 5.25, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  text7: { flex: 1, fontSize: 11, fontWeight: '700', color: c.textSoft },
+  view6: { marginTop: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  text8: { fontSize: 14, lineHeight: 20, fontWeight: '800', color: c.text },
+  view7: { marginTop: 5.25, height: 5.25, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
+  view8: { height: '100%', borderRadius: 9999, backgroundColor: '#236645' },
+  text9: { marginTop: 3.5, fontSize: 10, fontWeight: '600', color: c.textFaint },
+  view9: { width: '48%', borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text10: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: c.textFaint },
+  text11: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.text },
+  pressable2: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', gap: 3.5 },
+  text12: { fontSize: 14, lineHeight: 20, fontWeight: '800', color: c.brandText },
+  text13: { fontSize: 20, lineHeight: 28, fontWeight: '800', color: c.text },
+  text14: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  scrollView: { marginTop: 14 },
+  pressable3: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 },
+  pressable4: { backgroundColor: '#1a5038' },
+  pressable5: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border },
+  text15: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  text16: { color: '#ffffff' },
+  view10: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8.75 },
+  view11: { marginTop: 8.75, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text17: { marginTop: 1.75, fontSize: 12, lineHeight: 17.5, fontWeight: '600', color: c.text },
+  text18: { marginBottom: 7, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view12: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  textInput: { height: 42, flex: 1, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 16, lineHeight: 24, fontWeight: '700', color: c.text },
+  pressable6: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10.5 },
+  pressable7: { backgroundColor: '#94a3b8' },
+  text19: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: '#ffffff' },
+  view13: { marginBottom: 10.5 },
+  text20: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  textInput2: { borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 10.5, fontSize: 14, lineHeight: 20, fontWeight: '600', color: c.text },
+  view14: { marginBottom: 10.5, gap: 7 },
+  pressable8: { alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.brandBorderStrong, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 10.5 },
+  text21: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.brandTextStrong },
+  view15: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
+  text22: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.text },
+  text23: { marginLeft: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.roseTextSoft },
+  view16: { flexDirection: 'row', gap: 7 },
+  pressable9: { flex: 1, alignItems: 'center', borderRadius: 12, backgroundColor: '#1a5038', paddingHorizontal: 10.5, paddingVertical: 10.5 },
+  pressable10: { flex: 1, alignItems: 'center', borderRadius: 12, backgroundColor: '#334155', paddingHorizontal: 10.5, paddingVertical: 10.5 },
+  textInput3: { minHeight: 70, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
+  pressable11: { marginTop: 7, alignItems: 'center', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10.5 },
+  view17: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text24: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.brandText },
+  text25: { marginTop: 3.5, fontSize: 13, fontWeight: '600', color: c.text },
+  text26: { marginTop: 1.75, fontSize: 11, fontWeight: '600', color: c.textFaint },
+  view18: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, padding: 10.5 },
+  view19: { flex: 1 },
+  text27: { fontSize: 15, fontWeight: '800', color: c.text },
+  text28: { marginTop: 1.75, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  text29: { marginBottom: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  pressable12: { marginBottom: 7, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10.5, paddingVertical: 8.75 },
+  pressable13: { borderColor: '#1a5038', backgroundColor: c.brandSoft },
+  pressable14: { borderColor: c.border, backgroundColor: c.card },
+  pressable15: { opacity: 0.5 },
+  text30: { fontSize: 14, fontWeight: '800', color: c.text },
+  text31: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view20: { alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, paddingVertical: 21 },
+  text32: { marginTop: 3.5, textAlign: 'center', fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  actionButton: { marginTop: 10.5 },
+  actionButton2: { marginTop: 3.5 },
+  text33: { paddingVertical: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  text34: { paddingVertical: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.roseTextSoft },
+  pressable16: { borderRadius: 8, backgroundColor: '#1a5038', paddingHorizontal: 10.5, paddingVertical: 7 },
+  text35: { fontSize: 10, fontWeight: '800', color: '#ffffff' },
+  view21: { marginTop: 10.5, borderTopWidth: 1, borderColor: c.borderSoft, paddingTop: 7 },
+  text36: { paddingVertical: 7, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
+  view22: { flexDirection: 'row', alignItems: 'center', gap: 7, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text37: { fontSize: 14, lineHeight: 20, fontWeight: '700', color: c.text },
+  text38: { fontSize: 12, lineHeight: 16, color: c.textMuted },
+  text39: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.emeraldText },
+  text40: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.amberText },
+  pressable17: { borderRadius: 8, paddingHorizontal: 10.5, paddingVertical: 7 },
+  pressable18: { backgroundColor: c.mutedStronger },
+  text41: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.brandText },
+  view23: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
+  pressable19: { borderRadius: 8, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 8.75, paddingVertical: 5.25 },
+  text42: { fontSize: 10, fontWeight: '800', color: c.roseText },
+  view24: { marginBottom: 7 },
+  text43: { marginBottom: 3.5, marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.textSoft },
+  text44: { fontWeight: '600', color: c.textFaint },
+  pressable20: { borderRadius: 8, paddingHorizontal: 10.5, paddingVertical: 5.25 },
+  view25: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text45: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
+  view26: { alignItems: 'flex-end' },
+  text46: { fontSize: 15, fontWeight: '800', color: c.brandText },
+  view27: { marginBottom: 10.5, borderRadius: 12, borderWidth: 1, borderColor: c.border, padding: 10.5 },
+  text47: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textMuted },
+  text48: { marginTop: 3.5, fontSize: 18, lineHeight: 28, fontWeight: '800', color: c.text },
+  view28: { borderRadius: 12, borderWidth: 1, borderColor: c.border, padding: 10.5 },
+  view29: { flex: 1, paddingRight: 10.5 },
+  text49: { fontWeight: '700', color: c.text },
+  text50: { marginTop: 3.5, fontSize: 12, lineHeight: 16, color: c.textMuted },
+  text51: { fontWeight: '800', color: c.text },
+  view30: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
+  view31: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10.5 },
+  text52: { flex: 1, fontWeight: '700', color: c.text },
+  text53: { fontWeight: '800', color: c.brandText },
+  view32: { marginTop: 7, height: 7, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
+  text54: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textMuted },
+  view33: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
+  text55: { fontSize: 14, lineHeight: 20, color: c.textSecondary },
+  pressable21: { marginTop: 10.5, alignItems: 'center', borderRadius: 12, backgroundColor: '#1a5038', paddingHorizontal: 14, paddingVertical: 10.5 },
+  text56: { fontWeight: '800', color: '#ffffff' },
+}))

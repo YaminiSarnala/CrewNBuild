@@ -482,7 +482,7 @@ export default function BuilderProfileScreen({ navigation, route }) {
                 <Pressable
                   key={tab}
                   onPress={() => setActiveTab(tab)}
-                  style={[styles.pressable7, styles[activeTab === tab ? 'pressable8' : 'border-transparent']]}
+                  style={[styles.pressable7, activeTab === tab ? styles.pressable8 : styles.tabIdle]}
                 >
                   <Text style={[styles.text23, activeTab === tab ? styles.text24 : styles.text25, { fontSize: 12.5 }]}>
                     {t(TAB_LABEL_KEYS[tab])}
@@ -556,6 +556,7 @@ const styles = createStyles((c) => ({
   scrollView: { marginBottom: 10.5, borderRadius: 14, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.card },
   pressable7: { borderBottomWidth: 2, paddingHorizontal: 10.5, paddingVertical: 8.75 },
   pressable8: { borderColor: '#1a5038' },
+  tabIdle: { borderColor: 'transparent' },
   text23: { fontFamily: 'Inter_700Bold' },
   text24: { color: c.brandTextStrong },
   text25: { color: c.textFaint },
