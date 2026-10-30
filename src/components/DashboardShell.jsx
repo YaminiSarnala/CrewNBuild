@@ -1,7 +1,7 @@
 // Shared chrome for the four role dashboards: greeting header with the user's
 // name and role, a notification bell wired to GET /notifications, pull-to-
 // refresh, and consistent loading / error / empty states.
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, Pressable, ActivityIndicator } from 'react-native'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -15,6 +15,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { imageSource } from '../api/client'
 import { useResponsive } from '../hooks/useResponsive'
 import { ContentWrap } from './Responsive'
+import ScreenHeader from './ScreenHeader'
 import LanguageSheet from './LanguageSheet'
 import ProfilePhotoSheet from './ProfilePhotoSheet'
 import { SHADOW, COLORS } from '../theme/tokens'
@@ -130,6 +131,22 @@ function CountBadge({ count }) {
   )
 }
 
+/**
+ * A screen opened from inside a tab (the Builder's More sections) wraps its
+ * content in <ShellBackBar title onBack extra>. Any DashboardShell inside then
+ * draws the slim page header (back + title, as on Portfolio) instead of the
+ * dashboard header, with optional extra content (e.g. tabs) just below it.
+ */
+const ShellBackContext = createContext(null)
+export function ShellBackBar({ title, onBack, extra, children }) {
+  const outer = useContext(ShellBackContext)
+  const value = useMemo(
+    () => ({ title: title ?? outer?.title, onBack: onBack ?? outer?.onBack, extra: extra ?? outer?.extra }),
+    [title, onBack, extra, outer],
+  )
+  return <ShellBackContext.Provider value={value}>{children}</ShellBackContext.Provider>
+}
+
 export default function DashboardShell({ children, refreshing, onRefresh, onOpenNotifications, onOpenLanguage }) {
   const insets = useSafeAreaInsets()
   const dispatch = useDispatch()
@@ -139,6 +156,7 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
   const navigation = useNavigation()
   const { unreadCount, unreadMessages } = useNotifications()
   const { isDark, toggleTheme } = useTheme()
+  const back = useContext(ShellBackContext)
   // The header opens these itself, so the globe and the photo work on every
   // tab — not only on a Home screen that passes onOpenLanguage.
   const [languageOpen, setLanguageOpen] = useState(false)
@@ -154,63 +172,78 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
 
   return (
     <View style={styles.view7}>
-      <View style={[styles.view8, { paddingTop: insets.top }]}>
-        <ContentWrap>
-        <View style={[styles.view9, { gap: 4, paddingHorizontal: gutter }]}>
-          <Pressable
-            onPress={() => setPhotoOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t('photo.title')}
-            style={styles.view10}
-          >
-            {user?.profile_image_url ? (
-              <Image source={imageSource(user.profile_image_url)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-            ) : (
-              <View style={styles.view11}>
-                <Text style={[styles.text7, { fontSize: 16 }]}>
-                  {(user?.name || '?').charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-          <View style={styles.scrollView}>
-            <Text style={[styles.text7, { fontSize: 17, letterSpacing: -0.4 }]} numberOfLines={1}>
-              {td(user?.name) || '—'}
-            </Text>
-            <Text style={[styles.text8, { fontSize: 12 }]}>
-              {t(roleLabelKey)}
-            </Text>
+      {back?.onBack ? (
+        // Opened from inside a tab (Builder More sections): the slim page header
+        // the stack pages use (Portfolio, Plan & billing), not the dashboard one.
+        <>
+          <ScreenHeader title={back.title} onBack={back.onBack} />
+          {back.extra ? (
+            <View style={styles.backBar}>
+              <ContentWrap>
+                <View style={{ paddingHorizontal: gutter, paddingVertical: 10 }}>{back.extra}</View>
+              </ContentWrap>
+            </View>
+          ) : null}
+        </>
+      ) : (
+        <View style={[styles.view8, { paddingTop: insets.top }]}>
+          <ContentWrap>
+          <View style={[styles.view9, { gap: 4, paddingHorizontal: gutter }]}>
+            <Pressable
+              onPress={() => setPhotoOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('photo.title')}
+              style={styles.view10}
+            >
+              {user?.profile_image_url ? (
+                <Image source={imageSource(user.profile_image_url)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              ) : (
+                <View style={styles.view11}>
+                  <Text style={[styles.text7, { fontSize: 16 }]}>
+                    {(user?.name || '?').charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+            <View style={styles.scrollView}>
+              <Text style={[styles.text7, { fontSize: 17, letterSpacing: -0.4 }]} numberOfLines={1}>
+                {td(user?.name) || '—'}
+              </Text>
+              <Text style={[styles.text8, { fontSize: 12 }]}>
+                {t(roleLabelKey)}
+              </Text>
+            </View>
+            {/* Light / dark, as the web's header toggle: the icon shows the theme you switch to. */}
+            <Pressable
+              onPress={toggleTheme}
+              accessibilityRole="button"
+              accessibilityLabel={isDark ? t('ui.shared.switchToLightTheme') : t('ui.shared.switchToDarkTheme')}
+              style={styles.pressable}
+            >
+              {isDark ? <Sun size={19} color="#c3dccd" /> : <Moon size={19} color="#c3dccd" />}
+            </Pressable>
+            <Pressable onPress={onOpenLanguage || (() => setLanguageOpen(true))} accessibilityLabel={t('language.label')} style={styles.pressable}>
+              <Globe size={19} color="#c3dccd" />
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('Messages')} accessibilityLabel={t('dash.common.messages')} style={styles.pressable}>
+              <MessageCircle size={19} color="#c3dccd" />
+              <CountBadge count={unreadMessages} />
+            </Pressable>
+            <Pressable
+              onPress={onOpenNotifications || (() => navigation.navigate('Notifications'))}
+              accessibilityLabel={t('dash.common.notifications')}
+              style={styles.pressable}
+            >
+              <Bell size={19} color="#c3dccd" />
+              <CountBadge count={unreadCount} />
+            </Pressable>
+            <Pressable onPress={() => dispatch(logoutUser())} accessibilityLabel="Sign out" style={styles.pressable}>
+              <LogOut size={19} color="#c3dccd" />
+            </Pressable>
           </View>
-          {/* Light / dark, as the web's header toggle: the icon shows the theme you switch to. */}
-          <Pressable
-            onPress={toggleTheme}
-            accessibilityRole="button"
-            accessibilityLabel={isDark ? t('ui.shared.switchToLightTheme') : t('ui.shared.switchToDarkTheme')}
-            style={styles.pressable}
-          >
-            {isDark ? <Sun size={19} color="#c3dccd" /> : <Moon size={19} color="#c3dccd" />}
-          </Pressable>
-          <Pressable onPress={onOpenLanguage || (() => setLanguageOpen(true))} accessibilityLabel={t('language.label')} style={styles.pressable}>
-            <Globe size={19} color="#c3dccd" />
-          </Pressable>
-          <Pressable onPress={() => navigation.navigate('Messages')} accessibilityLabel={t('dash.common.messages')} style={styles.pressable}>
-            <MessageCircle size={19} color="#c3dccd" />
-            <CountBadge count={unreadMessages} />
-          </Pressable>
-          <Pressable
-            onPress={onOpenNotifications || (() => navigation.navigate('Notifications'))}
-            accessibilityLabel={t('dash.common.notifications')}
-            style={styles.pressable}
-          >
-            <Bell size={19} color="#c3dccd" />
-            <CountBadge count={unreadCount} />
-          </Pressable>
-          <Pressable onPress={() => dispatch(logoutUser())} accessibilityLabel="Sign out" style={styles.pressable}>
-            <LogOut size={19} color="#c3dccd" />
-          </Pressable>
+          </ContentWrap>
         </View>
-        </ContentWrap>
-      </View>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -252,4 +285,5 @@ const styles = createStyles((c) => ({
   scrollView: { flex: 1 },
   text8: { fontFamily: 'Inter_500Medium', color: '#9dc5af' },
   pressable: { padding: 7 },
+  backBar: { backgroundColor: c.card, borderBottomWidth: 1, borderColor: c.border },
 }))

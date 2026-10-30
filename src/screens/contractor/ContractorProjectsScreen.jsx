@@ -51,6 +51,7 @@ import { constructionTypeLabel } from '../../utils/roleLabels'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { optionLabel } from '../../i18n/optionKeys'
 import { createStyles } from '../../theme/createStyles'
+import { useMarkSectionRead } from '../../components/builder/BuilderInbox'
 
 // Tab labels are keys (web contractorConstants.projectDetailTabs), translated at render.
 const TABS = [
@@ -1253,6 +1254,7 @@ empty={!materialDetails.length}
 }
 
 export default function ContractorProjectsScreen({ navigation }) {
+  useMarkSectionRead('projects')
   const { t } = useLanguage()
   const [selected, setSelected] = useState(null)
   const [category, setCategory] = useState('current')

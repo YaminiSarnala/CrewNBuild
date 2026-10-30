@@ -6,12 +6,12 @@
 // Other screens open a section here with navigate('ContractorMoreTab', { section }).
 // Labels use the web nav keys; mobile-only subtitles live in i18n/mobile/account.js.
 import { useEffect, useState } from 'react'
-import { ScrollView, View, Text, Pressable } from 'react-native'
+import { BackHandler, View, Text, Pressable } from 'react-native'
 import { createStyles } from '../../theme/createStyles'
 import { useSelector } from 'react-redux'
 import { useLanguage } from '../../i18n/LanguageContext'
 import {
-  Users, ShoppingBag, Search, Store, CircleUser, ArrowLeft, Package, Activity, CreditCard, Settings, MessageCircle, ChevronRight,
+  Users, ShoppingBag, Search, Store, CircleUser, Package, Activity, CreditCard, Settings, MessageCircle, ChevronRight,
 } from 'lucide-react-native'
 import { COLORS } from '../../theme/tokens'
 import { ink, line, soft } from '../../theme/tint'
@@ -20,11 +20,11 @@ import BuilderProductCatalogScreen from './BuilderProductCatalogScreen'
 import ShopHubScreen from '../shared/ShopHubScreen'
 import PropertyMarketSection from '../shared/PropertyMarketSection'
 import ProfileScreen from '../shared/ProfileScreen'
-import DashboardShell, { useAsyncData } from '../../components/DashboardShell'
+import DashboardShell, { ShellBackBar, useAsyncData } from '../../components/DashboardShell'
 import PropertySellSection from '../../components/builder/PropertySellSection'
 import { Section, SegmentTabs, PremiumBadge } from '../../components/builder/BuilderUi'
 import useBuilderSubscription from '../../hooks/useBuilderSubscription'
-import { useBuilderInbox } from '../../components/builder/BuilderInbox'
+import { useBuilderInbox, useMarkSectionRead } from '../../components/builder/BuilderInbox'
 import { fetchOwnerProjects } from '../../api/projects'
 
 // Each card's icon colour (light values; tint.js gives the dark ones).
@@ -77,20 +77,13 @@ function BuySellSection({ navigation }) {
   if (tab === 'materials') {
     // The existing mobile materials hub, unchanged.
     return (
-      <View style={styles.screen}>
-        <View style={styles.tabBar}>
-          <SegmentTabs
-            tabs={buySellTabs}
-            active={tab}
-            onChange={setTab}
-          />
-        </View>
+      <ShellBackBar extra={<SegmentTabs tabs={buySellTabs} active={tab} onChange={setTab} />}>
         <ShopHubScreen
           navigation={navigation}
           loadProjects={fetchOwnerProjects}
           pickCheckoutProject={(list) => list[0] || null}
         />
-      </View>
+      </ShellBackBar>
     )
   }
   return (
@@ -128,6 +121,14 @@ export default function ContractorMoreScreen({ navigation, route }) {
     navigation.setParams?.({ section: undefined })
   }, [requested, navigation])
 
+  const closeSection = () => setSection(null)
+  // Android back closes an open section first, like the on-screen arrow.
+  useEffect(() => {
+    if (!section) return undefined
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { setSection(null); return true })
+    return () => sub.remove()
+  }, [section])
+
   const open = (item) => {
     if (item.route) navigation.navigate(item.route)
     else setSection(item.id)
@@ -135,42 +136,41 @@ export default function ContractorMoreScreen({ navigation, route }) {
 
   if (section === 'clients') {
     return (
-      <View style={styles.screen}>
-        <BackHeader title={t('ui.findClients')} onBack={() => setSection(null)} />
+      <ShellBackBar title={t('ui.findClients')} onBack={closeSection}>
+        <SectionReader id="findClients" />
         <ContractorLeadsScreen navigation={navigation} />
-      </View>
+      </ShellBackBar>
     )
   }
 
   if (section === 'shop') {
     return (
-      <View style={styles.screen}>
-        <BackHeader title={t('ui.buySell')} onBack={() => setSection(null)} />
+      <ShellBackBar title={t('ui.buySell')} onBack={closeSection}>
         <BuySellSection navigation={navigation} />
-      </View>
+      </ShellBackBar>
     )
   }
 
   if (section === 'catalog') {
     return (
-      <View style={styles.screen}>
-        <BackHeader title={t('ui.productCatalog')} onBack={() => setSection(null)} />
+      <ShellBackBar title={t('ui.productCatalog')} onBack={closeSection}>
         <BuilderProductCatalogScreen navigation={navigation} />
-      </View>
+      </ShellBackBar>
     )
   }
 
   if (section === 'profile') {
     return (
-      <View style={styles.screen}>
-        <BackHeader title={t('mobile.account.more.myProfile')} onBack={() => setSection(null)} />
+      <ShellBackBar title={t('mobile.account.more.myProfile')} onBack={closeSection}>
+        <SectionReader id="profile" />
         <ProfileScreen navigation={navigation} />
-      </View>
+      </ShellBackBar>
     )
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <DashboardShell onOpenNotifications={() => navigation.navigate('Notifications')}>
+      <View style={styles.content}>
       <Text style={styles.eyebrow}>{t('mobile.account.more.eyebrow')}</Text>
       <View style={styles.headingRow}>
         <Text style={styles.heading}>{t('mobile.tab.more')}</Text>
@@ -218,25 +218,20 @@ export default function ContractorMoreScreen({ navigation, route }) {
           {t('mobile.account.more.partnersNote')}
         </Text>
       </View>
-    </ScrollView>
+      </View>
+    </DashboardShell>
   )
 }
 
-function BackHeader({ title, onBack }) {
-  const { t } = useLanguage()
-  return (
-    <View style={styles.backHeader}>
-      <Pressable onPress={onBack} style={styles.backButton} accessibilityLabel={t('dash.common.back')}>
-        <ArrowLeft size={21} color={COLORS.graphite} />
-      </Pressable>
-      <Text style={styles.backTitle}>{title}</Text>
-    </View>
-  )
+// Clears a More section's notification badge while it is open (web parity).
+function SectionReader({ id }) {
+  useMarkSectionRead(id)
+  return null
 }
 
 const styles = createStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.canvas },
-  content: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 32 },
+  content: { paddingHorizontal: 16 },
   eyebrow: { color: c.brandText, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginTop: 4 },
   headingRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 5 },
   heading: { color: c.text, fontSize: 26, fontWeight: '800', flexShrink: 1 },
@@ -274,17 +269,4 @@ const styles = createStyles((c) => ({
   badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '800', textAlign: 'center' },
   note: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.brandSoft, padding: 12, borderRadius: 12, marginTop: 6 },
   noteText: { flex: 1, minWidth: 0, color: c.textSecondary, fontSize: 11, lineHeight: 16 },
-  backHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: c.card,
-    borderBottomWidth: 1,
-    borderBottomColor: c.border,
-  },
-  backButton: { padding: 5 },
-  backTitle: { color: c.text, fontSize: 17, fontWeight: '700', flexShrink: 1 },
-  tabBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: c.card },
 }))

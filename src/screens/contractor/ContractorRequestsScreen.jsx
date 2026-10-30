@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useFocusEffect } from '@react-navigation/native'
-import { useBuilderInbox } from '../../components/builder/BuilderInbox'
+import { useBuilderInbox, useMarkSectionRead } from '../../components/builder/BuilderInbox'
 import { View, Text, Alert, TextInput, Pressable, ScrollView } from 'react-native'
 import { Image } from 'expo-image'
 import { userAvatarSource } from '../../utils/avatars'
@@ -127,6 +127,7 @@ function FlowBadge({ flow }) {
 }
 
 export default function ContractorRequestsScreen({ navigation }) {
+  useMarkSectionRead('requests')
   const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState('owner')
   const [filter, setFilter] = useState('all')

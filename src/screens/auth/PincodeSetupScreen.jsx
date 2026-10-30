@@ -113,7 +113,8 @@ function continueToDashboard() {
       <View
         style={[styles.view2, { paddingTop: insets.top + 18 }]}
       >
-        <View style={styles.view3}>          <MapPin size={25} color="#ffffff" />
+        <View style={styles.view3}>
+          <MapPin size={25} color="#ffffff" />
         </View>
 
         <Text style={[styles.text, { fontSize: 27 }]}>

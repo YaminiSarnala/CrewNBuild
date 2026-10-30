@@ -21,12 +21,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppState, Pressable, Text, Vibration, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNavigation } from '@react-navigation/native'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import { useSelector } from 'react-redux'
 import { BellRing, X } from 'lucide-react-native'
 import { fetchIncomingRequests } from '../../api/requests'
 import { fetchNearbyProjects } from '../../api/projects'
-import { fetchNotifications } from '../../api/notifications'
+import { fetchNotifications, markModuleNotificationsRead } from '../../api/notifications'
 import { fetchConversations } from '../../api/messages'
 import { useLiveEventsConnection, useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -243,6 +243,28 @@ function NewRequestBanner({ toast, onDismiss }) {
       </View>
     </View>
   )
+}
+
+
+// Opening a section clears its notification badge, as the web's
+// selectDashboardSection does (same module lists).
+const SECTION_MODULES = {
+  requests: ['request'],
+  projects: ['project', 'estimate', 'escrow'],
+  engineers: ['engineers'],
+  findClients: ['contractor', 'supplier'],
+  profile: ['general'],
+}
+
+/** Call in a Builder screen: marks that section's notifications read each time it gains focus. */
+export function useMarkSectionRead(sectionId) {
+  const { reload, notificationCounts } = useBuilderInbox()
+  const unread = notificationCounts?.[sectionId === 'requests' ? 'requestsBoard' : sectionId] || 0
+  useFocusEffect(useCallback(() => {
+    if (!unread) return
+    const modules = SECTION_MODULES[sectionId] || []
+    Promise.all(modules.map((name) => markModuleNotificationsRead(name).catch(() => {}))).then(() => reload?.())
+  }, [sectionId, unread, reload]))
 }
 
 const styles = createStyles((c) => ({

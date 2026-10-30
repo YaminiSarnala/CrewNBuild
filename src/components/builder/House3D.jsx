@@ -295,11 +295,10 @@ function HouseGL({ live, onFail }) {
       renderer.debug.checkShaderErrors = false
       renderer.setPixelRatio(1)
       renderer.setSize(width, height, false)
-            renderer.setClearColor('#ff0000', 1)
-      console.log('HOUSE3D gl size', width, height)
+      renderer.setClearColor(C.sky, 1)
 
       const scene = new THREE.Scene()
-           scene.background = new THREE.Color('#ff0000')
+      scene.background = new THREE.Color(C.sky)
       scene.fog = new THREE.Fog(C.sky, 20, 36)
       scene.add(new THREE.HemisphereLight('#fff6e5', '#6f7f5e', 1.0))
       const sun = new THREE.DirectionalLight('#fff1dc', 1.7)
@@ -326,7 +325,7 @@ function HouseGL({ live, onFail }) {
         frame.current = requestAnimationFrame(render)
         const state = live.current
         frames += 1
-        if (frames % 60 === 1) console.log('HOUSE3D frame', frames, 'active', state.active, 'demo', state.demo, 'time', clock.elapsedTime.toFixed(1), 'shown', shown)
+        if (frames % 60 === 1) 
         if (!state.active) return
         const step = Math.min(clock.getDelta(), 0.05)
         const time = clock.elapsedTime

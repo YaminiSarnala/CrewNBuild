@@ -46,6 +46,7 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { userCountry } from '../../utils/countryConfig'
 import { BUSINESS_TYPE_KEYS, SUPPLIER_CATEGORY_KEYS, optionLabel } from '../../i18n/optionKeys'
 import { createStyles } from '../../theme/createStyles'
+import { useMarkSectionRead } from '../../components/builder/BuilderInbox'
 
 const projectTitle = (project, t) => project?.title || project?.project_title || t('se.project')
 
@@ -108,6 +109,7 @@ function Meta({ items }) {
 }
 
 export default function ContractorEngineersScreen({ navigation }) {
+  useMarkSectionRead('engineers')
   const { t } = useLanguage()
   const user = useSelector((state) => state.auth.user)
   const [tab, setTab] = useState('team')

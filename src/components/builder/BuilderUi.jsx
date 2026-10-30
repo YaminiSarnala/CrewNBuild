@@ -29,7 +29,8 @@ export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefres
       <View style={[styles.view2, { paddingTop: insets.top }]}>
         <ContentWrap>
           <View style={styles.view3}>
-            <Pressable onPress={onBack} accessibilityLabel={t('dash.common.back')} style={styles.pressable}>              <ArrowLeft size={20} color="#ffffff" />
+            <Pressable onPress={onBack} accessibilityLabel={t('dash.common.back')} style={styles.pressable}>
+              <ArrowLeft size={20} color="#ffffff" />
             </Pressable>
             <View style={styles.view4}>
               <Text style={styles.text} numberOfLines={1}>{title}</Text>
