@@ -9,9 +9,9 @@ import { Image } from 'expo-image'
 import { Globe, LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle, Trash2, AlertTriangle } from 'lucide-react-native'
 import DashboardShell, { Panel } from '../../components/DashboardShell'
 import LanguageSheet from '../../components/LanguageSheet'
+import ProfilePhotoSheet from '../../components/ProfilePhotoSheet'
 import Dialog, { DialogButton } from '../../components/Dialog'
 import { completeUserProfile, deleteOwnAccount } from '../../api/auth'
-import { useProfilePhoto } from '../../hooks/useProfilePhoto'
 import { mergeUser, logoutUser } from '../../store/authSlice'
 import { imageSource } from '../../api/client'
 import { COLORS } from '../../theme/tokens'
@@ -59,7 +59,7 @@ export default function ProfileScreen({ navigation }) {
   const [languageOpen, setLanguageOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const { changePhoto: changeAvatar, busy: avatarBusy } = useProfilePhoto()
+  const [photoOpen, setPhotoOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -112,15 +112,9 @@ export default function ProfileScreen({ navigation }) {
     <>
       <DashboardShell onOpenNotifications={() => navigation.navigate('Notifications')}>
         <View style={[styles.view3, { marginHorizontal: gutter }]}>
-          <Pressable
-              // A Builder's details live in the full builder profile (company,
-              // licence, portfolio…). Saving only these four fields through the
-              // same PATCH /auth/complete-profile could blank the rest, so the
-              // Builder edits them in Profile Settings, as on the web.
-              onPress={() => (user?.role === 'CONTRACTOR' ? navigation.navigate('BuilderProfileSettings') : setEditing((e) => !e))}
-              style={styles.pressable3}
-            >
-            <View style={[styles.view4, avatarBusy ? styles.pressable2 : null]}>
+          {/* The photo opens the same viewer as the header avatar. */}
+          <Pressable onPress={() => setPhotoOpen(true)} accessibilityRole="button" accessibilityLabel={t('photo.title')} style={styles.pressable}>
+            <View style={styles.view4}>
               {user?.profile_image_url ? (
                 <Image source={imageSource(user.profile_image_url)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
               ) : (
@@ -133,7 +127,7 @@ export default function ProfileScreen({ navigation }) {
               <Camera size={13} color="#fff" />
             </View>
           </Pressable>
-            <Text style={styles.text4}>{td(user?.name) || 'User'}</Text>
+            <Text style={styles.text4} numberOfLines={2}>{td(user?.name) || 'User'}</Text>
           <View style={styles.view7}>
             <Text style={styles.text5}>{ROLE_LABELS[user?.role] || user?.role || ''}</Text>
           </View>
@@ -142,7 +136,14 @@ export default function ProfileScreen({ navigation }) {
         <Panel
           title="My details"
           action={
-            <Pressable onPress={() => setEditing((e) => !e)} style={styles.pressable3}>
+            <Pressable
+              // A Builder's details live in the full builder profile (company,
+              // licence, portfolio…). Saving only these four fields through the
+              // same PATCH /auth/complete-profile could blank the rest, so the
+              // Builder edits them in Profile Settings, as on the web.
+              onPress={() => (user?.role === 'CONTRACTOR' ? navigation.navigate('BuilderProfileSettings') : setEditing((e) => !e))}
+              style={styles.pressable3}
+            >
               <Pencil size={12} color={COLORS.brand[700]} />
               <Text style={styles.text6}>{editing ? 'Cancel' : 'Edit'}</Text>
             </Pressable>
@@ -210,6 +211,7 @@ export default function ProfileScreen({ navigation }) {
         </View>
       </DashboardShell>
       <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
       <Dialog
         visible={deleteOpen}
         busy={deleting}
@@ -249,7 +251,10 @@ const styles = createStyles((c) => ({
   view5: { height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' },
   text3: { fontSize: 21, lineHeight: 28, fontWeight: '800', color: c.brandTextStrong },
   view6: { position: 'absolute', bottom: -3.5, right: -3.5, height: 24.5, width: 24.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#1a5038', borderWidth: 2, borderColor: '#ffffff' },
-  text4: { marginTop: 10.5, fontSize: 15.75, lineHeight: 24.5, fontWeight: '800', color: c.text },
+  // Full card width, text centred: a shrink-to-fit Text inside a centred column
+  // is measured too narrow on some Android phones (vivo/Oppo system fonts) and
+  // drops its last word — "Yamini Sarnala" painted as "Yamini".
+  text4: { marginTop: 10.5, alignSelf: 'stretch', textAlign: 'center', fontSize: 15.75, lineHeight: 24.5, fontWeight: '800', color: c.text },
   view7: { marginTop: 5.25, borderRadius: 9999, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 3.5 },
   text5: { fontSize: 11, fontWeight: '800', color: c.brandTextStrong },
   pressable3: { flexDirection: 'row', alignItems: 'center', gap: 3.5 },

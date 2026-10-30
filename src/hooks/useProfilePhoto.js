@@ -31,9 +31,10 @@ export function useProfilePhoto() {
   const { t, td } = useLanguage()
   const [busy, setBusy] = useState(false)
 
-  async function changePhoto() {
+  // source: 'library' (gallery) or 'camera' (take a new picture now).
+  async function changePhoto(source = 'library') {
     if (busy) return false
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const options = {
       mediaTypes: ['images'],
       quality: 0.8,
       allowsEditing: true,
@@ -42,7 +43,20 @@ export function useProfilePhoto() {
       ...(Platform.OS === 'ios'
         ? { preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible }
         : null),
-    })
+    }
+    let result
+    if (source === 'camera') {
+      // The camera, unlike the photo picker, does need a permission (CAMERA is
+      // declared in app.json).
+      const permission = await ImagePicker.requestCameraPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert(t('photo.cameraDenied'), t('photo.cameraDeniedBody'))
+        return false
+      }
+      result = await ImagePicker.launchCameraAsync({ ...options, cameraType: ImagePicker.CameraType.front })
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync(options)
+    }
     if (result.canceled || !result.assets?.[0]) return false
     setBusy(true)
     try {
