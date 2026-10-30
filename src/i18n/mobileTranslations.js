@@ -10,12 +10,9 @@ import partners from './mobile/partners.js'
 import projects from './mobile/projects.js'
 import billing from './mobile/billing.js'
 import account from './mobile/account.js'
-<<<<<<< Updated upstream
-import photo from './mobile/photo.js'
-=======
 import soon from './mobile/soon.js'
 import house3d from './mobile/house3d.js'
->>>>>>> Stashed changes
+import photo from './mobile/photo.js'
 
 const CORE = {
   en: {
@@ -41,11 +38,7 @@ const CORE = {
   },
 }
 
-<<<<<<< Updated upstream
-const PARTS = [dashboard, partners, projects, billing, account, photo]
-=======
-const PARTS = [dashboard, partners, projects, billing, account, soon, house3d]
->>>>>>> Stashed changes
+const PARTS = [dashboard, partners, projects, billing, account, soon, house3d, photo]
 
 export const MOBILE_TRANSLATIONS = Object.fromEntries(
   Object.entries(CORE).map(([code, table]) => [code, Object.assign({}, table, ...PARTS.map((part) => part[code] || {}))]),
