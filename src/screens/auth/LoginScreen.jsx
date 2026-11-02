@@ -94,7 +94,7 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.view2}>
             <Image
               source={require('../../../assets/logo.png')}
-              style={{ width: 44, height: 49 }}
+              style={{ width: 52, height: 52 }}
               contentFit="contain"
             />
             <Text style={[styles.text, { fontSize: 30, letterSpacing: -1 }]}>

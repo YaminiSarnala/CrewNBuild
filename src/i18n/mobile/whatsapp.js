@@ -25,7 +25,7 @@ export default {
     'login.phone.signUp': 'Sign up',
     'login.phone.verify': 'Verify & sign in',
     'login.phone.verifying': 'Signing in…',
-    'login.phone.noPhone': 'Cannot receive codes on your registered number? Contact CREWNBUILD support to recover your account.',
+    'login.phone.noPhone': 'Cannot receive codes on your registered number? Contact Crew&Build support to recover your account.',
   },
   te: {
     'signup.phone.label': 'మొబైల్ నంబర్ (WhatsApp)',
@@ -48,7 +48,7 @@ export default {
     'login.phone.signUp': 'సైన్ అప్',
     'login.phone.verify': 'ధృవీకరించి సైన్ ఇన్ చేయండి',
     'login.phone.verifying': 'సైన్ ఇన్ అవుతోంది…',
-    'login.phone.noPhone': 'మీ నమోదిత నంబర్‌కు కోడ్‌లు రావడం లేదా? మీ ఖాతాను తిరిగి పొందడానికి CREWNBUILD సపోర్ట్‌ను సంప్రదించండి.',
+    'login.phone.noPhone': 'మీ నమోదిత నంబర్‌కు కోడ్‌లు రావడం లేదా? మీ ఖాతాను తిరిగి పొందడానికి Crew&Build సపోర్ట్‌ను సంప్రదించండి.',
   },
   hi: {
     'signup.phone.label': 'मोबाइल नंबर (WhatsApp)',
@@ -71,7 +71,7 @@ export default {
     'login.phone.signUp': 'साइन अप',
     'login.phone.verify': 'सत्यापित करें और साइन इन करें',
     'login.phone.verifying': 'साइन इन हो रहा है…',
-    'login.phone.noPhone': 'अपने पंजीकृत नंबर पर कोड नहीं मिल रहे? अपना खाता वापस पाने के लिए CREWNBUILD सहायता से संपर्क करें।',
+    'login.phone.noPhone': 'अपने पंजीकृत नंबर पर कोड नहीं मिल रहे? अपना खाता वापस पाने के लिए Crew&Build सहायता से संपर्क करें।',
   },
   ta: {
     'signup.phone.label': 'மொபைல் எண் (WhatsApp)',

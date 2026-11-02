@@ -18,11 +18,11 @@ export default function Navbar({ onLogin, onOpenLanguage }) {
           <View style={[styles.view3, { gap: 8 }]}>
             <Image
               source={require('../../assets/logo.png')}
-              style={{ width: 28, height: 31 }}
+              style={{ width: 32, height: 32 }}
               contentFit="contain"
             />
             <Text style={[styles.text, { fontSize: 17, letterSpacing: -0.5 }]}>
-              OctaBuild
+              {'Crew&Build'}
             </Text>
           </View>
           <View style={[styles.view3, { gap: 10 }]}>

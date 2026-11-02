@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CrewNBuild",
+    "name": "Crew&Build",
     "slug": "octabuild",
     "version": "1.0.0",
     "runtimeVersion": {
@@ -17,20 +17,20 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/adaptive-icon.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#134127"
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "icon": "./assets/adaptive-icon.png",
+      "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.crewnbuild.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "CrewNBuild needs photo access so you can attach site photos to project timelines.",
-        "NSCameraUsageDescription": "CrewNBuild uses the camera to capture site progress photos.",
+        "NSPhotoLibraryUsageDescription": "Crew&Build needs photo access so you can attach site photos to project timelines.",
+        "NSCameraUsageDescription": "Crew&Build uses the camera to capture site progress photos.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
@@ -40,7 +40,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#134127"
+        "backgroundColor": "#ffffff"
       },
       "package": "com.crewnbuild.app",
       "permissions": [
@@ -62,12 +62,20 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow CrewNBuild to access your photos to upload site progress images."
+          "photosPermission": "Allow Crew&Build to access your photos to upload site progress images."
         }
       ],
       "expo-video",
       "expo-image",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
       "expo-web-browser",
       "expo-sharing"
     ],

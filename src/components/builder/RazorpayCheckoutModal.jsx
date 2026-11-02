@@ -30,7 +30,7 @@ function checkoutHtml(order, description) {
     order_id: order.razorpay_order_id,
     amount: order.amount_paise,
     currency: order.currency,
-    name: 'CREWNBUILD',
+    name: 'Crew&Build',
     description: `${description} · TEST MODE`,
     prefill: { name: order.customer_name || '', email: order.customer_email || '' },
     notes: { purpose: 'builder_subscription', plan: order.plan_code, duration: order.duration_code, mode: 'test' },

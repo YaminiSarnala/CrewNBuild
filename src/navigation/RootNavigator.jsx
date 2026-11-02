@@ -58,7 +58,7 @@ const DASHBOARD_BY_ROLE = {
 function SplashGate() {
   return (
     <View style={styles.view}>
-      <Image source={require('../../assets/logo.png')} style={{ width: 72, height: 80 }} contentFit="contain" />
+      <Image source={require('../../assets/logo.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
       <ActivityIndicator color="#c3dccd" style={{ marginTop: 24 }} />
     </View>
   )

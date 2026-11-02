@@ -14,7 +14,7 @@ export default {
     'photo.gallery': 'Choose from gallery',
     'photo.galleryHint': 'Pick a photo already on your phone',
     'photo.cameraDenied': 'Camera access needed',
-    'photo.cameraDeniedBody': 'Allow camera access for CrewNBuild in your phone settings to take a profile photo.',
+    'photo.cameraDeniedBody': 'Allow camera access for Crew&Build in your phone settings to take a profile photo.',
   },
   te: {
     'photo.title': 'ప్రొఫైల్ ఫోటో',
@@ -28,7 +28,7 @@ export default {
     'photo.gallery': 'గ్యాలరీ నుండి ఎంచుకోండి',
     'photo.galleryHint': 'మీ ఫోన్‌లో ఉన్న ఫోటోను ఎంచుకోండి',
     'photo.cameraDenied': 'కెమెరా అనుమతి అవసరం',
-    'photo.cameraDeniedBody': 'ప్రొఫైల్ ఫోటో తీయడానికి ఫోన్ సెట్టింగ్స్‌లో CrewNBuild కి కెమెరా అనుమతి ఇవ్వండి.',
+    'photo.cameraDeniedBody': 'ప్రొఫైల్ ఫోటో తీయడానికి ఫోన్ సెట్టింగ్స్‌లో Crew&Build కి కెమెరా అనుమతి ఇవ్వండి.',
   },
   hi: {
     'photo.title': 'प्रोफ़ाइल फ़ोटो',
@@ -42,6 +42,6 @@ export default {
     'photo.gallery': 'गैलरी से चुनें',
     'photo.galleryHint': 'फ़ोन में पहले से मौजूद फ़ोटो चुनें',
     'photo.cameraDenied': 'कैमरा अनुमति चाहिए',
-    'photo.cameraDeniedBody': 'प्रोफ़ाइल फ़ोटो लेने के लिए फ़ोन सेटिंग्स में CrewNBuild को कैमरा अनुमति दें।',
+    'photo.cameraDeniedBody': 'प्रोफ़ाइल फ़ोटो लेने के लिए फ़ोन सेटिंग्स में Crew&Build को कैमरा अनुमति दें।',
   },
 }

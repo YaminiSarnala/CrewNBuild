@@ -112,7 +112,7 @@ export function ComingSoonRoleScreen() {
   const [leaving, setLeaving] = useState(false)
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
-      <Image source={require('../../assets/logo.png')} style={{ width: 56, height: 62 }} contentFit="contain" />
+      <Image source={require('../../assets/logo.png')} style={{ width: 60, height: 60 }} contentFit="contain" />
       <View style={[styles.panel, styles.screenCard]}>
         <View style={styles.iconRing}>
           <View style={styles.iconCircle}>

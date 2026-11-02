@@ -2,7 +2,7 @@
 // Same 7 languages as translations.js. Merged in ../mobileTranslations.js.
 export default {
   en: {
-    'mobile.billing.payOnWeb': 'Complete the payment on the CrewNBuild web page (Plan & billing). Your plan updates here once the server verifies it.',
+    'mobile.billing.payOnWeb': 'Complete the payment on the Crew&Build web page (Plan & billing). Your plan updates here once the server verifies it.',
     'mobile.billing.started': 'Started',
     'mobile.billing.freeMonthUntil': 'Free month until {date}',
     'mobile.billing.serverDecides': 'Prices and access are decided by the server; the app never sets an amount.',
@@ -16,7 +16,7 @@ export default {
     'mobile.billing.ui.search': 'Search',
   },
   ar: {
-    'mobile.billing.payOnWeb': 'أكمل الدفع على صفحة CrewNBuild على الويب (الخطة والفوترة). ستُحدَّث خطتك هنا بمجرد أن يتحقق الخادم من الدفع.',
+    'mobile.billing.payOnWeb': 'أكمل الدفع على صفحة Crew&Build على الويب (الخطة والفوترة). ستُحدَّث خطتك هنا بمجرد أن يتحقق الخادم من الدفع.',
     'mobile.billing.started': 'تاريخ البدء',
     'mobile.billing.freeMonthUntil': 'الشهر المجاني حتى {date}',
     'mobile.billing.serverDecides': 'يحدد الخادم الأسعار والوصول؛ لا يحدد التطبيق أي مبلغ أبدًا.',
@@ -30,7 +30,7 @@ export default {
     'mobile.billing.ui.search': 'بحث',
   },
   te: {
-    'mobile.billing.payOnWeb': 'CrewNBuild వెబ్ పేజీలో (ప్లాన్ & బిల్లింగ్) చెల్లింపును పూర్తి చేయండి. సర్వర్ దాన్ని ధృవీకరించిన తర్వాత మీ ప్లాన్ ఇక్కడ అప్‌డేట్ అవుతుంది.',
+    'mobile.billing.payOnWeb': 'Crew&Build వెబ్ పేజీలో (ప్లాన్ & బిల్లింగ్) చెల్లింపును పూర్తి చేయండి. సర్వర్ దాన్ని ధృవీకరించిన తర్వాత మీ ప్లాన్ ఇక్కడ అప్‌డేట్ అవుతుంది.',
     'mobile.billing.started': 'ప్రారంభం',
     'mobile.billing.freeMonthUntil': '{date} వరకు ఉచిత నెల',
     'mobile.billing.serverDecides': 'ధరలు మరియు యాక్సెస్‌ను సర్వర్ నిర్ణయిస్తుంది; యాప్ ఎప్పుడూ మొత్తాన్ని నిర్ణయించదు.',
@@ -44,7 +44,7 @@ export default {
     'mobile.billing.ui.search': 'వెతకండి',
   },
   hi: {
-    'mobile.billing.payOnWeb': 'CrewNBuild वेब पेज (प्लान और बिलिंग) पर भुगतान पूरा करें। सर्वर द्वारा सत्यापित होते ही आपका प्लान यहाँ अपडेट हो जाएगा।',
+    'mobile.billing.payOnWeb': 'Crew&Build वेब पेज (प्लान और बिलिंग) पर भुगतान पूरा करें। सर्वर द्वारा सत्यापित होते ही आपका प्लान यहाँ अपडेट हो जाएगा।',
     'mobile.billing.started': 'शुरू हुआ',
     'mobile.billing.freeMonthUntil': '{date} तक मुफ़्त महीना',
     'mobile.billing.serverDecides': 'कीमतें और एक्सेस सर्वर तय करता है; ऐप कभी कोई राशि तय नहीं करता।',
@@ -58,7 +58,7 @@ export default {
     'mobile.billing.ui.search': 'खोजें',
   },
   ta: {
-    'mobile.billing.payOnWeb': 'CrewNBuild இணையப் பக்கத்தில் (திட்டம் & பில்லிங்) கட்டணத்தை முடிக்கவும். சர்வர் சரிபார்த்தவுடன் உங்கள் திட்டம் இங்கே புதுப்பிக்கப்படும்.',
+    'mobile.billing.payOnWeb': 'Crew&Build இணையப் பக்கத்தில் (திட்டம் & பில்லிங்) கட்டணத்தை முடிக்கவும். சர்வர் சரிபார்த்தவுடன் உங்கள் திட்டம் இங்கே புதுப்பிக்கப்படும்.',
     'mobile.billing.started': 'தொடக்கம்',
     'mobile.billing.freeMonthUntil': '{date} வரை இலவச மாதம்',
     'mobile.billing.serverDecides': 'விலைகளும் அணுகலும் சர்வரால் தீர்மானிக்கப்படுகின்றன; செயலி எந்தத் தொகையையும் அமைப்பதில்லை.',
@@ -72,7 +72,7 @@ export default {
     'mobile.billing.ui.search': 'தேடுங்கள்',
   },
   kn: {
-    'mobile.billing.payOnWeb': 'CrewNBuild ವೆಬ್ ಪುಟದಲ್ಲಿ (ಪ್ಲಾನ್ & ಬಿಲ್ಲಿಂಗ್) ಪಾವತಿಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಿ. ಸರ್ವರ್ ಅದನ್ನು ಪರಿಶೀಲಿಸಿದ ನಂತರ ನಿಮ್ಮ ಪ್ಲಾನ್ ಇಲ್ಲಿ ಅಪ್‌ಡೇಟ್ ಆಗುತ್ತದೆ.',
+    'mobile.billing.payOnWeb': 'Crew&Build ವೆಬ್ ಪುಟದಲ್ಲಿ (ಪ್ಲಾನ್ & ಬಿಲ್ಲಿಂಗ್) ಪಾವತಿಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಿ. ಸರ್ವರ್ ಅದನ್ನು ಪರಿಶೀಲಿಸಿದ ನಂತರ ನಿಮ್ಮ ಪ್ಲಾನ್ ಇಲ್ಲಿ ಅಪ್‌ಡೇಟ್ ಆಗುತ್ತದೆ.',
     'mobile.billing.started': 'ಆರಂಭ',
     'mobile.billing.freeMonthUntil': '{date} ವರೆಗೆ ಉಚಿತ ತಿಂಗಳು',
     'mobile.billing.serverDecides': 'ಬೆಲೆಗಳು ಮತ್ತು ಪ್ರವೇಶವನ್ನು ಸರ್ವರ್ ನಿರ್ಧರಿಸುತ್ತದೆ; ಆ್ಯಪ್ ಎಂದಿಗೂ ಮೊತ್ತವನ್ನು ನಿಗದಿಪಡಿಸುವುದಿಲ್ಲ.',
@@ -86,7 +86,7 @@ export default {
     'mobile.billing.ui.search': 'ಹುಡುಕಿ',
   },
   ml: {
-    'mobile.billing.payOnWeb': 'CrewNBuild വെബ് പേജിൽ (പ്ലാൻ & ബില്ലിംഗ്) പേയ്മെന്റ് പൂർത്തിയാക്കുക. സെർവർ അത് സ്ഥിരീകരിച്ചാൽ നിങ്ങളുടെ പ്ലാൻ ഇവിടെ അപ്ഡേറ്റ് ആകും.',
+    'mobile.billing.payOnWeb': 'Crew&Build വെബ് പേജിൽ (പ്ലാൻ & ബില്ലിംഗ്) പേയ്മെന്റ് പൂർത്തിയാക്കുക. സെർവർ അത് സ്ഥിരീകരിച്ചാൽ നിങ്ങളുടെ പ്ലാൻ ഇവിടെ അപ്ഡേറ്റ് ആകും.',
     'mobile.billing.started': 'ആരംഭിച്ചത്',
     'mobile.billing.freeMonthUntil': '{date} വരെ സൗജന്യ മാസം',
     'mobile.billing.serverDecides': 'വിലകളും ആക്സസും സെർവറാണ് തീരുമാനിക്കുന്നത്; ആപ്പ് ഒരിക്കലും തുക നിശ്ചയിക്കുന്നില്ല.',
