@@ -1,4 +1,9 @@
-import { useState } from 'react'
+// The pincode step (web /pincode): an Indian account picks its pincode and post
+// office before any dashboard. RootNavigator shows only this screen until the
+// account has a pincode, so saving it is what opens the dashboard; there is no
+// way past it other than signing out. The area is looked up as soon as all six
+// digits are typed.
+import { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -13,7 +18,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MapPin, Search, ArrowRight, CheckCircle2 } from 'lucide-react-native'
 import { lookupPincodeArea, updateUserLocation } from '../../api/location'
-import { mergeUser } from '../../store/authSlice'
+import { logoutUser, mergeUser } from '../../store/authSlice'
+import { useLanguage } from '../../i18n/LanguageContext'
 import { PrimaryButton, GhostButton, GlassCard } from '../../components/ui'
 import { createStyles } from '../../theme/createStyles'
 
@@ -29,15 +35,27 @@ export default function PincodeSetupScreen({ navigation }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [areaDetails, setAreaDetails] = useState(null)
+  const { t } = useLanguage()
+  // The pincode the last lookup was for, so a slow answer for an older one is dropped.
+  const lookedUp = useRef('')
 
-  async function findAreas() {
-    const value = pincode.trim()
+  // Look the area up as soon as six digits are there (and on opening, for a
+  // pincode the account already had).
+  useEffect(() => {
+    if (pincode.length !== 6) return undefined
+    const timer = setTimeout(() => findAreas(pincode), 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pincode])
+
+  async function findAreas(value = pincode.trim()) {
 
     if (!/^\d{6}$/.test(value)) {
       setError('Enter a valid 6-digit pincode.')
       return
     }
 
+    lookedUp.current = value
     setLookupLoading(true)
     setError('')
     setAreas([])
@@ -46,6 +64,7 @@ export default function PincodeSetupScreen({ navigation }) {
 
     try {
 const data = await lookupPincodeArea(value)
+if (lookedUp.current !== value) return
 
 const branches = Array.isArray(data?.post_offices)
   ? data.post_offices
@@ -60,12 +79,14 @@ if (branches.length === 1) {
   setError('No areas found for this pincode. Please try again.')
 }
     } catch (err) {
+      if (lookedUp.current !== value) return
+      const detail = err?.response?.data?.detail
       setError(
-        err?.response?.data?.detail ||
+        (typeof detail === 'string' && detail) ||
           'Could not find this pincode. Please check your connection and try again.',
       )
     } finally {
-      setLookupLoading(false)
+      if (lookedUp.current === value) setLookupLoading(false)
     }
   }
 
@@ -84,30 +105,22 @@ if (branches.length === 1) {
         selectedArea,
       )
 
-      dispatch(mergeUser(updatedUser?.user || updatedUser))
+      // The saved pincode is what lets RootNavigator open the dashboard.
+      dispatch(mergeUser({
+        pincode: String(areaDetails.pincode || pincode).trim(),
+        location: selectedArea,
+        ...(updatedUser?.user || updatedUser || {}),
+      }))
     } catch (err) {
+      const detail = err?.response?.data?.detail
       setError(
-        err?.response?.data?.detail ||
+        (typeof detail === 'string' && detail) ||
+          (typeof detail?.message === 'string' && detail.message) ||
           'Could not save your location. Please try again.',
       )
-    } finally {
       setSaving(false)
     }
   }
-function continueToDashboard() {
-  const role = user?.role
-
-  const dashboardRoutes = {
-    OWNER: 'OwnerHome',
-    CONTRACTOR: 'ContractorHome',
-    SUPPLIER: 'SupplierHome',
-    ENGINEER: 'EngineerHome',
-  }
-
-  const routeName = dashboardRoutes[role] || 'OwnerHome'
-
-  navigation.replace(routeName)
-}
   return (
     <View style={styles.view}>
       <View
@@ -166,9 +179,9 @@ function continueToDashboard() {
               <PrimaryButton
                 label="Find my area"
                 icon={<Search size={17} color="#ffffff" />}
-                onPress={findAreas}
+                onPress={() => findAreas()}
                 loading={lookupLoading}
-                disabled={lookupLoading || pincode.length !== 6}
+                disabled={lookupLoading || pincode.length !== 6 || Boolean(areaDetails)}
                 full
               />
             </View>
@@ -241,17 +254,17 @@ function continueToDashboard() {
             ) : null}
           </GlassCard>
 
+          <Text style={[styles.text12, { fontSize: 12, lineHeight: 18 }]}>
+            {t('mobile.pincode.required')}
+          </Text>
+
           <View style={styles.view6}>
             <GhostButton
-              label="Later — go to dashboard"
-              onPress={continueToDashboard}
+              label={t('mobile.pincode.signOut')}
+              onPress={() => dispatch(logoutUser())}
               full
             />
           </View>
-
-          <Text style={[styles.text12, { fontSize: 12, lineHeight: 18 }]}>
-            You can update your location later.
-          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

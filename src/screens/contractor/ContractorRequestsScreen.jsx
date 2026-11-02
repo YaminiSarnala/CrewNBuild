@@ -320,7 +320,7 @@ export default function ContractorRequestsScreen({ navigation }) {
               />
               <View style={styles.view7}>
                 {/* New Request opens Find Clients, where a builder sends a request (web). */}
-                <ActionButton label={t('req.board.newRequest')} icon={Plus} small onPress={() => navigation.navigate('ContractorMoreTab', { section: 'clients' })} />
+                <ActionButton label={t('req.board.newRequest')} icon={Plus} small onPress={() => navigation.navigate('FindClients')} />
               </View>
             </View>
           </View>

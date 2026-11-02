@@ -4,6 +4,9 @@
 // Rules carried over from the web's <ProtectedRoute>:
 //   1. no session -> Login
 //   2. a role only ever sees its own dashboard
+//   3. an Indian account without a pincode -> the pincode step first, and only
+//      that (the web's postAuthPath / needsLocationPincode). Saving the pincode
+//      updates the account, which switches this navigator to the dashboard.
 // An unfinished profile no longer blocks the dashboard (same as the web): the
 // actions that need profile data open CompleteProfile themselves through
 // useProfileGate and carry on once it is saved.
@@ -22,6 +25,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import BuilderPortfolioScreen from '../screens/contractor/BuilderPortfolioScreen'
 import BuilderSubscriptionScreen from '../screens/contractor/BuilderSubscriptionScreen'
 import BuilderProfileSettingsScreen from '../screens/contractor/BuilderProfileSettingsScreen'
+import FindClientsScreen from '../screens/contractor/FindClientsScreen'
 import EstimateScreen from '../screens/EstimateScreen'
 import LoginScreen from '../screens/auth/LoginScreen'
 import SignupScreen from '../screens/auth/SignupScreen'
@@ -54,6 +58,15 @@ const DASHBOARD_BY_ROLE = {
   ENGINEER: { name: 'EngineerHome', component: EngineerTabs },
 }
 
+
+// The web's needsLocationPincode: India accounts pick their pincode (and post
+// office) before any dashboard; other countries have no pincode lookup.
+function needsLocationPincode(user) {
+  return Boolean(user?.id)
+    && Boolean(DASHBOARD_BY_ROLE[user.role])
+    && String(user.country_of_residence || 'India').trim().toLowerCase() === 'india'
+    && !String(user.pincode || '').trim()
+}
 
 function SplashGate() {
   return (
@@ -111,6 +124,8 @@ export default function RootNavigator() {
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="Estimate" component={EstimateScreen} />
           </>
+        ) : needsLocationPincode(user) ? (
+          <Stack.Screen name="PincodeSetup" component={PincodeSetupScreen} />
         ) : (
           <>
             <Stack.Screen name={dashboard.name} component={dashboard.component} />
@@ -130,6 +145,7 @@ export default function RootNavigator() {
                 <Stack.Screen name="BuilderSubscription" component={BuilderSubscriptionScreen} />
                 <Stack.Screen name="BuilderPortfolio" component={BuilderPortfolioScreen} />
                 <Stack.Screen name="BuilderProfileSettings" component={BuilderProfileSettingsScreen} />
+                <Stack.Screen name="FindClients" component={FindClientsScreen} />
               </>
             )}
           </>

@@ -7,10 +7,31 @@
 // exactly as the web does.
 import { useEffect, useRef, useState } from 'react'
 import { View, Text, TextInput, Pressable, ActivityIndicator } from 'react-native'
-import { ArrowLeft, ShieldCheck } from 'lucide-react-native'
+import { ArrowLeft, ClipboardPaste, ShieldCheck } from 'lucide-react-native'
 import { useLanguage } from '../i18n/LanguageContext'
 import { readPhoneVerificationConfig, sendPhoneCode, verifyPhoneCode } from '../api/phoneVerification'
 import { createStyles } from '../theme/createStyles'
+
+// expo-clipboard is a native module: an app installed before it was added
+// cannot load it (an OTA update would crash on a plain import), so the Paste
+// button only appears where it is available. Long-press paste and the
+// keyboard's paste / one-time-code suggestion work in every build.
+let Clipboard = null
+try {
+  Clipboard = require('expo-clipboard')
+} catch {
+  Clipboard = null
+}
+
+// The code inside pasted text, e.g. "Your CrewNBuild code is 482913": the first
+// run of exactly six digits, else the text's digits when there are exactly six.
+export function codeFromText(text) {
+  const value = String(text || '')
+  const run = value.match(/(?:^|\D)(\d{6})(?!\d)/)
+  if (run) return run[1]
+  const digits = value.replace(/\D/g, '')
+  return digits.length === OTP_LENGTH ? digits : ''
+}
 
 export const INDIA_MOBILE = /^[6-9]\d{9}$/
 export const OTP_LENGTH = 6
@@ -97,9 +118,28 @@ export function PhoneNumberField({ label, value, onChangeText, editable = true, 
 // Six boxes over one hidden input, so typing, deleting and the keyboard's
 // one-time-code suggestion (iOS) / SMS autofill all just work.
 export function OtpBoxes({ code, onChange, invalid, disabled, label, note }) {
+  const { t } = useLanguage()
   const input = useRef(null)
   const value = code.join('')
   const [focused, setFocused] = useState(false)
+  const [pasteProblem, setPasteProblem] = useState(false)
+  useEffect(() => {
+    if (!pasteProblem) return undefined
+    const timer = setTimeout(() => setPasteProblem(false), 2500)
+    return () => clearTimeout(timer)
+  }, [pasteProblem])
+
+  const fill = (digits) => onChange(Array.from({ length: OTP_LENGTH }, (_, index) => digits[index] || ''))
+
+  async function paste() {
+    let text = ''
+    try { text = await Clipboard.getStringAsync() } catch { text = '' }
+    const pasted = codeFromText(text)
+    if (!pasted) { setPasteProblem(true); return }
+    setPasteProblem(false)
+    fill(pasted)
+    input.current?.blur()
+  }
   useEffect(() => {
     const timer = setTimeout(() => input.current?.focus(), 250)
     return () => clearTimeout(timer)
@@ -109,7 +149,15 @@ export function OtpBoxes({ code, onChange, invalid, disabled, label, note }) {
     <View>
       <View style={styles.otpHead}>
         <Text style={styles.label}>{label}</Text>
-        {note ? <Text style={styles.otpNote}>{note}</Text> : null}
+        <View style={styles.otpHeadRight}>
+          {note ? <Text style={styles.otpNote}>{note}</Text> : null}
+          {Clipboard ? (
+            <Pressable onPress={paste} disabled={disabled} accessibilityRole="button" hitSlop={8} style={styles.pasteButton}>
+              <ClipboardPaste size={13} color={BRAND} />
+              <Text style={styles.pasteText}>{t('mobile.otp.paste')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
       <Pressable onPress={() => input.current?.focus()} style={styles.otpRow} disabled={disabled}>
         {code.map((digit, index) => {
@@ -127,20 +175,22 @@ export function OtpBoxes({ code, onChange, invalid, disabled, label, note }) {
           ref={input}
           value={value}
           onChangeText={(text) => {
-            const digits = text.replace(/\D/g, '').slice(0, OTP_LENGTH)
-            onChange(Array.from({ length: OTP_LENGTH }, (_, index) => digits[index] || ''))
+            // A whole message pasted by long-press keeps just its code.
+            const pasted = text.length > OTP_LENGTH ? codeFromText(text) : ''
+            fill(pasted || text.replace(/\D/g, '').slice(0, OTP_LENGTH))
           }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           keyboardType="number-pad"
           textContentType="oneTimeCode"
           autoComplete="sms-otp"
-          maxLength={OTP_LENGTH}
           editable={!disabled}
+          contextMenuHidden={false}
           caretHidden
           style={styles.otpHidden}
         />
       </Pressable>
+      {pasteProblem ? <Text style={styles.pasteProblem}>{t('mobile.otp.noCode')}</Text> : null}
     </View>
   )
 }
@@ -333,8 +383,15 @@ const styles = createStyles((c) => ({
   dial: { fontSize: 15, fontFamily: 'Inter_700Bold', color: c.text },
   dialRule: { width: 1, height: 22, marginLeft: 12, backgroundColor: c.border },
   phoneInput: { flex: 1, paddingHorizontal: 12, paddingVertical: 15, fontSize: 15, fontFamily: 'Inter_400Regular', color: c.text, letterSpacing: 0.5 },
-  otpHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
-  otpNote: { marginBottom: 5.25, fontSize: 12, fontFamily: 'Inter_600SemiBold', color: c.textMuted },
+  otpHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 },
+  otpNote: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: c.textMuted },
+  otpHeadRight: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 5.25 },
+  pasteButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, borderWidth: 1,
+    borderColor: c.border, backgroundColor: c.brandSoft, paddingHorizontal: 9, paddingVertical: 3.5,
+  },
+  pasteText: { fontSize: 11.5, fontFamily: 'Inter_700Bold', color: c.brandText },
+  pasteProblem: { marginTop: 6, fontSize: 11.5, fontFamily: 'Inter_600SemiBold', color: '#b45309' },
   otpRow: { flexDirection: 'row', gap: 8 },
   otpBox: {
     flex: 1, maxWidth: 52, aspectRatio: 1, alignItems: 'center', justifyContent: 'center',

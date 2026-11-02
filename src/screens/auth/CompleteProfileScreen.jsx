@@ -8,7 +8,7 @@
 // every role (checked per country of residence), plus the role-specific ones.
 // The web's multi-step wizards collect more optional detail; those stay in the
 // role's own profile settings.
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -19,6 +19,9 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { submitProfileCompletion, clearAuthError } from '../../store/authSlice'
 import { clearPendingProfileAction, takePendingProfileAction } from '../../hooks/useProfileGate'
 import { createStyles } from '../../theme/createStyles'
+import { PincodeAreaHint } from '../../components/form'
+import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
+import { baseFieldErrors } from '../../utils/profileValidation'
 
 const COUNTRIES = ['India', 'Kuwait']
 
@@ -69,15 +72,9 @@ function ownerProfileFields(ownerProfile) {
 }
 
 function validate(form, fields, country) {
-  const errors = {}
-  const phone = digitsOf(form.phone)
-  if (isIndia(country) ? phone.length !== 10 : phone.length < 8 || phone.length > 15) {
-    errors.phone = isIndia(country) ? 'Enter a 10-digit mobile number.' : 'Enter a phone number of 8–15 digits.'
-  }
-  const pin = digitsOf(form.pincode)
-  if (isIndia(country) ? !/^\d{6}$/.test(pin) : pin.length < 3 || pin.length > 10) {
-    errors.pincode = isIndia(country) ? 'Enter a 6-digit pincode.' : 'Enter a valid postal code.'
-  }
+  // Phone, address and pincode: the server's own rules (utils/profileValidation).
+  // The name is not on this form, so its rule is left out.
+  const { name: _name, ...errors } = baseFieldErrors({ ...form, name: 'name' }, country)
   fields.forEach(([key, , kind, required]) => {
     if (errors[key] || key === 'phone' || key === 'pincode') return
     const value = String(form[key] ?? '').trim()
@@ -102,6 +99,14 @@ export default function CompleteProfileScreen({ navigation }) {
   )
   const [errors, setErrors] = useState({})
   const loading = status === 'loading'
+  // The pincode's area, looked up while it is typed; the post office picked
+  // (or the area) is saved as the account's location.
+  const [branch, setBranch] = useState(null)
+  const onAreaResolved = useCallback((area) => {
+    const branches = Array.isArray(area?.post_offices) ? area.post_offices : []
+    setBranch(branches.length === 1 ? branches[0] : null)
+  }, [])
+  const pincodeLookup = usePincodeAreaLookup(form.pincode, onAreaResolved, country)
 
   useEffect(() => {
     dispatch(clearAuthError())
@@ -122,6 +127,9 @@ export default function CompleteProfileScreen({ navigation }) {
       country_of_residence: country,
       phone: digitsOf(form.phone),
       pincode: digitsOf(form.pincode),
+      ...(pincodeLookup.status === 'success'
+        ? { location: branch?.display || branch?.name || pincodeLookup.areaDetails?.display || '' }
+        : {}),
     }
     // phone and pincode stay strings (validated with .isdigit() server-side).
     if (payload.experience_years !== undefined) payload.experience_years = Number(payload.experience_years || 0)
@@ -189,16 +197,22 @@ export default function CompleteProfileScreen({ navigation }) {
           </View>
 
           {fields.map(([key, label, kind, required]) => (
-            <Field
-              key={key}
-              label={required ? label : `${label} (optional)`}
-              value={form[key]}
-              onChangeText={setField(key)}
-              keyboardType={kind === 'phone' ? 'phone-pad' : kind === 'number' ? 'number-pad' : 'default'}
-              multiline={kind === 'multiline'}
-              placeholder={label}
-              error={errors[key]}
-            />
+            <View key={key}>
+              <Field
+                label={required ? label : `${label} (optional)`}
+                value={form[key]}
+                onChangeText={key === 'pincode' || key === 'phone'
+                  ? (value) => setField(key)(value.replace(/\D/g, '').slice(0, key === 'phone' ? 15 : 10))
+                  : setField(key)}
+                keyboardType={kind === 'phone' ? 'phone-pad' : kind === 'number' ? 'number-pad' : 'default'}
+                multiline={kind === 'multiline'}
+                placeholder={label}
+                error={errors[key]}
+              />
+              {key === 'pincode' && !errors.pincode ? (
+                <PincodeAreaHint lookupState={pincodeLookup} selectedBranch={branch} onSelectBranch={setBranch} />
+              ) : null}
+            </View>
           ))}
 
           <PrimaryButton

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react-native'
 import { COLORS } from '../../theme/tokens'
 import { ink, line, soft } from '../../theme/tint'
-import ContractorLeadsScreen from './ContractorLeadsScreen'
 import BuilderProductCatalogScreen from './BuilderProductCatalogScreen'
 import ShopHubScreen from '../shared/ShopHubScreen'
 import PropertyMarketSection from '../shared/PropertyMarketSection'
@@ -40,7 +39,6 @@ const TONES = {
 }
 
 const MENU = [
-  { id: 'clients', titleKey: 'ui.findClients', subtitleKey: 'mobile.account.more.sub.clients', Icon: Search, tone: TONES.sky },
   { id: 'shop', titleKey: 'ui.buySell', subtitleKey: 'mobile.account.more.sub.shop', Icon: ShoppingBag, tone: TONES.violet },
   { id: 'catalog', titleKey: 'ui.productCatalog', subtitleKey: 'mobile.account.more.sub.catalog', Icon: Package, tone: TONES.emerald },
   { id: 'portfolio', titleKey: 'subscription.portfolio.nav', subtitleKey: 'mobile.account.more.sub.portfolio', Icon: Activity, route: 'BuilderPortfolio', tone: TONES.blue },
@@ -50,7 +48,12 @@ const MENU = [
   { id: 'profile', titleKey: 'mobile.account.more.myProfile', subtitleKey: 'mobile.account.more.sub.profile', Icon: CircleUser, tone: TONES.brand },
 ]
 
-const STACK_SECTIONS = Object.fromEntries(MENU.filter((item) => item.route).map((item) => [item.id, item.route]))
+// Find Clients moved to the Builder dashboard; an older link to it here still
+// opens it.
+const STACK_SECTIONS = {
+  ...Object.fromEntries(MENU.filter((item) => item.route).map((item) => [item.id, item.route])),
+  clients: 'FindClients',
+}
 
 function BuySellSection({ navigation }) {
   const { t } = useLanguage()
@@ -107,7 +110,6 @@ export default function ContractorMoreScreen({ navigation, route }) {
   const inbox = useBuilderInbox()
   // The web sidebar's badges for the sections that live here.
   const menuBadges = {
-    clients: inbox.unseenClients || inbox.notificationCounts?.findClients || 0,
     messages: inbox.unreadMessages || 0,
     profile: inbox.notificationCounts?.profile || 0,
   }
@@ -132,15 +134,6 @@ export default function ContractorMoreScreen({ navigation, route }) {
   const open = (item) => {
     if (item.route) navigation.navigate(item.route)
     else setSection(item.id)
-  }
-
-  if (section === 'clients') {
-    return (
-      <ShellBackBar title={t('ui.findClients')} onBack={closeSection}>
-        <SectionReader id="findClients" />
-        <ContractorLeadsScreen navigation={navigation} />
-      </ShellBackBar>
-    )
   }
 
   if (section === 'shop') {

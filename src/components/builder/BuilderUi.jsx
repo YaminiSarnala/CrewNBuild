@@ -137,7 +137,7 @@ export function ActionButton({ label, onPress, tone = 'primary', disabled, busy,
   )
 }
 
-export function LabeledInput({ label, hint, multiline, style, ...props }) {
+export function LabeledInput({ label, hint, error, multiline, style, ...props }) {
   return (
     <View style={styles.view8}>
       {label ? <Text style={styles.text11}>{label}</Text> : null}
@@ -146,9 +146,9 @@ export function LabeledInput({ label, hint, multiline, style, ...props }) {
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
         placeholderTextColor={COLORS.slate[400]}
-        style={[styles.textInput, multiline ? styles.textInput2 : styles.textInput3, style]}
+        style={[styles.textInput, multiline ? styles.textInput2 : styles.textInput3, error ? styles.inputError : null, style]}
       />
-      {hint ? <Text style={styles.text12}>{hint}</Text> : null}
+      {error ? <Text style={styles.fieldError}>{error}</Text> : hint ? <Text style={styles.text12}>{hint}</Text> : null}
     </View>
   )
 }
@@ -457,6 +457,8 @@ export function PlanSummaryCard({ subscription, onOpen }) {
 }
 
 const styles = createStyles((c) => ({
+  inputError: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 4, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
   view: { flex: 1, backgroundColor: c.canvas },
   view2: { backgroundColor: '#134127', paddingBottom: 14 },
   view3: { flexDirection: 'row', alignItems: 'center', gap: 10.5, paddingHorizontal: 14, paddingTop: 10.5 },

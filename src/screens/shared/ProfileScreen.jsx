@@ -1,7 +1,7 @@
 // Shared Profile tab for all four roles: view + edit basics via
 // completeUserProfile (same endpoint web profile settings use), language,
 // help, and logout.
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { View, Text, Pressable, TextInput, Alert, Linking } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
@@ -10,6 +10,10 @@ import { Globe, LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle, Trash2, 
 import DashboardShell, { Panel } from '../../components/DashboardShell'
 import LanguageSheet from '../../components/LanguageSheet'
 import ProfilePhotoSheet from '../../components/ProfilePhotoSheet'
+import EmailSection from '../../components/EmailSection'
+import { PincodeAreaHint } from '../../components/form'
+import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
+import { baseFieldErrors, digitsOf, fieldErrorsFrom, isIndia, ownerProfileFields } from '../../utils/profileValidation'
 import Dialog, { DialogButton } from '../../components/Dialog'
 import { completeUserProfile, deleteOwnAccount } from '../../api/auth'
 import { mergeUser, logoutUser } from '../../store/authSlice'
@@ -34,18 +38,26 @@ function Row({ label, value }) {
   )
 }
 
-function Input({ label, ...props }) {
+function Input({ label, error, ...props }) {
   return (
     <View style={styles.view2}>
       <Text style={styles.text}>{label}</Text>
       <TextInput
         {...props}
-        style={styles.textInput}
+        style={[styles.textInput, error ? styles.inputError : null]}
         placeholderTextColor={COLORS.slate[400]}
       />
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   )
 }
+
+const draftFrom = (user) => ({
+  name: user?.name || '',
+  phone: user?.phone || '',
+  address: user?.address || '',
+  pincode: user?.pincode || '',
+})
 
 export default function ProfileScreen({ navigation }) {
   const dispatch = useDispatch()
@@ -80,22 +92,71 @@ export default function ProfileScreen({ navigation }) {
     }
   }
 
-  const [draft, setDraft] = useState({
-    name: user?.name || '',
-    phone: user?.phone || '',
-    address: user?.address || '',
-    pincode: user?.pincode || '',
-  })
+  const country = userCountry(user)
+  const india = isIndia(country)
+  const [draft, setDraft] = useState(() => draftFrom(user))
+  const [errors, setErrors] = useState({})
+  const [formError, setFormError] = useState('')
+  // The post office picked for the typed pincode (saved as the account's location).
+  const [branch, setBranch] = useState(null)
+  // Every edit starts from the account as it is now.
+  useEffect(() => {
+    if (!editing) return
+    setDraft(draftFrom(user))
+    setErrors({})
+    setFormError('')
+    setBranch(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
+
+  const onAreaResolved = useCallback((area) => {
+    const branches = Array.isArray(area?.post_offices) ? area.post_offices : []
+    setBranch(branches.length === 1 ? branches[0] : null)
+  }, [])
+  // The area is looked up while the pincode is typed (edit mode only).
+  const pincodeLookup = usePincodeAreaLookup(editing ? draft.pincode : '', onAreaResolved, country)
+
+  const change = (field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }))
+    setErrors((current) => (current[field] ? { ...current, [field]: '' } : current))
+    setFormError('')
+  }
 
   async function save() {
+    if (saving) return
+    const nextErrors = baseFieldErrors(draft, country)
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors)
+      setFormError(t('mobile.profile.fixFields'))
+      return
+    }
     setSaving(true)
+    setErrors({})
+    setFormError('')
+    const area = pincodeLookup.status === 'success' ? pincodeLookup.areaDetails : null
+    const payload = {
+      // The API resets an omitted owner budget / land area / floors, so the
+      // owner's saved project answers travel with the form unchanged.
+      ...(user?.role === 'OWNER' ? ownerProfileFields(user.owner_profile) : {}),
+      name: draft.name.trim(),
+      phone: india ? digitsOf(draft.phone) : draft.phone.trim(),
+      address: draft.address.trim(),
+      pincode: digitsOf(draft.pincode),
+      country_of_residence: country,
+      // The picked post office, else the area the pincode resolved to.
+      ...(branch || area ? { location: branch?.display || branch?.name || area?.display || '' } : {}),
+    }
     try {
-      const result = await completeUserProfile(draft)
-      dispatch(mergeUser(result?.user || result || draft))
+      const result = await completeUserProfile(payload)
+      dispatch(mergeUser(result?.user || result || payload))
       setEditing(false)
       Alert.alert('Profile updated', 'Your details have been saved.')
     } catch (error) {
-      Alert.alert('Could not save', error?.response?.data?.detail || 'Please try again.')
+      const fields = fieldErrorsFrom(error)
+      setErrors(Object.fromEntries(Object.entries(fields).map(([key, text]) => [key, td(String(text))])))
+      const detail = error?.response?.data?.detail
+      const message = typeof detail === 'string' ? detail : detail?.message
+      setFormError(message ? td(message) : 'Could not save. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -151,13 +212,35 @@ export default function ProfileScreen({ navigation }) {
         >
           {editing ? (
             <>
-              <Input label="Full name" value={draft.name} onChangeText={(name) => setDraft((d) => ({ ...d, name }))} placeholder="Your name" />
-              <Input label="Phone" value={draft.phone} onChangeText={(phone) => setDraft((d) => ({ ...d, phone }))} placeholder="Phone number" keyboardType="phone-pad" />
-              <Input label="Address" value={draft.address} onChangeText={(address) => setDraft((d) => ({ ...d, address }))} placeholder="Address" />
-              <Input label="Pincode" value={draft.pincode} onChangeText={(pincode) => setDraft((d) => ({ ...d, pincode }))} placeholder="Pincode" keyboardType="number-pad" />
+              <Input label="Full name *" value={draft.name} onChangeText={(value) => change('name', value)} placeholder="Your name" maxLength={120} error={errors.name} />
+              <Input
+                label="Phone *"
+                value={draft.phone}
+                onChangeText={(value) => change('phone', india ? value.replace(/\D/g, '').slice(0, 10) : value)}
+                placeholder={india ? '10 digit mobile number' : 'Phone number'}
+                keyboardType="phone-pad"
+                maxLength={india ? 10 : 15}
+                error={errors.phone}
+              />
+              <Input label="Address *" value={draft.address} onChangeText={(value) => change('address', value)} placeholder="House no, street, area, city" maxLength={500} error={errors.address} />
+              <Input
+                label="Pincode *"
+                value={draft.pincode}
+                onChangeText={(value) => change('pincode', value.replace(/\D/g, '').slice(0, india ? 6 : 10))}
+                placeholder={india ? '6 digit pincode' : 'Postal code'}
+                keyboardType="number-pad"
+                maxLength={india ? 6 : 10}
+                error={errors.pincode}
+              />
+              {!errors.pincode ? <PincodeAreaHint lookupState={pincodeLookup} selectedBranch={branch} onSelectBranch={setBranch} /> : null}
+              {errors.location ? <Text style={styles.fieldError}>{errors.location}</Text> : null}
+              {formError ? <Text style={styles.formError}>{formError}</Text> : null}
               <Pressable onPress={save} disabled={saving} style={[styles.pressable4, saving ? styles.pressable2 : null]}>
                 <Text style={styles.text7}>{saving ? 'Saving…' : 'Save changes'}</Text>
               </Pressable>
+              <View style={styles.emailBlock}>
+                <EmailSection />
+              </View>
             </>
           ) : (
             <>
@@ -166,6 +249,12 @@ export default function ProfileScreen({ navigation }) {
               <Row label="Address" value={td(user?.address)} />
               <Row label="Pincode" value={user?.pincode} />
               <Row label="Country" value={userCountry(user)} />
+              {/* A phone-first account has no e-mail yet: it is added here. */}
+              {!user?.email ? (
+                <View style={styles.emailBlock}>
+                  <EmailSection />
+                </View>
+              ) : null}
             </>
           )}
         </Panel>
@@ -243,6 +332,10 @@ const styles = createStyles((c) => ({
   text: { fontSize: 10.5, lineHeight: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: c.textFaint },
   text2: { marginLeft: 10.5, flex: 1, textAlign: 'right', fontSize: 13, fontWeight: '800', color: c.text },
   view2: { marginTop: 10.5 },
+  inputError: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 4, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
+  formError: { marginBottom: 8, fontSize: 12.5, fontWeight: '700', color: '#dc2626' },
+  emailBlock: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderColor: c.borderSoft },
   textInput: { marginTop: 5.25, height: 38.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
   view3: { marginBottom: 14, alignItems: 'center', borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 21 },
   pressable: { position: 'relative' },

@@ -15,7 +15,7 @@ import { Image } from 'expo-image'
 import { useSelector } from 'react-redux'
 import {
   Layers, ClipboardList, Send, BarChart3, HardHat, Users, UserSearch, ShoppingCart,
-  Home, Building2, Wrench, Monitor, MoreHorizontal,
+  Home, Building2, Wrench, Monitor, MoreHorizontal, ChevronRight,
 } from 'lucide-react-native'
 import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
 import LanguageSheet from '../../components/LanguageSheet'
@@ -23,6 +23,7 @@ import { FreeAccessBanner, PlanSummaryCard, Section, Badge } from '../../compone
 import { BudgetRing, DonutChart, StatCard, WelcomeBanner } from '../../components/builder/BuilderDashboardParts'
 import { House3DCard } from '../../components/builder/House3D'
 import useBuilderSubscription from '../../hooks/useBuilderSubscription'
+import { useBuilderInbox } from '../../components/builder/BuilderInbox'
 import { fetchBuilderProjectsWithAssignments } from '../../api/projects'
 import { fetchIncomingRequests } from '../../api/requests'
 import { fetchCostToolSummary } from '../../api/costTool'
@@ -162,6 +163,8 @@ export default function ContractorDashboard({ navigation }) {
   const country = projectList[0]?.project_country
   const spentShare = budget?.budget > 0 ? Math.round((budget.spent / budget.budget) * 100) : 0
 
+  const inbox = useBuilderInbox()
+  const newClients = inbox.unseenClients || inbox.notificationCounts?.findClients || 0
   const goTab = (name, params) => navigation.navigate(name, params)
   const goProjects = () => goTab('ContractorProjectsTab')
   const goRequests = () => goTab('ContractorRequestsTab')
@@ -170,7 +173,7 @@ export default function ContractorDashboard({ navigation }) {
         // Web tones: border-*-200, bg-*-100/60, a *-100 icon chip and *-700 text.
     { id: 'catalog', label: t('owner.quick.order'), icon: HardHat, bg: '#e8f8f0', chip: '#d1fae5', border: '#a7f3d0', fg: '#047857', onPress: () => goTab('ContractorMoreTab', { section: 'catalog' }) },
     { id: 'partners', label: t('dash.bld.findPartners'), icon: Users, bg: '#fff3e5', chip: '#ffedd5', border: '#fed7aa', fg: '#ea580c', onPress: () => goTab('ContractorPartnersTab') },
-    { id: 'clients', label: t('ui.findClients'), icon: UserSearch, bg: '#ebf6fe', chip: '#e0f2fe', border: '#bae6fd', fg: '#0369a1', onPress: () => goTab('ContractorMoreTab', { section: 'clients' }) },
+    { id: 'clients', label: t('ui.findClients'), icon: UserSearch, bg: '#ebf6fe', chip: '#e0f2fe', border: '#bae6fd', fg: '#0369a1', onPress: () => navigation.navigate('FindClients') },
     { id: 'buySell', label: t('dash.bld.buySellMaterials'), icon: ShoppingCart, bg: '#f2effe', chip: '#ede9fe', border: '#ddd6fe', fg: '#6d28d9', onPress: () => goTab('ContractorMoreTab', { section: 'shop' }) },
   ]
 
@@ -197,6 +200,34 @@ export default function ContractorDashboard({ navigation }) {
         </Section>
 
         <PlanSummaryCard subscription={subscription} onOpen={() => navigation.navigate('BuilderSubscription')} />
+
+        {/* Find Clients lives on the dashboard (it used to be under More). */}
+        <Section>
+          <Pressable
+            onPress={() => navigation.navigate('FindClients')}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.clientsCard,
+              { backgroundColor: pressed ? softStrong('#e0f2fe', SKY) : soft('#f0f9ff', SKY), borderColor: line('#bae6fd', SKY) },
+            ]}
+          >
+            <View style={[styles.clientsIcon, { backgroundColor: softStrong('#e0f2fe', SKY) }]}>
+              <UserSearch size={22} color={ink(SKY)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.clientsHead}>
+                <Text style={[styles.clientsTitle, { color: ink('#0c4a6e') }]}>{t('ui.findClients')}</Text>
+                {newClients > 0 ? (
+                  <View style={styles.clientsBadge}>
+                    <Text style={styles.clientsBadgeText}>{t('mobile.clients.new', { count: newClients })}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={[styles.clientsBody, { color: ink('#075985') }]}>{t('mobile.account.more.sub.clients')}</Text>
+            </View>
+            <ChevronRight size={18} color={ink(SKY)} />
+          </Pressable>
+        </Section>
 
         {/* The four coloured figure cards, as on the web. */}
         <Section>
@@ -367,7 +398,17 @@ export default function ContractorDashboard({ navigation }) {
   )
 }
 
+// Find Clients card accent (the web's sky tone).
+const SKY = '#0369a1'
+
 const styles = createStyles((c) => ({
+  clientsCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 14 },
+  clientsIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  clientsHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  clientsTitle: { fontSize: 15, fontFamily: 'Manrope_800ExtraBold' },
+  clientsBadge: { borderRadius: 999, backgroundColor: '#0369a1', paddingHorizontal: 8, paddingVertical: 2 },
+  clientsBadgeText: { fontSize: 10.5, fontFamily: 'Inter_700Bold', color: '#ffffff' },
+  clientsBody: { marginTop: 3, fontSize: 12.5, lineHeight: 17, fontFamily: 'Inter_500Medium' },
   view: { height: 7, flex: 1, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.muted },
   view2: { height: '100%', borderRadius: 9999 },
   view3: { alignItems: 'center', borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 14, paddingVertical: 24.5 },

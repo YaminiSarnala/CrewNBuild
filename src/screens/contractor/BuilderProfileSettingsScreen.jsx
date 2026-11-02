@@ -29,6 +29,11 @@ import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { BUSINESS_TYPE_KEYS, EQUIPMENT_OPTION_KEYS, SERVICE_OPTION_KEYS, optionLabel } from '../../i18n/optionKeys'
 import { createStyles } from '../../theme/createStyles'
+import EmailSection from '../../components/EmailSection'
+import { PincodeAreaHint } from '../../components/form'
+import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
+import { userCountry } from '../../utils/countryConfig'
+import { builderFieldErrors, digitsOf, fieldErrorsFrom, isIndia } from '../../utils/profileValidation'
 
 // Same option lists as web pages/auth/profileConstants.js. Stored values are
 // these English strings; anything else a builder saved is kept as it is.
@@ -108,6 +113,17 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
   const [message, setMessage] = useState(null)
   const [uploading, setUploading] = useState('')
   const [deleting, setDeleting] = useState(false)
+  // Messages under each field: this screen's checks first, then the server's.
+  const [errors, setErrors] = useState({})
+  const country = userCountry(user)
+  const india = isIndia(country)
+  const { td } = useLanguage()
+  // The pincode's area, looked up while it is typed.
+  const [branch, setBranch] = useState(null)
+  const onAreaResolved = useCallback((area) => {
+    const branches = Array.isArray(area?.post_offices) ? area.post_offices : []
+    setBranch(branches.length === 1 ? branches[0] : null)
+  }, [])
 
   const load = useCallback(async () => {
     if (!user?.id) return
@@ -127,31 +143,53 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
 
   useEffect(() => { load() }, [load])
 
-  const update = (field, value) => setForm((current) => ({ ...current, [field]: value }))
+  const update = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }))
+    setErrors((current) => (current[field] ? { ...current, [field]: '' } : current))
+  }
+  // Looked up only once the builder changes it: the saved pincode is known.
+  const pincodeLookup = usePincodeAreaLookup(
+    profile && String(form.pincode || '') !== String(profile.pincode ?? user?.pincode ?? '') ? form.pincode : '',
+    onAreaResolved,
+    country,
+  )
 
   async function save() {
     // Never save without the loaded profile: the payload is the full builder
     // profile, so saving from an empty form would blank every hidden field.
     if (!profile) { setMessage({ tone: 'error', text: t('mobile.account.settings.notLoadedSave') }); return }
-    if (!form.name.trim()) { setMessage({ tone: 'error', text: t('mobile.account.settings.enterName') }); return }
-    if (form.pincode && !/^\d{4,6}$/.test(form.pincode.trim())) { setMessage({ tone: 'error', text: t('site.estimate.errPincode') }); return }
+    const localErrors = builderFieldErrors(form, country)
+    // The web's rule: every portfolio project needs a title.
+    if ((form.completed_project_details || []).some((project) => !String(project?.title || '').trim())) {
+      localErrors.completed_project_details = t('cps.portfolio.titleRequired')
+    }
+    if (Object.keys(localErrors).length) {
+      setErrors(Object.fromEntries(Object.entries(localErrors).map(([key, text]) => [key, td(text)])))
+      setMessage({ tone: 'error', text: t('mobile.profile.fixFields') })
+      return
+    }
+    setErrors({})
     setSaving(true)
     setMessage(null)
     const current = profile || {}
     // The web's payload, field for field.
     const payload = {
       name: form.name.trim(),
-      phone: form.phone.trim(),
+      phone: india ? digitsOf(form.phone) : form.phone.trim(),
       address: form.address.trim(),
-      pincode: form.pincode.trim(),
+      pincode: digitsOf(form.pincode),
+      // A changed pincode carries its post office (or area) as the location.
+      ...(pincodeLookup.status === 'success'
+        ? { location: branch?.display || branch?.name || pincodeLookup.areaDetails?.display || '' }
+        : {}),
+      gstin: form.gstin.trim().toUpperCase(),
+      pan: form.pan.trim().toUpperCase(),
       company_name: form.company_name.trim() || current.company_name || user?.name || '',
       company_logo_url: current.company_logo_url || '',
       profile_image_url: current.profile_image_url || user?.profile_image_url || '',
       license_number: form.license_number.trim(),
       experience_years: Number(form.experience_years || 0),
       about: form.about.trim(),
-      gstin: form.gstin.trim(),
-      pan: form.pan.trim(),
       website: form.website.trim(),
       business_type: form.business_type,
       registration_year: form.registration_year === '' ? null : Number(form.registration_year),
@@ -172,7 +210,9 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
       setForm(formFromProfile(refreshed, user))
       setMessage({ tone: 'success', text: t('dash.msg.profileSaved') })
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, t('cps.errSaveChanges')) })
+      const fields = fieldErrorsFrom(error)
+      setErrors(Object.fromEntries(Object.entries(fields).map(([key, text]) => [key, td(String(text))])))
+      setMessage({ tone: 'error', text: td(apiErrorText(error, t('cps.errSaveChanges'))) })
     } finally {
       setSaving(false)
     }
@@ -292,15 +332,32 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
       </Panel>
 
       <Panel title={t('cps.personalInformation')}>
-        <LabeledInput label={`${t('ps.name')} *`} value={form.name} onChangeText={(value) => update('name', value)} />
-        <LabeledInput label={t('ps.phoneShort')} value={form.phone} onChangeText={(value) => update('phone', value)} keyboardType="phone-pad" />
-        <LabeledInput label={t('ps.address')} value={form.address} onChangeText={(value) => update('address', value)} />
-        <LabeledInput label={t('ps.pincode')} value={form.pincode} onChangeText={(value) => update('pincode', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} />
-        <Text style={styles.text7}>{t('ps.email')}: {user?.email || '—'}</Text>
+        <LabeledInput label={`${t('ps.name')} *`} value={form.name} onChangeText={(value) => update('name', value)} maxLength={120} error={errors.name} />
+        <LabeledInput
+          label={`${t('ps.phoneShort')} *`}
+          value={form.phone}
+          onChangeText={(value) => update('phone', india ? value.replace(/\D/g, '').slice(0, 10) : value)}
+          keyboardType="phone-pad"
+          maxLength={india ? 10 : 15}
+          error={errors.phone}
+        />
+        <LabeledInput label={`${t('ps.address')} *`} value={form.address} onChangeText={(value) => update('address', value)} maxLength={500} error={errors.address} />
+        <LabeledInput
+          label={`${t('ps.pincode')} *`}
+          value={form.pincode}
+          onChangeText={(value) => update('pincode', value.replace(/\D/g, '').slice(0, india ? 6 : 10))}
+          keyboardType="number-pad"
+          maxLength={india ? 6 : 10}
+          error={errors.pincode}
+        />
+        {!errors.pincode ? <PincodeAreaHint lookupState={pincodeLookup} selectedBranch={branch} onSelectBranch={setBranch} /> : null}
+        <View style={styles.emailBlock}>
+          <EmailSection />
+        </View>
       </Panel>
 
       <Panel title={t('cps.professionalInformation')}>
-        <LabeledInput label={t('ps.con.companyName')} value={form.company_name} onChangeText={(value) => update('company_name', value)} />
+        <LabeledInput label={`${t('ps.con.companyName')} *`} value={form.company_name} onChangeText={(value) => update('company_name', value)} maxLength={150} error={errors.company_name} />
         <Text style={styles.text}>{t('ps.businessType')}</Text>
         <View style={styles.view7}>
           {BUSINESS_TYPES.map((item) => {
@@ -312,24 +369,25 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
             )
           })}
         </View>
-        <LabeledInput label={t('ps.con.licenseNumber')} value={form.license_number} onChangeText={(value) => update('license_number', value)} autoCapitalize="characters" />
-        <LabeledInput label={t('ps.gstin')} value={form.gstin} onChangeText={(value) => update('gstin', value.toUpperCase())} autoCapitalize="characters" />
-        <LabeledInput label={t('ps.pan')} value={form.pan} onChangeText={(value) => update('pan', value.toUpperCase())} autoCapitalize="characters" maxLength={10} />
-        <LabeledInput label={t('ps.website')} value={form.website} onChangeText={(value) => update('website', value)} autoCapitalize="none" keyboardType="url" />
-        <LabeledInput label={t('ps.registrationYear')} value={form.registration_year} onChangeText={(value) => update('registration_year', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={4} />
-        <LabeledInput label={t('cps.yearsOfExperience')} value={form.experience_years} onChangeText={(value) => update('experience_years', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={2} />
+        <LabeledInput label={`${t('ps.con.licenseNumber')} *`} value={form.license_number} onChangeText={(value) => update('license_number', value)} autoCapitalize="characters" error={errors.license_number} />
+        <LabeledInput label={t('ps.gstin')} value={form.gstin} onChangeText={(value) => update('gstin', value.toUpperCase().replace(/\s/g, ''))} autoCapitalize="characters" maxLength={15} error={errors.gstin} />
+        <LabeledInput label={t('ps.pan')} value={form.pan} onChangeText={(value) => update('pan', value.toUpperCase().replace(/\s/g, ''))} autoCapitalize="characters" maxLength={10} error={errors.pan} />
+        <LabeledInput label={t('ps.website')} value={form.website} onChangeText={(value) => update('website', value.trim())} autoCapitalize="none" keyboardType="url" error={errors.website} />
+        <LabeledInput label={t('ps.registrationYear')} value={form.registration_year} onChangeText={(value) => update('registration_year', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={4} error={errors.registration_year} />
+        <LabeledInput label={`${t('cps.yearsOfExperience')} *`} value={form.experience_years} onChangeText={(value) => update('experience_years', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={2} error={errors.experience_years} />
         <LabeledInput label={t('ps.con.teamSize')} value={form.team_size} onChangeText={(value) => update('team_size', value)} />
         <View style={styles.view8}>
           <Text style={styles.text8}>{t('cps.insuranceAvailable')}</Text>
           <Switch value={form.insurance_available} onValueChange={(value) => update('insurance_available', value)} trackColor={{ true: COLORS.brand[500] }} />
         </View>
-        <LabeledInput label={t('ps.eng.about')} value={form.about} onChangeText={(value) => update('about', value)} multiline maxLength={2000} />
+        <LabeledInput label={`${t('ps.eng.about')} *`} value={form.about} onChangeText={(value) => update('about', value)} multiline maxLength={2000} error={errors.about} />
       </Panel>
 
       <Panel title={t('cps.servicesWork')}>
-        <ChipPicker label={t('ps.con.servicesOffered')} options={SERVICE_OPTIONS} labelKeys={SERVICE_OPTION_KEYS} value={form.services_offered} onChange={(value) => update('services_offered', value)} />
+        <ChipPicker label={`${t('ps.con.servicesOffered')} *`} options={SERVICE_OPTIONS} labelKeys={SERVICE_OPTION_KEYS} value={form.services_offered} onChange={(value) => update('services_offered', value)} />
+        {errors.services_offered ? <Text style={styles.fieldError}>{errors.services_offered}</Text> : null}
         <ChipPicker label={t('ps.con.equipmentOwned')} options={EQUIPMENT_OPTIONS} labelKeys={EQUIPMENT_OPTION_KEYS} value={form.equipment_owned} onChange={(value) => update('equipment_owned', value)} />
-        <LabeledInput label={t('ps.con.serviceLocations')} hint={t('cps.serviceLocationsHint')} value={form.service_locations} onChangeText={(value) => update('service_locations', value)} />
+        <LabeledInput label={`${t('ps.con.serviceLocations')} *`} hint={t('cps.serviceLocationsHint')} value={form.service_locations} onChangeText={(value) => update('service_locations', value)} error={errors.service_locations} />
       </Panel>
 
       <Panel
@@ -337,6 +395,7 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
         action={portfolio.length < PORTFOLIO_MAX_PROJECTS ? <ActionButton small tone="brandOutline" icon={Plus} label={t('cps.portfolio.add')} onPress={addProject} /> : null}
       >
         {!portfolio.length ? <Text style={styles.text9}>{t('cps.portfolio.empty')}</Text> : null}
+        {errors.completed_project_details ? <Text style={[styles.fieldError, { marginTop: 0 }]}>{errors.completed_project_details}</Text> : null}
         {portfolio.map((item, index) => (
           <View key={`portfolio-${index}`} style={styles.view9}>
             <View style={styles.view10}>
@@ -377,6 +436,8 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
 }
 
 const styles = createStyles((c) => ({
+  fieldError: { marginTop: -6, marginBottom: 10, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
+  emailBlock: { marginTop: 6, paddingTop: 14, borderTopWidth: 1, borderColor: c.borderSoft },
   view: { marginBottom: 10.5 },
   text: { marginBottom: 5.25, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
   view2: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },

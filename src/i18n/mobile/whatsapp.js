@@ -5,6 +5,8 @@
 // keys the web has only in English; other languages fall back to English.
 export default {
   en: {
+    'mobile.otp.paste': 'Paste',
+    'mobile.otp.noCode': 'No 6-digit code found to paste. Copy the code and try again.',
     'signup.phone.label': 'Mobile Number (WhatsApp)',
     'signup.phone.placeholder': '10 digit mobile number',
     'signup.phone.invalid': 'Enter a valid 10 digit Indian mobile number.',
@@ -28,6 +30,8 @@ export default {
     'login.phone.noPhone': 'Cannot receive codes on your registered number? Contact Crew&Build support to recover your account.',
   },
   te: {
+    'mobile.otp.paste': 'పేస్ట్',
+    'mobile.otp.noCode': 'పేస్ట్ చేయడానికి 6 అంకెల కోడ్ కనిపించలేదు. కోడ్‌ను కాపీ చేసి మళ్లీ ప్రయత్నించండి.',
     'signup.phone.label': 'మొబైల్ నంబర్ (WhatsApp)',
     'signup.phone.placeholder': '10 అంకెల మొబైల్ నంబర్',
     'signup.phone.invalid': 'సరైన 10 అంకెల భారతీయ మొబైల్ నంబర్ నమోదు చేయండి.',
@@ -51,6 +55,8 @@ export default {
     'login.phone.noPhone': 'మీ నమోదిత నంబర్‌కు కోడ్‌లు రావడం లేదా? మీ ఖాతాను తిరిగి పొందడానికి Crew&Build సపోర్ట్‌ను సంప్రదించండి.',
   },
   hi: {
+    'mobile.otp.paste': 'पेस्ट करें',
+    'mobile.otp.noCode': 'पेस्ट करने के लिए 6 अंकों का कोड नहीं मिला। कोड कॉपी करके फिर प्रयास करें।',
     'signup.phone.label': 'मोबाइल नंबर (WhatsApp)',
     'signup.phone.placeholder': '10 अंकों का मोबाइल नंबर',
     'signup.phone.invalid': 'मान्य 10 अंकों का भारतीय मोबाइल नंबर दर्ज करें।',

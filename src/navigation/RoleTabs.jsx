@@ -23,8 +23,10 @@ function builderBadges(inbox) {
     ContractorRequestsTab: badgeText(inbox.unreadRequests),
     ContractorProjectsTab: badgeText(counts.projects || 0),
     ContractorPartnersTab: badgeText(counts.engineers || 0),
-    // Find Clients, Messages and the profile live under More.
-    ContractorMoreTab: badgeText((inbox.unseenClients || counts.findClients || 0) + (inbox.unreadMessages || 0) + (counts.profile || 0)),
+    // Find Clients is on the dashboard, so its count is on Home.
+    ContractorHomeTab: badgeText(inbox.unseenClients || counts.findClients || 0),
+    // Messages and the profile live under More.
+    ContractorMoreTab: badgeText((inbox.unreadMessages || 0) + (counts.profile || 0)),
   }
 }
 
