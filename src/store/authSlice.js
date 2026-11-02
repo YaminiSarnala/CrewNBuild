@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { loginUser, signupUser, completeUserProfile } from '../api/auth'
+import { loginWithPhoneCode } from '../api/phoneVerification'
 import { apiErrorMessage, clearStoredAuth, readStoredAuth, refreshSession, writeStoredAuth } from '../api/client'
 
 // Reads the stored session, then confirms it with the server the way the web's
@@ -41,6 +42,25 @@ export const loginWithCredentials = createAsyncThunk(
       return session
     } catch (error) {
       return rejectWithValue(apiErrorMessage(error, 'Unable to login. Please check your credentials.'))
+    }
+  },
+)
+
+// Port of the web's loginWithWhatsApp: a correct WhatsApp LOGIN code signs in
+// exactly as a password does.
+export const loginWithWhatsApp = createAsyncThunk(
+  'auth/loginWithWhatsApp',
+  async (details, { rejectWithValue }) => {
+    try {
+      const session = await loginWithPhoneCode(details)
+      if (!session?.access_token) return rejectWithValue('That code is not right or has expired. Ask for a new one.')
+      return session
+    } catch (error) {
+      if (!error?.response) return rejectWithValue('Cannot reach the server. Check your connection and try again.')
+      if (error.response.status >= 500) {
+        return rejectWithValue(apiErrorMessage(error, 'Sign-in is temporarily unavailable. Please try again shortly.'))
+      }
+      return rejectWithValue(apiErrorMessage(error, 'That code is not right or has expired. Ask for a new one.'))
     }
   },
 )
@@ -119,6 +139,7 @@ const authSlice = createSlice({
       state.errorMessage = 'Your session expired. Please sign in again.'
     },
     clearAuthError(state) {
+      if (state.status === 'failed') state.status = 'idle'
       state.errorMessage = ''
     },
     // Used after PATCH /auth/complete-profile so profile_complete flips locally
@@ -153,6 +174,17 @@ const authSlice = createSlice({
         applyAuthResponse(state, action.payload)
       })
       .addCase(loginWithCredentials.rejected, (state, action) => {
+        state.status = 'failed'
+        state.errorMessage = action.payload || action.error.message
+      })
+      .addCase(loginWithWhatsApp.pending, (state) => {
+        state.status = 'loading'
+        state.errorMessage = ''
+      })
+      .addCase(loginWithWhatsApp.fulfilled, (state, action) => {
+        applyAuthResponse(state, action.payload)
+      })
+      .addCase(loginWithWhatsApp.rejected, (state, action) => {
         state.status = 'failed'
         state.errorMessage = action.payload || action.error.message
       })
