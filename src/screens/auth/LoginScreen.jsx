@@ -1,6 +1,6 @@
 // Port of the web src/pages/auth/LoginPage.jsx.
-// Same dark auth shell (index.css .auth-shell used #0d0b14), same background
-// artwork, same OAuth buttons, same translated error handling.
+// The web's auth backdrop (components/AuthBackground.jsx), same OAuth buttons,
+// same translated error handling.
 //
 // Where the server turns WhatsApp sign-in on (/auth/phone/config `login`),
 // signing in is the registered +91 number and its WhatsApp code, as on the web;
@@ -23,6 +23,7 @@ import {
   codeComplete, devPreviewOf, emptyCode, useCountdown, usePhoneConfig, useRequestGate,
 } from '../../components/WhatsAppCode'
 import { createStyles } from '../../theme/createStyles'
+import AuthBackground, { AUTH_BACKGROUND } from '../../components/AuthBackground'
 
 // ---------------------------------------------------------------------------
 // Google / Microsoft sign-in is OFF by default.
@@ -75,12 +76,8 @@ export default function LoginScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.view, { backgroundColor: '#0d0b14' }]}>
-      <Image
-        source={require('../../../assets/auth-architecture-bg.png')}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.35 }}
-        contentFit="cover"
-      />
+    <View style={[styles.view, { backgroundColor: AUTH_BACKGROUND }]}>
+      <AuthBackground />
 
       <KeyboardAvoidingView
         behavior="padding"

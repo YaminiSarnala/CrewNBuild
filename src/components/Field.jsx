@@ -1,6 +1,7 @@
 // Shared form primitives matching the web's auth input styling.
 import { View, Text, TextInput, Pressable } from 'react-native'
 import { useState } from 'react'
+import { Image } from 'expo-image'
 import { Eye, EyeOff } from 'lucide-react-native'
 import { createStyles } from '../theme/createStyles'
 
@@ -75,7 +76,9 @@ export function ErrorBanner({ message }) {
   )
 }
 
-export function RoleCard({ label, description, selected, onPress, icon, badge }) {
+// `image` (the web's role character, as on its sign-up role picker) takes the
+// place of `icon` in a taller tile, so the whole figure shows.
+export function RoleCard({ label, description, selected, onPress, icon, image, badge }) {
   return (
     <Pressable
       onPress={onPress}
@@ -83,11 +86,17 @@ export function RoleCard({ label, description, selected, onPress, icon, badge })
       accessibilityState={{ selected }}
       style={[styles.pressable2, selected ? styles.pressable3 : styles.pressable4, { gap: 12 }]}
     >
-      <View
-        style={[styles.view4, selected ? styles.view5 : styles.view6]}
-      >
-        {icon}
-      </View>
+      {image ? (
+        <View style={[styles.roleImageTile, selected ? styles.roleImageTileOn : styles.roleImageTileOff]}>
+          <Image source={image} style={styles.roleImage} contentFit="contain" />
+        </View>
+      ) : (
+        <View
+          style={[styles.view4, selected ? styles.view5 : styles.view6]}
+        >
+          {icon}
+        </View>
+      )}
       <View style={styles.view7}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={[styles.text4, selected ? styles.text5 : styles.text6, { fontSize: 15 }]}>
@@ -107,6 +116,10 @@ export function RoleCard({ label, description, selected, onPress, icon, badge })
 }
 
 const styles = createStyles((c) => ({
+  roleImageTile: { width: 52, height: 66, alignItems: 'center', justifyContent: 'flex-end', borderRadius: 14, borderWidth: 1, overflow: 'hidden', paddingTop: 4 },
+  roleImageTileOn: { borderColor: '#236645', backgroundColor: c.card },
+  roleImageTileOff: { borderColor: c.border, backgroundColor: c.muted },
+  roleImage: { width: 46, height: 62 },
   view: { marginBottom: 14 },
   text: { marginBottom: 5.25, fontFamily: 'Inter_600SemiBold', color: c.textSecondary },
   view2: { position: 'relative' },

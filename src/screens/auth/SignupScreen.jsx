@@ -12,9 +12,8 @@ import { useRef, useState } from 'react'
 import { useComingSoon, SoonTag } from '../../components/ComingSoon'
 import { isRoleLive } from '../../config/modules'
 import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, ActivityIndicator } from 'react-native'
-import { Image } from 'expo-image'
 import { useDispatch, useSelector } from 'react-redux'
-import { ArrowLeft, ArrowRight, Check, House as Home, HardHat, Package, Ruler } from 'lucide-react-native'
+import { ArrowRight, Check } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Field, ErrorBanner, RoleCard } from '../../components/Field'
 import { PrimaryButton } from '../../components/ui'
@@ -23,12 +22,14 @@ import { signupWithProfile, clearAuthError } from '../../store/authSlice'
 import { lookupPincodeArea } from '../../api/location'
 import { PhoneVerification, usePhoneConfig } from '../../components/WhatsAppCode'
 import { createStyles } from '../../theme/createStyles'
+import AuthBackground, { AUTH_BACKGROUND } from '../../components/AuthBackground'
 
+// The web sign-up's role characters (public/octabuild/roles/*.png).
 const ROLES = [
-  { value: 'OWNER', labelKey: 'role.owner', descKey: 'role.ownerDesc', Icon: Home },
-  { value: 'CONTRACTOR', labelKey: 'role.contractor', descKey: 'role.contractorDesc', Icon: HardHat },
-  { value: 'SUPPLIER', labelKey: 'role.supplier', descKey: 'role.supplierDesc', Icon: Package },
-  { value: 'ENGINEER', labelKey: 'role.engineer', descKey: 'role.engineerDesc', Icon: Ruler },
+  { value: 'OWNER', labelKey: 'role.owner', descKey: 'role.ownerDesc', image: require('../../../assets/octabuild/roles/home.png') },
+  { value: 'CONTRACTOR', labelKey: 'role.contractor', descKey: 'role.contractorDesc', image: require('../../../assets/octabuild/roles/builder.png') },
+  { value: 'SUPPLIER', labelKey: 'role.supplier', descKey: 'role.supplierDesc', image: require('../../../assets/octabuild/roles/supplier.png') },
+  { value: 'ENGINEER', labelKey: 'role.engineer', descKey: 'role.engineerDesc', image: require('../../../assets/octabuild/roles/engineer.png') },
 ]
 
 export default function SignupScreen({ navigation }) {
@@ -110,12 +111,8 @@ export default function SignupScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.view, { backgroundColor: '#0d0b14' }]}>
-      <Image
-        source={require('../../../assets/auth-architecture-bg.png')}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.35 }}
-        contentFit="cover"
-      />
+    <View style={[styles.view, { backgroundColor: AUTH_BACKGROUND }]}>
+      <AuthBackground />
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }}
@@ -148,7 +145,7 @@ export default function SignupScreen({ navigation }) {
             <Text style={[styles.text4, { fontSize: 13 }]}>
               {t('role.owner') ? 'I am a…' : 'Role'}
             </Text>
-            {ROLES.map(({ value, labelKey, descKey, Icon }) => (
+            {ROLES.map(({ value, labelKey, descKey, image }) => (
               <RoleCard
                 key={value}
                 label={t(labelKey)}
@@ -157,7 +154,7 @@ export default function SignupScreen({ navigation }) {
                 // Supplier / Site Engineer are not live in the app yet.
                 onPress={() => (isRoleLive(value) ? set('role')(value) : comingSoon.show(value))}
                 badge={isRoleLive(value) ? null : <SoonTag />}
-                icon={<Icon size={18} color={form.role === value ? '#ffffff' : '#64748b'} />}
+                image={image}
               />
             ))}
 
