@@ -489,7 +489,7 @@ const styles = createStyles((c) => ({
   view3: { marginBottom: 7, maxWidth: '82%', borderRadius: 14, paddingHorizontal: 12.25, paddingVertical: 8.75 },
   pressable2: { marginBottom: 5.25, flexDirection: 'row', alignItems: 'center', borderRadius: 10.5, backgroundColor: 'rgba(0, 0, 0, 0.05)', paddingHorizontal: 10.5, paddingVertical: 7 },
   text7: { fontFamily: 'Inter_700Bold' },
-  text8: { color: '#ffffff' },
+  text8: { color: '#777373' },
   text9: { color: c.text },
   text10: { fontFamily: 'Inter_600SemiBold' },
   view4: { marginTop: 3.5, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end' },

@@ -1,11 +1,10 @@
 // Port of web contractorProjectViews.jsx (ContractorProjectsTable +
 // ContractorProjectDetail). Same data: fetchOwnerProjects (backend scopes to
 // the contractor's assigned projects), per-project engineer + suppliers,
-// timeline entries for Activity, escrow_milestones for Payments.
+// SiteDayRecords (calendar) for Activity, escrow_milestones for Payments.
 // Visible text uses the web's keys (dash.*, team.*, specialist.*, se.*, owner.pa.*) via t().
 import { useCallback, useEffect, useState } from 'react'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
-import * as ImagePicker from 'expo-image-picker'
 import {
   analysisFigures,
   budgetRows,
@@ -19,10 +18,7 @@ import { ChevronLeft, HardHat, MapPin, CalendarDays, UserPlus, X, Truck, Users }
 import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
 import {
   fetchBuilderProjectsWithAssignments,
-  fetchProjectTimelineEntries,
   updateProjectProgress,
-  saveTimelineUpdate,
-  saveDailyWorkflow,
 } from '../../api/projects'
 import {
   fetchEngineerTeam,
@@ -184,53 +180,6 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
   const { t } = useLanguage()
   const engineerCategoryLabel = (category) => optionLabel(t, ENGINEER_CATEGORY_LABEL_KEYS, category)
   const [activeTab, setActiveTab] = useState('details')
-  const [dailyForm, setDailyForm] = useState({
-    work_title: '',
-    activity_category: '',
-    boq_reference: '',
-    activity_unit: '',
-    planned_quantity: '',
-    completed_quantity: '',
-    detailed_remarks: '',
-    labour_worker_count: '',
-    labour_cost: '',
-    material_cost: '',
-    equipment_cost: '',
-    total_expenses: '',
-    material_used: '',
-    equipment_used: '',
-    inspection_remarks: '',
-  })
-  const [dailyWorkDate, setDailyWorkDate] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  })
-  const [savingDaily, setSavingDaily] = useState(false)
-  const [dailyPhotos, setDailyPhotos] = useState([])
-  const [dailyVideos, setDailyVideos] = useState([])
-  const [dailyAction, setDailyAction] = useState('IN_PROGRESS')
-
-  async function pickDailyMedia(kind) {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: kind === 'photo' ? ['images'] : ['videos'],
-        allowsMultipleSelection: true,
-        quality: 0.8,
-      })
-      if (result.canceled) return
-      const assets = result.assets || []
-      if (kind === 'photo') setDailyPhotos((current) => [...current, ...assets])
-      else setDailyVideos((current) => [...current, ...assets])
-    } catch (error) {
-      Alert.alert(t('mobile.projects.galleryFailed'), error?.message || t('mobile.projects.tryAgain'))
-    }
-  }
-  const updateDailyField = (key, value) =>
-    setDailyForm((current) => ({ ...current, [key]: value }))
-  const [activityText, setActivityText] = useState('')
-  const [savingActivity, setSavingActivity] = useState(false)
-  const [timelineRefresh, setTimelineRefresh] = useState(0)
-  const timeline = useAsyncData(() => fetchProjectTimelineEntries(project.id), [project.id, timelineRefresh])
   const analysis = useAsyncData(
 () => fetchCostToolSummary(project.id),
   [project.id]
@@ -411,93 +360,6 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
     }
   }
 
-  async function saveDailyRecord(action) {
-    if (!dailyForm.work_title.trim()) {
-      Alert.alert(t('ui.shared.required'), t('se.form.errWorkTitle'))
-      return
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dailyWorkDate)) {
-      Alert.alert(t('mobile.projects.invalidDate'), t('mobile.projects.dateFormat'))
-      return
-    }
-
-    const submit = async () => {
-      setSavingDaily(true)
-      try {
-        const payload = new FormData()
-        payload.append('work_date', dailyWorkDate)
-        payload.append('action', action)
-
-        const numericFields = new Set([
-          'labour_worker_count', 'labour_cost', 'material_cost',
-          'equipment_cost', 'total_expenses',
-        ])
-        Object.entries(dailyForm).forEach(([key, value]) => {
-          payload.append(
-            key,
-            numericFields.has(key) ? String(Number(value) || 0) : String(value ?? '')
-          )
-        })
-        payload.append('material_usage', '[]')
-
-        const appendMedia = (field, asset, fallbackName) => {
-          if (!asset?.uri) return
-          const name = asset.fileName || asset.uri.split('/').pop() || fallbackName
-          const mimeType = asset.mimeType || (
-            field === 'videos' ? 'video/mp4' : 'image/jpeg'
-          )
-          payload.append(field, { uri: asset.uri, name, type: mimeType })
-        }
-        dailyPhotos.forEach((asset) => appendMedia('images', asset, 'site-photo.jpg'))
-        dailyVideos.forEach((asset) => appendMedia('videos', asset, 'site-video.mp4'))
-
-        await saveDailyWorkflow(project.id, payload)
-        setDailyPhotos([])
-        setDailyVideos([])
-        setTimelineRefresh((value) => value + 1)
-        Alert.alert(t('mobile.projects.saved'), action === 'CLOSED' ? t('se.dayClosed') : t('mobile.projects.dailySaved'))
-      } catch (error) {
-        Alert.alert(
-          t('mobile.projects.couldNotSave'),
-          error?.response?.data?.detail || error?.message || t('mobile.projects.tryAgain')
-        )
-      } finally {
-        setSavingDaily(false)
-      }
-    }
-
-    if (action === 'CLOSED') {
-      Alert.alert(t('mobile.projects.closeDayTitle'), t('se.form.closeDayHint'), [
-        { text: t('dash.common.cancel'), style: 'cancel' },
-        { text: t('se.form.closeDay'), onPress: submit },
-      ])
-    } else {
-      await submit()
-    }
-  }
-
-  async function saveActivity() {
-    if (!activityText.trim()) {
-      Alert.alert(t('mobile.projects.missingDetails'), t('mobile.projects.describeWork'))
-      return
-    }
-    setSavingActivity(true)
-    try {
-      const payload = new FormData()
-      payload.append('work_date', new Date().toISOString().slice(0, 10))
-      payload.append('work_type', activityText.trim())
-      await saveTimelineUpdate(project.id, payload)
-      setActivityText('')
-      setTimelineRefresh((value) => value + 1)
-      Alert.alert(t('mobile.projects.saved'), t('mobile.projects.activityRecorded'))
-    } catch (error) {
-      Alert.alert(t('mobile.projects.couldNotSave'), error?.response?.data?.detail || t('mobile.projects.tryAgain'))
-    } finally {
-      setSavingActivity(false)
-    }
-  }
-
-  const timelineList = Array.isArray(timeline.data) ? timeline.data : []
   const supplierList = Array.isArray(suppliers.data) ? suppliers.data : []
   const assignedEngineer = engineer.data?.engineer || null
   const milestones = Array.isArray(project.escrow_milestones) ? project.escrow_milestones : []
@@ -594,165 +456,9 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
         )}
 
         {activeTab === 'activity' && (
-          <>
-          <Panel title={t('se.savedDailyRecords')}>
+          <Panel title={t('ui.siteActivity')}>
             <SiteDayRecords project={project} onViewPlans={() => navigation?.navigate('BuilderSubscription')} />
           </Panel>
-          <Panel title={t('mobile.projects.dailyWorkLog')}>
-            <Text style={styles.text18}>
-              {t('se.form.requiredHint')}
-            </Text>
-            <View style={styles.view13}>
-              <Text style={styles.text20}>
-                {t('mobile.projects.workDate')}
-              </Text>
-              <TextInput
-                value={dailyWorkDate}
-                onChangeText={setDailyWorkDate}
-                placeholder="YYYY-MM-DD"
-                editable={!savingDaily}
-                accessibilityLabel={t('mobile.projects.workDate')}
-                style={styles.textInput2}
-                placeholderTextColor={COLORS.slate[400]}
-              />
-            </View>
-            {[
-              ['work_title', `${t('se.form.workTitle')} *`],
-              ['activity_category', t('se.activityCategory')],
-              ['boq_reference', t('se.boqReference')],
-              ['activity_unit', t('se.activityUnit')],
-              ['planned_quantity', t('se.plannedQuantity')],
-              ['completed_quantity', t('se.completedQuantity')],
-              ['detailed_remarks', t('se.detailedRemarks')],
-              ['labour_worker_count', t('se.form.workers')],
-              ['labour_cost', t('se.form.labourCost')],
-              ['material_cost', t('se.form.materialCost')],
-              ['equipment_cost', t('se.form.equipmentCost')],
-              ['total_expenses', t('se.form.otherExpenses')],
-              ['material_used', t('se.materialUsed')],
-              ['equipment_used', t('se.form.equipmentUsed')],
-              ['inspection_remarks', t('se.inspectionRemarks')],
-            ].map(([key, label]) => (
-              <View key={key} style={styles.view13}>
-                <Text style={styles.text20}>{label}</Text>
-                <TextInput
-                  value={dailyForm[key]}
-                  onChangeText={(value) => updateDailyField(key, value)}
-                  placeholder={label}
-                  editable={!savingDaily}
-                  keyboardType={[
-                    'planned_quantity', 'completed_quantity',
-                    'labour_worker_count', 'labour_cost', 'material_cost',
-                    'equipment_cost', 'total_expenses',
-                  ].includes(key) ? 'decimal-pad' : 'default'}
-                  multiline={['detailed_remarks', 'inspection_remarks'].includes(key)}
-                  style={styles.textInput2}
-                  placeholderTextColor={COLORS.slate[400]}
-                />
-              </View>
-            ))}
-            <View style={styles.view14}>
-              <Pressable
-                onPress={() => pickDailyMedia('photo')}
-                disabled={savingDaily}
-                style={styles.pressable8}
-              >
-                <Text style={styles.text21}>
-                  {t('se.addSitePhotos')} ({dailyPhotos.length})
-                </Text>
-              </Pressable>
-              {dailyPhotos.map((asset, index) => (
-                <View key={`${asset.uri}-${index}`} style={styles.view15}>
-                  <Text numberOfLines={1} style={styles.text22}>
-                    {asset.fileName || t('se.selectedPhoto', { index: index + 1 })}
-                  </Text>
-                  <Pressable onPress={() => setDailyPhotos((current) => current.filter((_, i) => i !== index))}>
-                    <Text style={styles.text23}>{t('se.removePhoto')}</Text>
-                  </Pressable>
-                </View>
-              ))}
-              <Pressable
-                onPress={() => pickDailyMedia('video')}
-                disabled={savingDaily}
-                style={styles.pressable8}
-              >
-                <Text style={styles.text21}>
-                  {t('se.addSiteVideos')} ({dailyVideos.length})
-                </Text>
-              </Pressable>
-              {dailyVideos.map((asset, index) => (
-                <View key={`${asset.uri}-${index}`} style={styles.view15}>
-                  <Text numberOfLines={1} style={styles.text22}>
-                    {asset.fileName || t('mobile.projects.day.videoN', { index: index + 1 })}
-                  </Text>
-                  <Pressable onPress={() => setDailyVideos((current) => current.filter((_, i) => i !== index))}>
-                    <Text style={styles.text23}>{t('se.removeVideo')}</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-            <View style={styles.view16}>
-              <Pressable
-                onPress={() => saveDailyRecord('IN_PROGRESS')}
-                disabled={savingDaily}
-                style={styles.pressable9}
-              >
-                <Text style={styles.text19}>
-                  {savingDaily ? t('se.form.saving') : t('se.form.saveProgress')}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => saveDailyRecord('CLOSED')}
-                disabled={savingDaily}
-                style={styles.pressable10}
-              >
-                <Text style={styles.text19}>{t('se.form.closeDay')}</Text>
-              </Pressable>
-            </View>
-          </Panel>
-          <Panel title={t('ui.siteActivity')}>
-            <Text style={styles.text18}>
-              {t('mobile.projects.activityHint')}
-            </Text>
-            <TextInput
-              value={activityText}
-              onChangeText={setActivityText}
-              placeholder={t('mobile.projects.activityPlaceholder')}
-              multiline
-              editable={!savingActivity}
-              accessibilityLabel={t('mobile.projects.activityPlaceholder')}
-              style={styles.textInput3}
-              placeholderTextColor={COLORS.slate[400]}
-              textAlignVertical="top"
-            />
-            <Pressable
-              onPress={saveActivity}
-              disabled={savingActivity}
-              style={[styles.pressable11, savingActivity ? styles.pressable7 : styles.pressable4]}
-            >
-              <Text style={styles.text19}>
-                {savingActivity ? t('se.form.saving') : t('mobile.projects.saveSiteUpdate')}
-              </Text>
-            </Pressable>
-            <PanelState loading={timeline.loading} error={timeline.error} empty={!timelineList.length} emptyText={t('se.noDailyLogs')}>
-              {timelineList.map((entry, index) => (
-                <View key={entry.id || index} style={styles.view17}>
-                  <Text style={styles.text24}>
-                    {String(entry.date || entry.work_date || '').slice(0, 10)}
-                  </Text>
-                  <Text style={styles.text25}>
-                    {entry.work_type || entry.description || t('se.dailySiteRecord')}
-                  </Text>
-                  {!!(entry.images || []).length && (
-                    <Text style={styles.text26}>
-                      {t((entry.images || []).length === 1 ? 'se.photoOne' : 'se.photoMany', { count: (entry.images || []).length })}
-                    </Text>
-                  )}
-                </View>
-              ))}
-            </PanelState>
-          </Panel>
-          </>
         )}
 
         {activeTab === 'team' && (
@@ -1369,24 +1075,7 @@ const styles = createStyles((c) => ({
   pressable6: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10.5 },
   pressable7: { backgroundColor: '#94a3b8' },
   text19: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: '#ffffff' },
-  view13: { marginBottom: 10.5 },
-  text20: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
-  textInput2: { borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 10.5, fontSize: 14, lineHeight: 20, fontWeight: '600', color: c.text },
-  view14: { marginBottom: 10.5, gap: 7 },
-  pressable8: { alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.brandBorderStrong, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 10.5 },
-  text21: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.brandTextStrong },
-  view15: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
-  text22: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.text },
-  text23: { marginLeft: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.roseTextSoft },
-  view16: { flexDirection: 'row', gap: 7 },
-  pressable9: { flex: 1, alignItems: 'center', borderRadius: 12, backgroundColor: '#1a5038', paddingHorizontal: 10.5, paddingVertical: 10.5 },
-  pressable10: { flex: 1, alignItems: 'center', borderRadius: 12, backgroundColor: '#334155', paddingHorizontal: 10.5, paddingVertical: 10.5 },
-  textInput3: { minHeight: 70, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, paddingVertical: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
-  pressable11: { marginTop: 7, alignItems: 'center', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10.5 },
   view17: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10.5 },
-  text24: { fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.brandText },
-  text25: { marginTop: 3.5, fontSize: 13, fontWeight: '600', color: c.text },
-  text26: { marginTop: 1.75, fontSize: 11, fontWeight: '600', color: c.textFaint },
   view18: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, padding: 10.5 },
   view19: { flex: 1 },
   text27: { fontSize: 15, fontWeight: '800', color: c.text },

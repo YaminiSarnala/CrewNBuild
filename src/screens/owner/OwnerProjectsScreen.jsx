@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { View, Text, Pressable, Alert } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { Image } from 'expo-image'
-import { HardHat, MapPin, Pencil, Plus, Save, Trash2, X } from 'lucide-react-native'
+import { HardHat, MapPin, Pencil, Plus, RotateCw, Save, Trash2, X } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useNotifications } from '../../notifications/NotificationsContext'
@@ -17,6 +17,9 @@ import { BudgetInWords, FormNotice, SelectField, TextField } from '../../compone
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
 import { deleteOwnerProject, fetchOwnerProjects, updateProjectRequirement } from '../../api/projects'
+import { fetchCostToolSummary } from '../../api/costTool'
+import { scheduleText } from '../../utils/builderHelpers'
+import OwnerProjectAnalysisPanel from './OwnerProjectAnalysisPanel'
 import { imageSource } from '../../api/client'
 import { floorCountFor, floorOptionsForCountry, floorTypeForCount, floorTypeLabel } from '../../utils/floorOptions'
 import { FLOOR_TYPE_KEYS, optionLabel } from '../../i18n/optionKeys'
@@ -175,6 +178,36 @@ function ProjectCard({ project, width, editing, deleting, onOpen, onEdit, onCanc
   const buildText = (project.floor_type ? optionLabel(t, FLOOR_TYPE_KEYS, project.floor_type) : '')
     || buildingTypeText(project.building_type, t)
     || t('dash.owner.floorsCount', { floors: project.floors || 1 })
+  const schedule = scheduleText(project, t)
+  // Project Analysis on the back of the card (web OwnerProjectAnalysisPanel):
+  // the cost summary is fetched the first time the card is turned, and again
+  // only after an error.
+  const [flipped, setFlipped] = useState(false)
+  const [analysis, setAnalysis] = useState(null)
+  const loadAnalysis = () => {
+    setAnalysis({ status: 'loading' })
+    fetchCostToolSummary(project.id)
+      .then((data) => setAnalysis({ status: 'ready', data }))
+      .catch(() => setAnalysis({ status: 'error' }))
+  }
+  const showAnalysis = () => {
+    setFlipped(true)
+    if (!analysis || analysis.status === 'error') loadAnalysis()
+  }
+
+  if (flipped) {
+    return (
+      <View style={[styles.pressable4, { width }]}>
+        <OwnerProjectAnalysisPanel
+          project={project}
+          country={country}
+          state={analysis}
+          onRetry={loadAnalysis}
+          onBack={() => setFlipped(false)}
+        />
+      </View>
+    )
+  }
 
   return (
     <Pressable
@@ -217,6 +250,16 @@ function ProjectCard({ project, width, editing, deleting, onOpen, onEdit, onCanc
       </View>
       <View style={styles.view9}>
         <View style={[styles.view10, { width: `${completion}%` }]} />
+      </View>
+
+      {/* Elapsed planned time, labelled as schedule (not completion), and the
+          link that turns this card over to its Project Analysis. */}
+      <View style={styles.scheduleRow}>
+        <Text style={styles.scheduleText} numberOfLines={1}>{schedule ? `${t('progress.schedule')}: ${schedule}` : ''}</Text>
+        <Pressable onPress={showAnalysis} hitSlop={8} style={styles.analysisLink}>
+          <Text style={styles.analysisLinkText}>{t('owner.analysis.view')}</Text>
+          <RotateCw size={11} color={COLORS.brand[700]} />
+        </Pressable>
       </View>
 
       <View style={[styles.view11, { gap: 8 }]}>
@@ -376,6 +419,10 @@ export default function OwnerProjectsScreen({ navigation, route }) {
 }
 
 const styles = createStyles((c) => ({
+  scheduleRow: { marginTop: 6, minHeight: 15, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  scheduleText: { flex: 1, fontSize: 10, fontWeight: '600', color: c.textMuted },
+  analysisLink: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  analysisLinkText: { fontSize: 10.5, fontWeight: '800', color: c.brandText },
   tone: { backgroundColor: c.emeraldSoft, color: c.emeraldTextStrong },
   tone2: { backgroundColor: c.skySoft, color: c.skyTextStrong },
   tone3: { backgroundColor: c.amberSoft, color: c.amberTextStrong },

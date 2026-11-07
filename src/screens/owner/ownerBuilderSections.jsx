@@ -16,7 +16,7 @@ import { View, Text, Pressable, Alert } from 'react-native'
 import { Image } from 'expo-image'
 import { ArrowRight, BadgeCheck, Check, Eye, MapPin, Sparkles, Star, X } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
-import { FormNotice } from '../../components/form'
+import { FormNotice, SelectField } from '../../components/form'
 import StatusPill from '../../components/StatusPill'
 import Dialog, { DialogButton, DialogRow } from '../../components/Dialog'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -24,7 +24,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useProfileGate } from '../../hooks/useProfileGate'
 import { useLiveVersion } from '../../hooks/useLiveRefresh'
 import {
-  acceptProjectRequest, assignProjectToContractor, fetchIncomingRequests, fetchProjectAward, negotiateQuotation,
+  acceptProjectRequest, assignProjectToContractor, cancelAward, fetchIncomingRequests, fetchProjectAward, negotiateQuotation,
   rejectProjectRequest, sendProjectRequest, withdrawProjectRequest,
 } from '../../api/requests'
 import { fetchNearbyContractors } from '../../api/projects'
@@ -671,23 +671,27 @@ export function FindBuildersSection({ project, user, hiring, onViewProfile }) {
 
 export function AssignBuilderSection({ project, hiring }) {
   const { t, td } = useLanguage()
-  const { requestList, assignMessage, assigningRequestId, assignBuilder, negotiateBuilder } = hiring
+  const { requestList, assignMessage, assigningRequestId, assignBuilder, refreshAll } = hiring
   const [declinedRequestIds, setDeclinedRequestIds] = useState([])
   const [currentAward, setCurrentAward] = useState(null)
   const [panelVersion, setPanelVersion] = useState(0)
+  // The quotation picked in the builder picker (its request id).
+  const [selectedQuotationId, setSelectedQuotationId] = useState('')
   const [assignTarget, setAssignTarget] = useState(null)
   const [assignBusy, setAssignBusy] = useState(false)
-  const [negotiating, setNegotiating] = useState(null)
+  // Unassign: the owner's cancel (/awards/{id}/cancel) on the assigned builder's
+  // award. The server refuses it once work is recorded or the builder has
+  // assigned a Site Engineer, and says which in `unassign_blocked`.
+  const [unassignOpen, setUnassignOpen] = useState(false)
+  const [unassignBusy, setUnassignBusy] = useState(false)
+  const [unassignError, setUnassignError] = useState('')
   const liveVersion = useLiveVersion()
-  const country = project.project_country || 'India'
-
   // Every accepted quotation on THIS project, whichever side opened it.
   const quotations = useMemo(() => requestList.filter((request) => (
     OWNER_BUILDER_REQUEST_TYPES.includes(request.request_type)
     && request.status === 'accepted'
     && Number(request.quotation_amount || 0) > 0
   )), [requestList])
-
   // The project's current award and the quotations whose builder declined it.
   useEffect(() => {
     let alive = true
@@ -701,126 +705,140 @@ export function AssignBuilderSection({ project, hiring }) {
     return () => { alive = false }
   }, [project.id, project.contractor_id, panelVersion, requestList, liveVersion])
 
-  // A negotiation not turned into an assignment holds the project's one live award.
-  const liveNegotiation = currentAward && currentAward.assigned === false && ['negotiating', 'awaiting_builder'].includes(currentAward.status)
+  // An award not yet assigned (negotiating, waiting on the builder, or
+  // confirmed) holds the project's one live award: other builders wait.
+  const liveNegotiation = currentAward && currentAward.assigned === false && ['negotiating', 'awaiting_builder', 'confirmed'].includes(currentAward.status)
     ? currentAward
     : null
-  const blocked = Boolean(project.contractor_id) || Boolean(liveNegotiation) || project.started === true
+  // The picker, as on the web: one entry per builder, declined builders left
+  // out. With no live award a choice is sent for the builder's confirmation;
+  // a builder is assignable only once the server offers 'assign'.
+  const builderChoices = []
+  const seenBuilderIds = new Set()
+  const orderedQuotations = liveNegotiation
+    ? [...quotations].sort((a, b) => (b.id === liveNegotiation.request_id) - (a.id === liveNegotiation.request_id))
+    : quotations
+  for (const quotation of orderedQuotations) {
+    const builderId = builderIdOnRequest(quotation)
+    if (builderId == null || seenBuilderIds.has(builderId) || declinedRequestIds.includes(quotation.id)) continue
+    seenBuilderIds.add(builderId)
+    const negotiatingThis = liveNegotiation?.request_id === quotation.id
+    const canAssign = negotiatingThis && (liveNegotiation.actions || []).includes('assign')
+    const disabled = negotiatingThis ? !canAssign : Boolean(liveNegotiation)
+    const noteKey = !negotiatingThis || canAssign
+      ? null
+      : liveNegotiation.status === 'confirmed'
+        ? 'quote.builderConfirmedOption'
+        : liveNegotiation.status === 'negotiating' ? 'quote.inNegotiation' : 'quote.waitingConfirmation'
+    builderChoices.push({ quotation, disabled, noteKey, mode: canAssign ? 'assign' : 'request' })
+  }
+  const selectedChoice = builderChoices.find((choice) => String(choice.quotation.id) === selectedQuotationId && !choice.disabled) || null
+  const assignedAward = currentAward && currentAward.assigned ? currentAward : null
+  const canUnassign = Boolean(assignedAward) && ['unassign', 'cancel'].some((action) => (assignedAward.actions || []).includes(action))
+  const unassignBlocked = assignedAward?.unassign_blocked || null
+  const unassignBlockedText = unassignBlocked ? t(unassignBlocked === 'engineer' ? 'quote.unassignBlockedEngineer' : 'quote.unassignBlockedWork') : ''
+  const assignedBuilderName = project.contractor_id
+    ? (quotations.find((quotation) => builderIdOnRequest(quotation) === project.contractor_id)?.sender_name || currentAward?.builder_name || '')
+    : ''
+  const workStarted = project.work_started === true
+  const actionLabel = (choice) => t(choice?.mode === 'request' ? 'quote.requestConfirmation' : 'quote.assignBuilder')
 
   return (
-    <Panel
-      title={t('ui.assignedBuilders')}
-      action={project.contractor_id ? (
-        <View style={[styles.view31, { gap: 5 }]}>
-          <View style={styles.view32} />
-          <Text style={[styles.text21, { fontSize: 11 }]}>{t('quote.builderAssigned')}</Text>
-        </View>
-      ) : (
-        <View style={styles.view33}>
-          <Text style={[styles.text22, { fontSize: 11 }]}>{t('quote.awaitingSelection')}</Text>
-        </View>
-      )}
-    >
-      <Text style={[styles.text11, { fontSize: 12.5 }]}>{t('quote.acceptedQuotationsSub')}</Text>
-      {!quotations.length ? (
+    <Panel title={t('quote.assignBuilder')}>
+      {project.contractor_id ? (
+        <>
+          <View style={styles.assignedBox}>
+            <Text style={[styles.text23, { fontSize: 13 }]}>
+              {`${t('award.builder')}: `}
+              <Text style={styles.text6}>{td(assignedBuilderName) || t('dash.common.notSet')}</Text>
+            </Text>
+            <View style={[styles.view35, { gap: 8, alignItems: 'center' }]}>
+              <View style={[styles.view36, { gap: 5 }]}>
+                <View style={styles.view32} />
+                <Text style={[styles.text21, { fontSize: 11.5 }]}>{t('quote.builderAssigned')}</Text>
+              </View>
+              {canUnassign ? (
+                <SmallButton
+                  label={t('quote.unassign')}
+                  look="danger"
+                  disabled={Boolean(unassignBlocked) || unassignBusy}
+                  onPress={() => { setUnassignError(''); setUnassignOpen(true) }}
+                />
+              ) : null}
+            </View>
+          </View>
+          {canUnassign && unassignBlocked ? (
+            <Text style={[styles.text26, { fontSize: 12 }]}>{unassignBlockedText}</Text>
+          ) : null}
+          <FormNotice message={unassignError} tone="error" style={{ marginTop: 8 }} />
+        </>
+      ) : builderChoices.length === 0 ? (
         <Text style={[styles.text23, { fontSize: 12.5 }]}>{t('quote.noneYet')}</Text>
       ) : (
-        <View style={{ gap: 8 }}>
-          {quotations.map((quotation) => {
-            const isAssigned = String(project.contractor_id) === String(builderIdOnRequest(quotation))
-            const isLive = liveNegotiation?.request_id === quotation.id
-            return (
-              <View key={quotation.id} style={styles.view34}>
-                <Text style={[styles.text6, { fontSize: 14 }]} numberOfLines={1}>{td(quotation.sender_name)}</Text>
-                <Text style={[styles.text23, { fontSize: 12 }]}>
-                  {`${t('dash.common.quotation')}: `}
-                  <Text style={styles.text6}>{money(quotation.quotation_amount, country)}</Text>
-                </Text>
-                {isLive && liveNegotiation.agreed_offer_id ? (
-                  <Text style={[styles.text23, { fontSize: 12 }]}>
-                    {`${t('award.agreedQuotation')}: `}
-                    <Text style={styles.text6}>{money(liveNegotiation.agreed_amount, country)}</Text>
-                  </Text>
-                ) : null}
-
-                <View style={[styles.view35, { gap: 8 }]}>
-                  {isAssigned ? (
-                    <View style={[styles.view36, { gap: 5 }]}>
-                      <View style={styles.view32} />
-                      <Text style={[styles.text21, { fontSize: 11.5 }]}>{t('quote.assigned')}</Text>
-                    </View>
-                  ) : declinedRequestIds.includes(quotation.id) ? (
-                    <View style={styles.view37}>
-                      <Text style={[styles.text24, { fontSize: 11.5 }]}>{t('award.declinedNotEligible')}</Text>
-                    </View>
-                  ) : isLive ? (
-                    // Negotiating, not assigned. Assign is offered only when the server allows it.
-                    <>
-                      <View style={styles.view38}>
-                        <Text style={[styles.text25, { fontSize: 11.5 }]}>
-                          {t(liveNegotiation.phase === 'quotation_agreed' ? 'request.flow.readyToAssign' : 'quote.inNegotiation')}
-                        </Text>
-                      </View>
-                      {(liveNegotiation.actions || []).includes('assign') ? (
-                        <SmallButton
-                          label={t('quote.assignProject')}
-                          disabled={project.started === true || assigningRequestId === quotation.id}
-                          onPress={() => setAssignTarget({
-                            quotation,
-                            amount: liveNegotiation.agreed_amount,
-                            amountLabel: liveNegotiation.agreed_offer_id ? 'award.agreedQuotation' : 'request.flow.builderQuotation',
-                          })}
-                        />
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <SmallButton
-                        label={t('quote.negotiate')}
-                        look="outline"
-                        disabled={blocked || assigningRequestId === quotation.id}
-                        onPress={() => setNegotiating(quotation)}
-                        style={{ flex: 1 }}
-                      />
-                      <SmallButton
-                        label={t('quote.assignProject')}
-                        disabled={blocked || assigningRequestId === quotation.id}
-                        onPress={() => setAssignTarget({ quotation, amount: quotation.quotation_amount, amountLabel: 'request.flow.builderQuotation' })}
-                        style={{ flex: 1 }}
-                      />
-                    </>
-                  )}
-                </View>
-              </View>
-            )
-          })}
-        </View>
+        <>
+          {/* The planned start date has arrived but no work is recorded:
+              assigning is still allowed, with this warning. */}
+          {!workStarted && ['today', 'passed'].includes(project.planned_start_notice) ? (
+            <FormNotice
+              message={t(project.planned_start_notice === 'today' ? 'quote.plannedStartToday' : 'quote.plannedStartPassed')}
+              tone="warning"
+              style={{ marginBottom: 10 }}
+            />
+          ) : null}
+          <SelectField
+            value={selectedChoice ? String(selectedChoice.quotation.id) : ''}
+            onChange={setSelectedQuotationId}
+            placeholder={t('site.contact.f.select')}
+            disabled={assignBusy || workStarted}
+            options={builderChoices.map(({ quotation, disabled, noteKey }) => ({
+              value: String(quotation.id),
+              label: `${td(quotation.sender_name)}${noteKey ? ` (${t(noteKey)})` : ''}`,
+              disabled,
+            }))}
+            containerStyle={{ marginBottom: 10 }}
+          />
+          <SmallButton
+            label={actionLabel(selectedChoice)}
+            disabled={!selectedChoice || assignBusy || workStarted || assigningRequestId != null}
+            onPress={() => setAssignTarget(selectedChoice)}
+          />
+          {liveNegotiation?.status === 'awaiting_builder' ? (
+            <FormNotice
+              message={`${td(liveNegotiation.builder_name)}: ${t('quote.waitingConfirmation')}`}
+              tone="warning"
+              style={{ marginTop: 10 }}
+            />
+          ) : null}
+          {liveNegotiation && builderChoices.some(({ quotation }) => quotation.id !== liveNegotiation.request_id) ? (
+            <Text style={[styles.text26, { fontSize: 12 }]}>
+              {t('quote.negotiationActive', { name: td(liveNegotiation.builder_name) })}
+            </Text>
+          ) : null}
+        </>
       )}
-      {liveNegotiation && quotations.some((quotation) => quotation.id !== liveNegotiation.request_id) ? (
-        <Text style={[styles.text26, { fontSize: 12 }]}>
-          {t('quote.negotiationActive', { name: td(liveNegotiation.builder_name) })}
-        </Text>
-      ) : null}
       <FormNotice message={assignMessage} tone="error" style={{ marginTop: 10 }} />
 
+      {/* Request confirmation / Assign — the existing /project-requests/assign, confirmed first. */}
       <Dialog
         visible={Boolean(assignTarget)}
         busy={assignBusy}
         onClose={() => setAssignTarget(null)}
-        title={t('quote.assignBuilder')}
+        title={actionLabel(assignTarget)}
         footer={(
           <>
             <DialogButton look="secondary" label={t('award.dialog.back')} onPress={() => setAssignTarget(null)} disabled={assignBusy} />
             <DialogButton
-              label={t('quote.assignProject')}
+              label={actionLabel(assignTarget)}
               disabled={assignBusy}
               onPress={async () => {
+                if (assignBusy) return
                 setAssignBusy(true)
                 try {
                   await assignBuilder(assignTarget.quotation.id)
                 } finally {
                   setAssignBusy(false)
                   setAssignTarget(null)
+                  setSelectedQuotationId('')
                   setPanelVersion((version) => version + 1)
                 }
               }}
@@ -833,30 +851,57 @@ export function AssignBuilderSection({ project, hiring }) {
             <View style={styles.view4}>
               <DialogRow label={t('award.builder')} value={td(assignTarget.quotation.sender_name)} />
               <DialogRow label={t('award.project')} value={td(project.title)} />
-              <DialogRow label={t(assignTarget.amountLabel)} value={money(assignTarget.amount, country)} strong />
             </View>
-            <Text style={[styles.text27, { fontSize: 13, lineHeight: 19 }]}>
-              {t('award.dialog.assignBody', { name: td(assignTarget.quotation.sender_name), amount: money(assignTarget.amount, country) })}
-            </Text>
+            {assignTarget.mode === 'request' ? (
+              <Text style={[styles.text27, { fontSize: 13, lineHeight: 19 }]}>
+                {t('quote.requestConfirmationBody', { name: td(assignTarget.quotation.sender_name) })}
+              </Text>
+            ) : null}
           </>
         ) : null}
       </Dialog>
 
-      <NegotiateDialog
-        visible={Boolean(negotiating)}
-        quotation={negotiating?.quotation_amount}
-        builderName={negotiating?.sender_name}
-        budget={project.original_budget ?? project.budget}
-        country={country}
-        onSubmit={async (amount, note) => {
-          try {
-            await negotiateBuilder(negotiating.id, amount, note)
-          } finally {
-            setPanelVersion((version) => version + 1)
-          }
-        }}
-        onClose={() => setNegotiating(null)}
-      />
+      <Dialog
+        visible={unassignOpen && Boolean(currentAward)}
+        busy={unassignBusy}
+        onClose={() => setUnassignOpen(false)}
+        title={t('quote.unassignTitle')}
+        footer={(
+          <>
+            <DialogButton look="secondary" label={t('award.dialog.back')} onPress={() => setUnassignOpen(false)} disabled={unassignBusy} />
+            <DialogButton
+              label={t('quote.unassign')}
+              look="danger"
+              disabled={unassignBusy}
+              onPress={async () => {
+                if (unassignBusy) return
+                setUnassignBusy(true)
+                setUnassignError('')
+                try {
+                  await cancelAward(currentAward.id)
+                } catch (error) {
+                  const detail = error?.response?.data?.detail
+                  setUnassignError(typeof detail === 'string' ? detail : detail?.message || t('quote.unassignFailed'))
+                } finally {
+                  setUnassignBusy(false)
+                  setUnassignOpen(false)
+                  // Either way, show the project as it now stands.
+                  await refreshAll?.()
+                  setPanelVersion((version) => version + 1)
+                }
+              }}
+            />
+          </>
+        )}
+      >
+        <View style={styles.view4}>
+          <DialogRow label={t('award.builder')} value={td(assignedBuilderName)} />
+          <DialogRow label={t('award.project')} value={td(project.title)} />
+        </View>
+        <Text style={[styles.text27, { fontSize: 13, lineHeight: 19 }]}>
+          {t('quote.unassignBody', { name: td(assignedBuilderName) })}
+        </Text>
+      </Dialog>
     </Panel>
   )
 }
@@ -879,6 +924,7 @@ const styles = createStyles((c) => ({
   text4: { marginTop: 1.75, fontFamily: 'Inter_700Bold', color: c.text },
   text5: { fontFamily: 'Inter_400Regular', color: c.textFaint },
   text6: { fontFamily: 'Inter_700Bold', color: c.text },
+  assignedBox: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, padding: 10.5 },
   view4: { marginTop: 10.5 },
   view5: { borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10.5 },
   view6: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -929,19 +975,11 @@ const styles = createStyles((c) => ({
   view29: { marginTop: -3.5, marginBottom: 7, flexDirection: 'row', alignItems: 'center' },
   text20: { marginBottom: 7, fontFamily: 'Inter_400Regular', color: c.textMuted },
   view30: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  view31: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, borderWidth: 1, borderColor: c.emeraldBorderSoft, backgroundColor: c.emeraldSoft, paddingHorizontal: 8.75, paddingVertical: 3.5 },
   view32: { height: 5.25, width: 5.25, borderRadius: 9999, backgroundColor: '#10b981' },
   text21: { fontFamily: 'Inter_700Bold', color: c.emeraldText },
-  view33: { borderRadius: 9999, backgroundColor: c.muted, paddingHorizontal: 8.75, paddingVertical: 3.5 },
-  text22: { fontFamily: 'Inter_700Bold', color: c.textMuted },
   text23: { fontFamily: 'Inter_400Regular', color: c.textMuted },
-  view34: { borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, padding: 10.5 },
   view35: { marginTop: 8.75, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   view36: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, borderWidth: 1, borderColor: c.emeraldBorderSoft, backgroundColor: c.emeraldSoft, paddingHorizontal: 10.5, paddingVertical: 5.25 },
-  view37: { borderRadius: 9999, borderWidth: 1, borderColor: c.redBorderSoft, backgroundColor: c.redSoft, paddingHorizontal: 10.5, paddingVertical: 5.25 },
-  text24: { fontFamily: 'Inter_700Bold', color: c.redText },
-  view38: { borderRadius: 9999, borderWidth: 1, borderColor: c.skyBorder, backgroundColor: c.skySoft, paddingHorizontal: 10.5, paddingVertical: 5.25 },
-  text25: { fontFamily: 'Inter_700Bold', color: c.skyTextStrong },
   text26: { marginTop: 10.5, fontFamily: 'Inter_600SemiBold', color: c.textMuted },
   text27: { marginTop: 10.5, fontFamily: 'Inter_400Regular', color: c.textMuted },
 }))

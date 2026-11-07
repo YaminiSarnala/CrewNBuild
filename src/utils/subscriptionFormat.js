@@ -61,12 +61,21 @@ function offer(id, fields) {
   return value
 }
 
-// The two paid builder offers, mapped onto the existing API identifiers.
+// The three paid builder offers, mapped onto the existing API identifiers (web
+// subscriptionOffers.js). Plus is the Premium (BUSINESS) tier billed monthly; the
+// server prices each (plan_code, duration_code) and grants plan_code's features.
 // name / access / audience read the active language (keys subscription.offer.<id>.*).
 export const OFFERS = [
   offer('PRO_MONTHLY', { planCode: 'PROFESSIONAL', durationCode: 'MONTHLY', months: 1, badge: 'PRO' }),
+  offer('PREMIUM_MONTHLY', { planCode: 'BUSINESS', durationCode: 'MONTHLY', months: 1, badge: 'PREMIUM' }),
   offer('PREMIUM_ANNUAL', { planCode: 'BUSINESS', durationCode: 'ANNUAL', months: 12, badge: 'PREMIUM' }),
 ]
+
+export const offerById = (id) => OFFERS.find((item) => item.id === id) || null
+
+// The mark each plan card shows: PRO on Pro, PLUS on Plus, PREMIUM on Premium,
+// none on Free. Card display only; a subscriber's badge is still the server's.
+export const CARD_BADGES = { PRO_MONTHLY: 'PRO', PREMIUM_MONTHLY: 'PLUS', PREMIUM_ANNUAL: 'PREMIUM' }
 
 const FEATURE_ORDER = ['builder_calendar', 'builder_photos', 'builder_billing', 'bill_adjustments', 'portfolio_dashboard', 'project_summary_export', 'advanced_cost_summary', 'consolidated_export']
 
@@ -124,14 +133,51 @@ export function offerFeatureLines(catalogue, offer, t) {
   return offerFeatureKeys(catalogue, offer).map((key) => translateKey(key))
 }
 
-/** Premium Annual against twelve Professional Pro monthly payments. */
+/** Premium Annual against twelve Premium (Plus) monthly payments, from the server's prices. */
 export function annualSaving(catalogue) {
-  const monthly = offerPrice(catalogue, OFFERS[0])
-  const annual = offerPrice(catalogue, OFFERS[1])
+  const monthly = offerPrice(catalogue, offerById('PREMIUM_MONTHLY'))
+  const annual = offerPrice(catalogue, offerById('PREMIUM_ANNUAL'))
   if (!monthly || !annual) return null
   const full = monthly * 12
   const saving = full - annual
   return saving > 0 ? { saving, full, percent: Math.round((saving * 100) / full) } : null
+}
+
+/**
+ * The limit lines a plan shows, from the server's plan `limits` (null =
+ * unlimited) and its features: locations, leads per location, live-camera
+ * quality and the calendar rule. Each is { key, values } for `t` (web planLimitLines).
+ */
+export function planLimitLines(catalogue, planCode) {
+  const plan = (catalogue?.plans || []).find((item) => item.code === planCode)
+  if (!plan) return []
+  const limits = plan.limits || {}
+  const lines = []
+  if ('max_locations' in limits) {
+    lines.push(limits.max_locations === null
+      ? { key: 'subscription.limit.locationsUnlimited', values: {} }
+      : limits.max_locations === 1
+        ? { key: 'subscription.limit.locationsOne', values: {} }
+        : { key: 'subscription.limit.locations', values: { count: limits.max_locations } })
+  }
+  if ('max_leads_per_location' in limits) {
+    lines.push(limits.max_leads_per_location === null
+      ? { key: 'subscription.limit.leadsUnlimited', values: {} }
+      : { key: 'subscription.limit.leads', values: { count: limits.max_leads_per_location } })
+  }
+  lines.push({ key: (plan.features || []).includes('hd_video') ? 'subscription.limit.hdVideo' : 'subscription.limit.sdOnly', values: {} })
+  lines.push({ key: 'subscription.limit.noCalendarEditing', values: {} })
+  return lines
+}
+
+/** What each plan card lists: locations, leads per location and camera quality. */
+export function planCardLines(catalogue, planCode) {
+  return planLimitLines(catalogue, planCode).filter((line) => line.key !== 'subscription.limit.noCalendarEditing')
+}
+
+/** A paid card's lines: exactly its plan's limit lines, like the Free card. */
+export function offerCardLines(catalogue, offer) {
+  return offerPlan(catalogue, offer) ? planCardLines(catalogue, offer.planCode) : []
 }
 
 /** The server's coupon figures for this offer, or null. */
@@ -155,6 +201,17 @@ export function formatRupees(paise) {
 /** The badge shows only for a plan the server says is in force and premium. */
 export function isPremium(status) {
   return Boolean(status && status.is_premium && IN_FORCE.includes(status.status))
+}
+
+/**
+ * The signed-in builder's own mark (web activeBadge): the offer in force mapped
+ * through CARD_BADGES, so Plus shows PLUS although the server's tier badge
+ * (shared by Plus and Premium) is PREMIUM. Null when no plan is in force.
+ */
+export function activeBadge(status) {
+  if (!isPremium(status) || !status.badge) return null
+  const found = findOffer(status.plan_code, status.current_period?.duration_code)
+  return found ? CARD_BADGES[found.id] : status.badge
 }
 
 export function hasFeature(status, feature) {

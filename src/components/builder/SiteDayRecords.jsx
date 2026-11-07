@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, Pressable, ScrollView, Modal } from 'react-native'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
-import { ChevronLeft, ChevronRight, ClipboardList, X, CirclePlay } from 'lucide-react-native'
+import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, X, CirclePlay } from 'lucide-react-native'
 import { fetchCostToolSummary } from '../../api/costTool'
 import { fetchProjectTimelineEntries } from '../../api/projects'
 import {
@@ -26,9 +26,9 @@ import { fetchCostAdjustments, saveCostAdjustment } from '../../api/subscription
 import { imageUrl } from '../../api/client'
 import useBuilderSubscription from '../../hooks/useBuilderSubscription'
 import { formatMoney } from '../../utils/countryConfig'
-import { formatDisplayDate, todayCalendarDate, isCalendarDate, apiErrorText } from '../../utils/builderHelpers'
+import { formatDisplayDate, todayCalendarDate, apiErrorText } from '../../utils/builderHelpers'
 import { formatPlanDate, hasFeature, lockedReason, subscriptionErrorMessage } from '../../utils/subscriptionFormat'
-import { ActionButton, InfoRow, LabeledInput, LockedFeature, Notice, SegmentTabs, Badge } from './BuilderUi'
+import { ActionButton, LabeledInput, LockedFeature, Notice, SegmentTabs, Badge } from './BuilderUi'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
@@ -49,10 +49,55 @@ const covers = (request, day) => {
   return Boolean(day && start && day >= start && (!end || day <= end))
 }
 
-function shiftDate(value, days) {
-  const [y, m, d] = String(value).split('-').map(Number)
-  const date = new Date(y, m - 1, d + days)
-  return todayCalendarDate(date)
+// Calendar rules from web SiteEngineerDashboard: a cell is coloured by what the
+// day holds (any video orange, photos blue, record text purple, today with
+// nothing yet green); Sundays, future days and empty past days can't be opened.
+const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const CELL_TONES = { open: ['#CFEBDD', '#03572E'], video: ['#F6EADB', '#F58A00'], photo: ['#E7F0FD', '#1683E8'], text: ['#F3E8FD', '#9146D8'] }
+const CONTENT_LABEL_KEYS = {
+  '100': 'se.cal.text', '110': 'se.cal.textPhoto', '101': 'se.cal.textVideo', '111': 'se.cal.textMedia',
+  '010': 'se.cal.photo', '001': 'se.cal.video', '011': 'se.cal.photoVideo',
+}
+const MEDIA_CAPTION = /Site Media:[^.]*\.?/gi
+const hasEnteredText = (row) => Boolean(row && [row.work_type, row.progress_note, row.inspection_remarks, row.material_used, row.equipment_used]
+  .some((value) => String(value || '').replace(MEDIA_CAPTION, '').trim()))
+const formatQty = (value) => { const number = Number(value || 0); return Number.isInteger(number) ? String(number) : String(Number(number.toFixed(2))) }
+const statusLabelKey = (status) => (
+  { OPEN: 'ui.status.open', IN_PROGRESS: 'ui.status.inProgress', CLOSED: 'ui.status.closed', COMPLETED: 'ui.status.closed' }[status] || 'ui.status.open'
+)
+
+// The date's working day from the project start, Sundays excluded (web workingDayNumber).
+function workingDayNumber(startDate, date) {
+  if (!startDate || !date || date < dateKey(startDate)) return null
+  const [y, m, d] = dateKey(startDate).split('-').map(Number)
+  const cursor = new Date(y, m - 1, d)
+  let count = 0
+  while (todayCalendarDate(cursor) <= date) {
+    if (cursor.getDay() !== 0) count += 1
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return count || null
+}
+
+function monthCells(month) {
+  const year = month.getFullYear()
+  const value = month.getMonth()
+  const cells = []
+  for (let blank = 0; blank < new Date(year, value, 1).getDay(); blank += 1) cells.push(null)
+  for (let day = 1; day <= new Date(year, value + 1, 0).getDate(); day += 1) cells.push(new Date(year, value, day))
+  return cells
+}
+
+/** One read-only field of the day's record, laid out like the web's disabled inputs. */
+function ReadField({ label, value, wide }) {
+  const { t } = useLanguage()
+  const empty = value === null || value === undefined || value === ''
+  return (
+    <View style={[styles.field, wide ? styles.fieldWide : null]}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={[styles.fieldValue, empty ? styles.fieldEmpty : null]}>{empty ? t('dash.common.notSet') : String(value)}</Text>
+    </View>
+  )
 }
 
 /** The builder's audited corrections for one closed daily record. */
@@ -164,7 +209,9 @@ export default function SiteDayRecords({ project, onViewPlans }) {
   const projectId = project?.id
   const country = project?.project_country
   const money = (value) => formatMoney(value, country)
-  const [workDate, setWorkDate] = useState(todayCalendarDate())
+  // Nothing is open until a calendar date is tapped, as on the web.
+  const [workDate, setWorkDate] = useState('')
+  const [month, setMonth] = useState(() => new Date())
   const [day, setDay] = useState(null)
   const [all, setAll] = useState(null)
   const [timeline, setTimeline] = useState([])
@@ -178,14 +225,14 @@ export default function SiteDayRecords({ project, onViewPlans }) {
   const seq = useRef(0)
 
   const refresh = useCallback(async () => {
-    if (!projectId || !isCalendarDate(workDate)) return
+    if (!projectId) return
     const call = ++seq.current
     setLoading(true)
     setError('')
     setLocked(null)
     try {
       const [daySummary, allSummary, entries] = await Promise.all([
-        fetchCostToolSummary(projectId, workDate),
+        workDate ? fetchCostToolSummary(projectId, workDate) : Promise.resolve(null),
         fetchCostToolSummary(projectId),
         fetchProjectTimelineEntries(projectId),
       ])
@@ -239,78 +286,290 @@ export default function SiteDayRecords({ project, onViewPlans }) {
   }, [dayLabour, dayRentals])
 
   const register = day?.registers?.[0] || null
-  const recordedDates = useMemo(
-    () => (all?.registers || []).map((row) => dateKey(row.work_date)).filter(Boolean).sort().reverse(),
+  const recordsByDate = useMemo(
+    () => Object.fromEntries((all?.registers || []).map((row) => [dateKey(row.work_date), row])),
     [all],
   )
+  const photosByDate = useMemo(() => {
+    const grouped = {}
+    timeline.forEach((entry) => {
+      const key = dateKey(entry.date || entry.work_date)
+      const count = (entry.images || []).filter((item) => item.media_type !== 'video').length
+      if (key && count) grouped[key] = (grouped[key] || 0) + count
+    })
+    return grouped
+  }, [timeline])
+  const videosByDate = useMemo(() => {
+    const grouped = {}
+    timeline.forEach((entry) => {
+      const key = dateKey(entry.date || entry.work_date)
+      const count = (entry.images || []).filter((item) => item.media_type === 'video').length
+      if (key && count) grouped[key] = (grouped[key] || 0) + count
+    })
+    return grouped
+  }, [timeline])
+  const cells = useMemo(() => monthCells(month), [month])
+  const workflow = all?.workflow || day?.workflow || {}
+  const todayKey = workflow.local_date || todayCalendarDate()
+  const recordDates = Object.keys(recordsByDate).sort()
+  const dayNumber = project?.start_date
+    ? workingDayNumber(project.start_date, workDate)
+    : recordDates.includes(workDate) ? recordDates.indexOf(workDate) + 1 : null
+  const dayStatus = register?.status || (workDate === todayKey ? 'OPEN' : 'CLOSED')
   const media = useMemo(() => timeline
     .filter((entry) => dateKey(entry.date || entry.work_date) === workDate)
     .flatMap((entry) => entry.images || []), [timeline, workDate])
+  const sameDayEntry = timeline.find((entry) => dateKey(entry.date) === workDate && entry.title !== 'Material Request')
+    || timeline.find((entry) => dateKey(entry.date) === workDate)
+  const dash = day?.dashboard || {}
+  const form = register ? {
+    work_title: register.work_type || '',
+    activity_category: register.activity_category || '',
+    boq_reference: register.boq_reference || '',
+    activity_unit: register.activity_unit || '',
+    planned_quantity: register.planned_quantity ?? '',
+    completed_quantity: register.completed_quantity ?? '',
+    detailed_remarks: register.progress_note || '',
+    labour_worker_count: Number(register.labour_worker_count || dash.total_workers || 0),
+    labour_cost: Number(register.labour_cost || dash.labour_cost || 0),
+    material_cost: Number(register.material_cost || dash.material_cost || 0),
+    equipment_cost: Number(register.equipment_cost || dash.machinery_cost || 0),
+    total_expenses: Number(register.total_expenses || dash.expenses || 0),
+    material_used: register.material_used || (day?.material_usages || []).map((item) => `${item.material} ${item.quantity_used} ${item.unit}`).join(', '),
+    equipment_used: register.equipment_used || (day?.machinery_usages || []).map((item) => `${item.machine} ${item.hours} hours`).join(', '),
+    inspection_remarks: register.inspection_remarks || sameDayEntry?.description || '',
+  } : {}
+  const materials = ((day?.materials?.length ? day.materials : all?.materials) || []).map((item) => {
+    const available = Number(item.available ?? item.remaining ?? 0) || 0
+    const usedToday = Number(item.used_today ?? 0) || 0
+    return { ...item, available, usedToday, remaining: available - usedToday }
+  })
+  // Remaining / progress for the day's BOQ item (web activitySummary).
+  const activitySummary = (() => {
+    const planned = Number(form.planned_quantity)
+    const saved = register?.boq_activity
+    const reference = String(form.boq_reference || '').trim()
+    const priorDays = reference && saved?.boq_reference === reference
+      ? Math.max(0, (Number(saved?.completed_to_date ?? 0) || 0) - (Number(saved?.completed_today ?? 0) || 0)) : 0
+    const completedToDate = priorDays + (Number(form.completed_quantity) || 0)
+    if (!Number.isFinite(planned) || planned <= 0) return { planned: null, completedToDate, remaining: null, percent: null }
+    return { planned, completedToDate, remaining: Math.max(0, planned - completedToDate), percent: Math.min(100, Math.round((completedToDate / planned) * 100)) }
+  })()
+  const materialCostFromUsage = materials.reduce((sum, item) => sum + item.usedToday * (Number(item.rate ?? 0) || 0), 0)
+  const materialCost = Number(form.material_cost || 0) > 0 ? Number(form.material_cost) : materialCostFromUsage
+  const grandTotal = Number(form.labour_cost || 0) + materialCost + Number(form.equipment_cost || 0) + Number(form.total_expenses || 0)
   const photos = media.filter((item) => item.media_type !== 'video')
   const videos = media.filter((item) => item.media_type === 'video')
   const dayNotes = timeline.filter((entry) => dateKey(entry.date || entry.work_date) === workDate && (entry.description || entry.title))
 
   return (
     <View>
-      {/* Date picker: step a day, or jump to a recorded date */}
-      <View style={styles.view9}>
-        <Pressable onPress={() => setWorkDate((value) => shiftDate(value, -1))} accessibilityLabel={t('mobile.projects.day.previous')} style={styles.pressable}>
-          <ChevronLeft size={18} color={COLORS.brand[700]} />
-        </Pressable>
-        <View style={styles.view10}>
-          <Text style={styles.text12}>{formatDisplayDate(workDate, undefined, t)}</Text>
-          {workDate === todayCalendarDate() ? <Text style={styles.text13}>{t('se.cal.today')}</Text> : null}
+      {/* Month calendar (web SiteEngineerDashboard) — tap a date to open its record below */}
+      <View style={styles.calendar}>
+        <View style={styles.calendarHead}>
+          <View style={styles.view9}>
+            <CalendarDays size={15} color="#03572E" />
+            <Text style={styles.monthTitle}>{`${t(`se.month.${month.getMonth()}`)} ${month.getFullYear()}`}</Text>
+          </View>
+          <View style={styles.view9}>
+            <Pressable onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} accessibilityLabel={t('mobile.projects.day.previous')} style={styles.monthButton}>
+              <ChevronLeft size={15} color={COLORS.graphite} />
+            </Pressable>
+            <Pressable onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} accessibilityLabel={t('mobile.projects.day.next')} style={styles.monthButton}>
+              <ChevronRight size={15} color={COLORS.graphite} />
+            </Pressable>
+          </View>
         </View>
-        <Pressable
-          onPress={() => setWorkDate((value) => (value >= todayCalendarDate() ? value : shiftDate(value, 1)))}
-          accessibilityLabel={t('mobile.projects.day.next')}
-          style={styles.pressable}
-        >
-          <ChevronRight size={18} color={COLORS.brand[700]} />
-        </Pressable>
+        <View style={styles.row}>
+          {WEEKDAYS.map((weekday) => <Text key={weekday} style={styles.weekday}>{t(`se.weekday.${weekday}`)}</Text>)}
+        </View>
+        <View style={styles.grid}>
+          {cells.map((date, index) => {
+            if (!date) return <View key={`blank-${index}`} style={styles.cellSlot} />
+            const key = todayCalendarDate(date)
+            const row = recordsByDate[key]
+            const hasPhotos = (photosByDate[key] || 0) > 0
+            const hasVideo = (videosByDate[key] || 0) > 0
+            const hasMedia = hasPhotos || hasVideo
+            const hasText = hasEnteredText(row)
+            const isSunday = date.getDay() === 0
+            const future = key > todayKey
+            const closed = key < todayKey || ['CLOSED', 'COMPLETED'].includes(row?.status)
+            const isClosed = isSunday || (closed && !hasText && !hasMedia)
+            const isOpen = key === todayKey && !isSunday && !hasText && !hasMedia
+            const tone = isOpen ? CELL_TONES.open : hasVideo ? CELL_TONES.video : hasPhotos ? CELL_TONES.photo : hasText ? CELL_TONES.text : null
+            const contentKey = CONTENT_LABEL_KEYS[`${hasText ? 1 : 0}${hasPhotos ? 1 : 0}${hasVideo ? 1 : 0}`]
+            const label = isOpen ? t('ui.status.open') : contentKey ? t(contentKey) : ''
+            const empty = key < todayKey && !row && !hasMedia
+            const selected = key === workDate
+            return (
+              <View key={key} style={styles.cellSlot}>
+                <Pressable
+                  onPress={() => setWorkDate(key)}
+                  disabled={future || isSunday || empty}
+                  style={[styles.cell, selected ? styles.cellSelected : null, future || isSunday ? styles.cellDisabled : null]}
+                >
+                  <Text style={styles.cellDate}>{date.getDate()}</Text>
+                  {tone ? (
+                    <View style={styles.cellTag}>
+                      <View style={[styles.cellDot, { backgroundColor: tone[1] }]} />
+                      <Text style={[styles.cellLabel, { color: tone[1] }]} numberOfLines={2}>{label}</Text>
+                    </View>
+                  ) : isClosed ? (
+                    <Text style={[styles.cellLabel, { color: '#8B929D' }]} numberOfLines={1}>{t('ui.status.closed')}</Text>
+                  ) : null}
+                </Pressable>
+              </View>
+            )
+          })}
+        </View>
+        <View style={styles.legend}>
+          {[['#F9F9F9', '#8B929D', t('se.cal.closed')], ['#F3E8FD', '#9146D8', t('se.cal.text')], ['#E7F0FD', '#1683E8', t('se.cal.photo')], ['#F6EADB', '#F58A00', t('se.cal.video')], ['#CFEBDD', '#03572E', t('ui.status.open')]].map(([box, ink, text]) => (
+            <View key={text} style={styles.legendItem}>
+              <View style={[styles.legendSwatch, { backgroundColor: box }]} />
+              <Text style={[styles.legendText, { color: ink }]}>{text}</Text>
+            </View>
+          ))}
+        </View>
       </View>
-      {recordedDates.length ? (
-        <View style={styles.view6}>
-          <Text style={styles.text14}>{t('subscription.portfolio.recordedDays')}</Text>
-          <SegmentTabs dense tabs={recordedDates.slice(0, 30).map((date) => ({ id: date, label: formatDisplayDate(date, undefined, t) }))} active={workDate} onChange={setWorkDate} />
-        </View>
-      ) : null}
+
+      {!workDate ? <Text style={[styles.text18, styles.view7]}>{t('se.clickAvailableDate')}</Text> : null}
 
       <View style={styles.view7}>
         {locked ? <LockedFeature reason={locked} onViewPlans={onViewPlans} /> : null}
         {error ? <Notice tone="error" text={error} /> : null}
-        {loading && !day ? <Text style={styles.text15}>{t('se.form.loadingDay')}</Text> : null}
+        {workDate && loading && !day ? <Text style={styles.text15}>{t('se.form.loadingDay')}</Text> : null}
 
-        {!locked && !error && day ? (
-          register ? (
-            <View style={styles.view11}>
-              <View style={styles.view12}>
-                <Text style={styles.text16} numberOfLines={2}>{register.work_type || t('se.dailySiteRecord')}</Text>
-                <Badge label={register.status === 'CLOSED' || register.status === 'COMPLETED' ? t('se.cal.closed') : register.status === 'IN_PROGRESS' ? t('ui.status.inProgress') : (register.status || t('ui.status.open'))} />
+        {/* The day's record opens for any selected date, filled from the
+            register where one exists — web SiteEngineerDashboard, read-only. */}
+        {workDate && !locked && !error && day ? (
+          <View style={styles.view11}>
+            <View style={styles.view12}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.text16} numberOfLines={2}>{`${t('se.project')}: ${project?.project_title || project?.title || ''}`}</Text>
+                <Text style={styles.text17}>
+                  {dayNumber ? `${t('se.day')} ${dayNumber} · ` : ''}{formatDisplayDate(workDate, undefined, t)}
+                  {register?.created_by_name ? ` · ${t('se.siteEngineer')}: ${register.created_by_name}` : ''}
+                </Text>
               </View>
-              {register.activity_category || register.boq_reference ? (
-                <InfoRow label={t('se.form.boqTitle')} value={[register.activity_category, register.boq_reference].filter(Boolean).join(' · ')} />
-              ) : null}
-              {register.planned_quantity != null || register.completed_quantity != null ? (
-                <InfoRow label={t('dash.common.quantity')} value={`${register.completed_quantity ?? 0} / ${register.planned_quantity ?? 0} ${register.activity_unit || ''}`} />
-              ) : null}
-              <InfoRow label={t('se.glance.workers')} value={register.labour_worker_count ?? day.dashboard?.total_workers ?? 0} />
-              {COST_FIELDS.map(([key, labelKey]) => <InfoRow key={key} label={t(labelKey)} value={money(register[key])} />)}
-              {register.material_used ? <InfoRow label={t('se.glance.materials')} value={register.material_used} /> : null}
-              {register.equipment_used ? <InfoRow label={t('se.form.equipmentUsed')} value={register.equipment_used} /> : null}
-              {register.progress_note ? <InfoRow label={t('se.detailedRemarks')} value={register.progress_note} /> : null}
-              {register.inspection_remarks ? <InfoRow label={t('se.inspectionRemarks')} value={register.inspection_remarks} /> : null}
-              {register.created_by_name ? <Text style={styles.text17}>{t('mobile.projects.day.recordedBy', { name: register.created_by_name })}</Text> : null}
-              <BuilderCostAdjustments registerId={register.id} country={country} onViewPlans={onViewPlans} />
+              <Badge label={t(statusLabelKey(dayStatus))} />
             </View>
-          ) : (
-            <Text style={styles.text18}>
-              {t('mobile.projects.day.noRecord')}
-            </Text>
-          )
+            <View style={styles.fields}>
+              <ReadField wide label={t('se.workTitle')} value={form.work_title} />
+              <ReadField wide label={t('se.projectCompletion')} value={`${project?.completion_percentage ?? 0}%`} />
+              <ReadField label={t('se.activityCategory')} value={form.activity_category} />
+              <ReadField label={t('se.boqReference')} value={form.boq_reference} />
+              <ReadField label={t('se.plannedQuantity')} value={form.planned_quantity} />
+              <ReadField label={t('se.completedQuantity')} value={form.completed_quantity} />
+              <ReadField label={t('se.activityUnit')} value={form.activity_unit} />
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>{t('se.activityProgress')}</Text>
+                <View style={styles.progressRow}>
+                  <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${activitySummary.percent ?? 0}%` }]} /></View>
+                  <Text style={styles.fieldValue}>{activitySummary.percent === null ? '—' : `${activitySummary.percent}%`}</Text>
+                </View>
+              </View>
+              <ReadField
+                wide
+                label={t('se.remainingQuantity')}
+                value={activitySummary.remaining === null
+                  ? t('se.remainingNotSet')
+                  : t('se.remainingSummary', { done: formatQty(activitySummary.completedToDate), planned: formatQty(activitySummary.planned), remaining: formatQty(activitySummary.remaining), unit: form.activity_unit || '' })}
+              />
+              <ReadField wide label={t('se.detailedRemarks')} value={form.detailed_remarks} />
+              <ReadField label={t('se.labourWorkerCount')} value={form.labour_worker_count} />
+              <ReadField label={t('se.labourCost')} value={register ? money(form.labour_cost) : ''} />
+              <ReadField wide label={t('se.otherExpenses')} value={register ? money(form.total_expenses) : ''} />
+            </View>
+
+            {/* Materials used today */}
+            <View style={styles.box}>
+              <View style={styles.boxHead}>
+                <Text style={styles.boxTitle}>{t('se.materialsUsedToday')}</Text>
+                <Text style={styles.text17}>{dayNumber ? `${t('se.day')} ${dayNumber} · ` : ''}{formatDisplayDate(workDate, undefined, t)}</Text>
+              </View>
+              {materials.length ? materials.map((item, index) => (
+                <View key={item.material || index} style={styles.boxRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fieldValue}>{index + 1}. {item.material}</Text>
+                    <Text style={styles.text26}>
+                      {t('se.availableCol')}: {formatQty(item.available)} {item.unit || ''} · {t('se.remaining')}: {formatQty(item.remaining)} {item.unit || ''}
+                      {Number(item.rate ?? 0) > 0 ? ` · ${t('se.rate')}: ${money(item.rate)}/${item.unit || ''}` : ''}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.fieldValue}>{formatQty(item.usedToday)} {item.unit || ''}</Text>
+                    <Text style={styles.text26}>{money(item.usedToday * (Number(item.rate ?? 0) || 0))}</Text>
+                  </View>
+                </View>
+              )) : <Text style={[styles.text15, { paddingVertical: 10.5 }]}>{t('se.noMaterials')}</Text>}
+            </View>
+
+            <View style={styles.fields}>
+              <ReadField wide label={t('se.materialUsed')} value={form.material_used} />
+              <ReadField wide label={t('se.materialCost')} value={register ? money(materialCost) : ''} />
+              <ReadField wide label={t('se.equipmentUsed')} value={form.equipment_used} />
+              <ReadField wide label={t('se.equipmentCost')} value={register ? money(form.equipment_cost) : ''} />
+              <ReadField wide label={t('se.inspectionRemarks')} value={form.inspection_remarks} />
+            </View>
+
+              {photos.length ? (
+                <View style={styles.view7}>
+                  <Text style={styles.text21}>{t('se.sitePhotos')} ({photos.length})</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {photos.map((photo, index) => (
+                      <Pressable key={photo.id || photo.image_url || index} onPress={() => setViewer(photo)} style={styles.pressable2}>
+                        <Image source={{ uri: imageUrl(photo.image_url) }} style={{ width: 120, height: 96 }} contentFit="cover" />
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : <Text style={[styles.text18, styles.view7]}>{t('se.noSitePhotos')}</Text>}
+              {videos.length ? (
+                <View style={styles.view7}>
+                  <Text style={styles.text21}>{t('se.siteVideos')} ({videos.length})</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {videos.map((video, index) => (
+                      <Pressable
+                        key={video.id || video.image_url || index}
+                        onPress={() => setVideoViewer(video)}
+                        accessibilityLabel={t('mobile.projects.day.playVideo', { index: index + 1 })}
+                        style={styles.pressable3}
+                      >
+                        <CirclePlay size={30} color="#fff" />
+                        <Text style={styles.text22}>{t('mobile.projects.day.videoN', { index: index + 1 })}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : <Text style={[styles.text18, styles.view7]}>{t('se.noSiteVideos')}</Text>}
+
+            {/* Grand total */}
+            <View style={styles.box}>
+              <View style={styles.boxHead}><Text style={styles.boxTitle}>{t('se.grandTotal')}</Text></View>
+              {[
+                [t('se.labourCost'), Number(form.labour_cost || 0)],
+                [t('se.materialsUsedToday'), materialCost],
+                [t('se.equipmentCost'), Number(form.equipment_cost || 0)],
+                [t('se.otherExpenses'), Number(form.total_expenses || 0)],
+              ].map(([label, value]) => (
+                <View key={label} style={styles.boxRow}>
+                  <Text style={styles.fieldLabel}>{label}</Text>
+                  <Text style={styles.fieldValue}>{money(value)}</Text>
+                </View>
+              ))}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>{t('se.grandTotal')}</Text>
+                <Text style={styles.totalValue}>{money(grandTotal)}</Text>
+              </View>
+              <Text style={[styles.text26, { paddingHorizontal: 10.5, paddingBottom: 7 }]}>{t('se.grandTotalHint')}</Text>
+            </View>
+
+            {register ? <BuilderCostAdjustments registerId={register.id} country={country} onViewPlans={onViewPlans} /> : null}
+          </View>
         ) : null}
 
-        {dayNotes.length ? (
+        {workDate && dayNotes.length ? (
           <View style={styles.view7}>
             {dayNotes.map((entry, index) => (
               <View key={entry.id || index} style={styles.view13}>
@@ -321,38 +580,8 @@ export default function SiteDayRecords({ project, onViewPlans }) {
           </View>
         ) : null}
 
-        {photos.length ? (
-          <View style={styles.view7}>
-            <Text style={styles.text21}>{t('se.sitePhotos')} ({photos.length})</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {photos.map((photo, index) => (
-                <Pressable key={photo.id || photo.image_url || index} onPress={() => setViewer(photo)} style={styles.pressable2}>
-                  <Image source={{ uri: imageUrl(photo.image_url) }} style={{ width: 120, height: 96 }} contentFit="cover" />
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-        {videos.length ? (
-          <View style={styles.view7}>
-            <Text style={styles.text21}>{t('se.siteVideos')} ({videos.length})</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {videos.map((video, index) => (
-                <Pressable
-                  key={video.id || video.image_url || index}
-                  onPress={() => setVideoViewer(video)}
-                  accessibilityLabel={t('mobile.projects.day.playVideo', { index: index + 1 })}
-                  style={styles.pressable3}
-                >
-                  <CirclePlay size={30} color="#fff" />
-                  <Text style={styles.text22}>{t('mobile.projects.day.videoN', { index: index + 1 })}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
 
-        {dayLabour.length || dayRentals.length ? (
+        {workDate && (dayLabour.length || dayRentals.length) ? (
           <View style={styles.view14}>
             <Text style={styles.text23}>{t('mobile.projects.day.labourEquipment')}</Text>
             {dayLabour.map((request) => {
@@ -432,11 +661,6 @@ const styles = createStyles((c) => ({
   text10: { fontSize: 12, lineHeight: 16, color: c.textSecondary },
   text11: { fontSize: 10, color: c.textFaint },
   view9: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  pressable: { height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
-  view10: { flex: 1, alignItems: 'center' },
-  text12: { fontSize: 15, fontWeight: '800', color: c.text },
-  text13: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: c.brandText },
-  text14: { marginBottom: 3.5, fontSize: 11, fontWeight: '700', color: c.textMuted },
   text15: { paddingVertical: 14, textAlign: 'center', fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textFaint },
   view11: { borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10.5 },
   view12: { marginBottom: 3.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -456,5 +680,40 @@ const styles = createStyles((c) => ({
   text25: { fontSize: 11, color: c.textMuted },
   text26: { marginTop: 3.5, fontSize: 10, fontWeight: '600', color: c.textFaint },
   view15: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.9)' },
+  calendar: { borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10.5 },
+  calendarHead: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  monthTitle: { fontSize: 13.5, fontWeight: '800', color: c.text },
+  monthButton: { height: 28, width: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 7, borderWidth: 1, borderColor: c.border },
+  row: { flexDirection: 'row' },
+  weekday: { flex: 1, textAlign: 'center', fontSize: 9.5, fontWeight: '800', textTransform: 'uppercase', color: '#03572E' },
+  grid: { marginTop: 7, flexDirection: 'row', flexWrap: 'wrap' },
+  cellSlot: { width: '14.28%', padding: 2 },
+  cell: { minHeight: 62, borderRadius: 7, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: c.card, padding: 3.5 },
+  cellSelected: { borderWidth: 2, borderColor: '#2e7d55' },
+  cellDisabled: { opacity: 0.45 },
+  cellDate: { fontSize: 11.5, fontWeight: '800', color: c.textSecondary },
+  cellTag: { marginTop: 3.5, flexDirection: 'row', alignItems: 'flex-start', gap: 2.5 },
+  cellDot: { marginTop: 4, height: 5, width: 5, borderRadius: 2.5 },
+  cellLabel: { flex: 1, marginTop: 2, fontSize: 8, lineHeight: 10, fontWeight: '800' },
+  legend: { marginTop: 10.5, flexDirection: 'row', flexWrap: 'wrap', gap: 10.5 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendSwatch: { height: 11, width: 11, borderRadius: 3, borderWidth: 1, borderColor: c.borderSoft },
+  legendText: { fontSize: 11, fontWeight: '600' },
+  fields: { marginTop: 7, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 7 },
+  field: { width: '48.5%', borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7 },
+  fieldWide: { width: '100%' },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: c.textMuted },
+  fieldValue: { marginTop: 1.75, fontSize: 13, fontWeight: '600', color: c.text },
+  fieldEmpty: { color: c.textFaint },
+  progressRow: { marginTop: 5, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  progressTrack: { height: 6, flex: 1, overflow: 'hidden', borderRadius: 9999, backgroundColor: c.brandSoft },
+  progressFill: { height: '100%', borderRadius: 9999, backgroundColor: '#2e7d55' },
+  box: { marginTop: 10.5, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: c.border },
+  boxHead: { borderBottomWidth: 1, borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 8 },
+  boxTitle: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, color: c.brandText },
+  boxRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7, borderBottomWidth: 1, borderColor: c.borderSoft, paddingHorizontal: 10.5, paddingVertical: 8 },
+  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 10 },
+  totalLabel: { fontSize: 13, fontWeight: '800', textTransform: 'uppercase', color: c.brandText },
+  totalValue: { fontSize: 20, fontWeight: '800', color: c.text },
   pressable4: { position: 'absolute', right: 17.5, top: 42, zIndex: 10, height: 35, width: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: 'rgba(255, 255, 255, 0.2)' },
 }))

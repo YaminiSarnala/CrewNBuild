@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react'
 import { View, Text, TextInput } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
-import { CreditCard, RefreshCw, TriangleAlert } from 'lucide-react-native'
+import { BadgeCheck, CalendarDays, Check, FlaskConical, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react-native'
 import { Panel } from '../../components/DashboardShell'
 import {
   ActionButton, InfoRow, Notice, PremiumBadge, Section, StackScreenShell, SheetModal,
@@ -25,14 +25,36 @@ import {
   simulateSubscriptionCheckout, validateSubscriptionCoupon, verifySubscriptionPayment, WEB_SUBSCRIPTION_URL,
 } from '../../api/subscription'
 import {
-  FREE_FEATURE_KEYS, IN_FORCE, OFFERS, annualSaving, durationName, formatPlanDate, formatRupees,
-  isEndingSoon, offerFeatureLines, offerName, offerPrice, paymentStatusName, planAction, quoteForOffer, quoteMatchesOffer,
+  CARD_BADGES, IN_FORCE, OFFERS, annualSaving, durationName, formatPlanDate, formatRupees,
+  isEndingSoon, offerCardLines, offerName, offerPrice, paymentStatusName, planAction, planCardLines, quoteForOffer, quoteMatchesOffer,
   statusName, subscriptionErrorMessage,
 } from '../../utils/subscriptionFormat'
 import { COLORS } from '../../theme/tokens'
 import RazorpayCheckoutModal from '../../components/builder/RazorpayCheckoutModal'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
+
+/** The card's mark (web PlanCards Mark): PREMIUM shield, or the PRO / PLUS pill. */
+function PlanMark({ badge }) {
+  const { t } = useLanguage()
+  if (badge === 'PREMIUM') {
+    return (
+      <View style={styles.markPremium}>
+        <ShieldCheck size={11} color="#fcd34d" />
+        <Text style={styles.markPremiumText}>{t('subscription.badge.PREMIUM')}</Text>
+      </View>
+    )
+  }
+  if (badge === 'PRO' || badge === 'PLUS') {
+    return (
+      <View style={styles.markPro}>
+        <BadgeCheck size={11} color="#ffffff" />
+        <Text style={styles.markProText}>{t(`subscription.badge.${badge}`)}</Text>
+      </View>
+    )
+  }
+  return null
+}
 
 export default function BuilderSubscriptionScreen({ navigation }) {
   const { t } = useLanguage()
@@ -244,13 +266,24 @@ export default function BuilderSubscriptionScreen({ navigation }) {
           {couponError ? <Text style={styles.text10}>{couponError}</Text> : null}
         </View>
 
-        {/* Free tier */}
-        <View style={styles.view5}>
-          <Text style={styles.text11}>{t('subscription.plan.FREE')}</Text>
-          {FREE_FEATURE_KEYS.map((key) => <Text key={key} style={styles.text12}>• {t(key)}</Text>)}
+        {/* Four cards, as on the web (PlanCards): Free, Pro, Plus and Premium.
+            Each lists its plan's locations, leads per location and camera
+            quality from the server's catalogue; each paid card is one option. */}
+        <View style={[styles.planCard, styles.planCardFree]}>
+          <View style={[styles.planBar, { backgroundColor: '#e2e8f0' }]} />
+          <Text style={styles.planName}>{t('subscription.plan.FREE')}</Text>
+          <Text style={styles.planPrice}>{formatRupees(0)}</Text>
+          <Text style={styles.planAccess}>{t('subscription.price.noBilling')}</Text>
+          <Text style={styles.planIncluded}>{t('subscription.inherits.FREE')}</Text>
+          {planCardLines(catalogue, 'FREE').map(({ key, values }) => (
+            <View key={key} style={styles.planLine}>
+              <Check size={15} color={COLORS.slate[400]} />
+              <Text style={styles.planLineText}>{t(key, values)}</Text>
+            </View>
+          ))}
+          <Text style={styles.freeIncluded}>{t('subscription.included')}</Text>
         </View>
 
-        {/* Paid offers */}
         {OFFERS.map((offer) => {
           const price = offerPrice(catalogue, offer)
           const action = planAction(offer.planCode, status, price)
@@ -258,27 +291,61 @@ export default function BuilderSubscriptionScreen({ navigation }) {
           const disabled = action === 'unavailable' || action === 'blocked' || Boolean(busyPlan)
           const name = t(`subscription.offer.${offer.id}.name`)
           const label = busyPlan === key ? t('subscription.panel.processing')
-            : action === 'renew' ? t('subscription.cta.renewOption', { duration: durationName(offer.durationCode, t) })
+            : action === 'renew' ? t('subscription.cta.renewOption', { duration: name })
               : action === 'blocked' ? t('subscription.cta.afterCurrent')
                 : action === 'unavailable' ? t('subscription.cta.unavailable')
                   : t('subscription.cta.chooseNamed', { plan: name })
           const coupon = quoteForOffer(couponQuote, offer.planCode, offer.durationCode)
-          const premium = offer.id === 'PREMIUM_ANNUAL'
+          const isCurrent = status && ['ACTIVE', 'GRACE'].includes(status.status)
+            && status.plan_code === offer.planCode && current?.duration_code === offer.durationCode
+          const pro = offer.id === 'PRO_MONTHLY'
           return (
-            <View key={offer.id} style={[styles.view6, premium ? styles.view7 : styles.view8]}>
-              <View style={styles.view9}>
-                <CreditCard size={16} color={premium ? '#fcd34d' : COLORS.brand[700]} />
-                <Text style={[styles.text13, premium ? styles.text14 : styles.text15]}>{name}</Text>
-                <Text style={[styles.text16, premium ? styles.text17 : styles.text18]}>{price === null ? t('subscription.price.notSet') : formatRupees(price)}</Text>
+            <View key={offer.id} style={[styles.planCard, pro ? styles.planCardPro : styles.planCardPremium]}>
+              {/* The web's top strip: green on Pro, slate-to-gold on Plus and Premium. */}
+              {pro ? <View style={[styles.planBar, { backgroundColor: '#10b981' }]} /> : (
+                <View style={[styles.planBar, { flexDirection: 'row' }]}>
+                  <View style={{ flex: 2, backgroundColor: '#0f172a' }} />
+                  <View style={{ flex: 1, backgroundColor: '#334155' }} />
+                  <View style={{ flex: 1, backgroundColor: '#fbbf24' }} />
+                </View>
+              )}
+              <View style={styles.planHead}>
+                <Text style={styles.planName}>{name}</Text>
+                <PlanMark badge={CARD_BADGES[offer.id]} />
+                {isCurrent ? (
+                  <View style={styles.currentPill}><Text style={styles.currentPillText}>{t('subscription.cta.current')}</Text></View>
+                ) : null}
               </View>
-              <Text style={[styles.text19, premium ? styles.text20 : styles.text21]}>{t(`subscription.offer.${offer.id}.access`)}</Text>
-              <Text style={[styles.text22, premium ? styles.text23 : styles.text21]}>{t(`subscription.offer.${offer.id}.audience`)}</Text>
-              {premium && saving ? (
-                <Text style={styles.text24}>{t('subscription.offer.annualSaving', { amount: formatRupees(saving.saving), full: formatRupees(saving.full) })}</Text>
-              ) : null}
-              {premium ? <Text style={styles.text25}>{t('subscription.offer.PREMIUM_ANNUAL.inherits')}</Text> : null}
-              {offerFeatureLines(catalogue, offer, t).map((line) => (
-                <Text key={line} style={[styles.text19, premium ? styles.text26 : styles.text27]}>• {line}</Text>
+              {price ? (
+                <>
+                  <View style={styles.planPriceRow}>
+                    <Text style={[styles.planPrice, { marginTop: 0 }]}>{formatRupees(price)}</Text>
+                    {catalogue?.test_mode ? (
+                      <View style={styles.testPill}>
+                        <FlaskConical size={11} color="#92400e" />
+                        <Text style={styles.testPillText}>{t('subscription.price.testBadge')}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <View style={styles.planAccessRow}>
+                    <CalendarDays size={13} color={COLORS.slate[400]} />
+                    <Text style={[styles.planAccess, { marginTop: 0 }]}>{t(`subscription.offer.${offer.id}.access`)}</Text>
+                  </View>
+                  {offer.id === 'PREMIUM_ANNUAL' && saving ? (
+                    <View style={styles.savingPill}>
+                      <Text style={styles.savingPillText}>{t('subscription.offer.annualSaving', { amount: formatRupees(saving.saving), full: formatRupees(saving.full) })}</Text>
+                    </View>
+                  ) : null}
+                </>
+              ) : (
+                <Text style={[styles.planPrice, { fontSize: 18, color: COLORS.slate[400] }]}>{t('subscription.price.notSet')}</Text>
+              )}
+              <Text style={styles.planIncluded}>{t('subscription.compare.included')}</Text>
+              {offerCardLines(catalogue, offer).map(({ key: lineKey, values }) => (
+                <View key={lineKey} style={styles.planLine}>
+                  <Check size={15} color={pro ? '#059669' : COLORS.graphite} />
+                  <Text style={styles.planLineText}>{t(lineKey, values)}</Text>
+                </View>
               ))}
               {coupon ? (
                 <View style={styles.view10}>
@@ -287,9 +354,10 @@ export default function BuilderSubscriptionScreen({ navigation }) {
                   <InfoRow label={t('subscription.coupon.final')} value={formatRupees(coupon.final_amount_paise)} strong />
                 </View>
               ) : null}
+              {/* One look for every paid plan's button, as on the web. */}
               <ActionButton
                 label={label}
-                tone={premium ? 'outline' : 'success'}
+                tone="success"
                 disabled={disabled}
                 busy={busyPlan === key}
                 onPress={() => purchase(offer.planCode, offer.durationCode)}
@@ -362,7 +430,32 @@ const styles = createStyles((c) => ({
   text4: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.roseTextStrong },
   view2: { marginTop: 10.5, flexDirection: 'row', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: c.amberBorder, backgroundColor: c.amberSoft, paddingHorizontal: 10.5, paddingVertical: 8.75 },
   text5: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.amberTextStrong },
-  actionButton: { marginTop: 10.5 },
+  actionButton: { marginTop: 14 },
+  planCard: { marginTop: 14, overflow: 'hidden', borderRadius: 16, borderWidth: 1, backgroundColor: c.card, paddingHorizontal: 16, paddingTop: 20, paddingBottom: 16 },
+  planCardFree: { borderColor: c.border },
+  planCardPro: { borderColor: '#6ee7b7' },
+  planCardPremium: { borderColor: '#cbd5e1' },
+  planBar: { position: 'absolute', top: 0, right: 0, left: 0, height: 4, overflow: 'hidden' },
+  planHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
+  planName: { fontSize: 17, fontWeight: '800', color: c.text },
+  planPriceRow: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 7 },
+  planPrice: { marginTop: 12, fontSize: 28, fontWeight: '800', letterSpacing: -0.5, color: c.text },
+  planAccessRow: { marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  planAccess: { marginTop: 6, fontSize: 12, fontWeight: '700', color: c.textMuted },
+  planIncluded: { marginTop: 16, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, color: c.textMuted },
+  planLine: { marginTop: 8, flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  planLineText: { flex: 1, fontSize: 13.5, lineHeight: 19, color: c.textSecondary },
+  freeIncluded: { marginTop: 14, overflow: 'hidden', borderRadius: 8, backgroundColor: c.subtle, paddingVertical: 11, textAlign: 'center', fontSize: 12, fontWeight: '700', color: c.textMuted },
+  currentPill: { marginLeft: 'auto', borderRadius: 9999, backgroundColor: '#059669', paddingHorizontal: 8, paddingVertical: 2 },
+  currentPillText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: '#ffffff' },
+  testPill: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 9999, backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2 },
+  testPillText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: '#92400e' },
+  savingPill: { marginTop: 8, alignSelf: 'flex-start', borderRadius: 9999, backgroundColor: '#d1fae5', paddingHorizontal: 8, paddingVertical: 2 },
+  savingPillText: { fontSize: 11, fontWeight: '800', color: '#065f46' },
+  markPremium: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, borderWidth: 1, borderColor: '#fcd34d', backgroundColor: '#0f172a', paddingHorizontal: 6, paddingVertical: 2 },
+  markPremiumText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, color: '#fcd34d' },
+  markPro: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 9999, backgroundColor: '#059669', paddingHorizontal: 6, paddingVertical: 2 },
+  markProText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, color: '#ffffff' },
   text6: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
   text7: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
   view3: { marginTop: 14, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.borderStrong, backgroundColor: c.subtle, padding: 10.5 },
@@ -371,28 +464,6 @@ const styles = createStyles((c) => ({
   textInput: { height: 35, flex: 1, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, lineHeight: 20, fontWeight: '700', color: c.text },
   text9: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.emeraldText },
   text10: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.roseTextSoft },
-  view5: { marginTop: 14, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: 14 },
-  text11: { fontSize: 15, fontWeight: '800', color: c.text },
-  text12: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textSecondary },
-  view6: { marginTop: 14, borderRadius: 16, borderWidth: 1, padding: 14 },
-  view7: { borderColor: '#1e293b', backgroundColor: '#0f172a' },
-  view8: { borderColor: c.emeraldBorder, backgroundColor: c.card },
-  view9: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  text13: { flex: 1, fontSize: 15, fontWeight: '800' },
-  text14: { color: '#ffffff' },
-  text15: { color: c.text },
-  text16: { fontSize: 15, fontWeight: '800' },
-  text17: { color: '#fcd34d' },
-  text18: { color: c.brandTextStrong },
-  text19: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '600' },
-  text20: { color: '#cbd5e1' },
-  text21: { color: c.textMuted },
-  text22: { marginTop: 1.75, fontSize: 12, lineHeight: 16 },
-  text23: { color: c.textFaint },
-  text24: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#fcd34d' },
-  text25: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#cbd5e1' },
-  text26: { color: '#e2e8f0' },
-  text27: { color: c.textSoft },
   view10: { marginTop: 10.5, borderRadius: 8, borderWidth: 1, borderColor: c.emeraldBorder, backgroundColor: c.emeraldSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
   text28: { fontSize: 13, fontWeight: '600', color: c.textMuted },
   view11: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },

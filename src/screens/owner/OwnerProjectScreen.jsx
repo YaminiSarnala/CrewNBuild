@@ -15,7 +15,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useSelector } from 'react-redux'
 import { Image } from 'expo-image'
 import {
-  Camera, FileText, HardHat, Images, LayoutDashboard, MapPin, PackageSearch, Pencil, Receipt, Save, ShoppingBag, Truck, UserCheck, Wallet, X,
+  BarChart3, Camera, FileText, HardHat, Images, LayoutDashboard, MapPin, PackageSearch, Pencil, Receipt, Save, ShoppingBag, Truck, UserCheck, Wallet, X,
 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import ScreenHeader from '../../components/ScreenHeader'
@@ -41,6 +41,7 @@ import { sendConversationMessage } from '../../api/messages'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useNotifications } from '../../notifications/NotificationsContext'
 import OwnerSiteEngineerSection from './OwnerSiteEngineerSection'
+import OwnerProjectAnalysis from './OwnerProjectAnalysis'
 import OwnerMarketplace from './marketplace/OwnerMarketplace'
 import CartPanel from './marketplace/CartPanel'
 import OrdersPanel from './marketplace/OrdersPanel'
@@ -69,6 +70,8 @@ function projectTabs(project, t) {
     { id: 'siteActivity', label: t('ui.siteActivity'), icon: Images },
     { id: 'liveCamera', label: t('ui.liveCamera'), icon: Camera },
     { id: 'overview', label: t('ui.overview'), icon: LayoutDashboard },
+    // Read-only figures for this project, beside its Overview (web 'analysis').
+    { id: 'analysis', label: t('owner.analysis.title'), icon: BarChart3 },
     { id: 'escrow', label: t('ui.escrow'), icon: Wallet },
     { id: 'payments', label: t('ui.payments'), icon: Receipt },
   ]
@@ -656,6 +659,7 @@ export default function OwnerProjectScreen({ navigation, route }) {
             ) : (
               <>
                 {activeTab === 'overview' && <OverviewSection project={project} ownerName={user?.name} onSaved={load} />}
+                {activeTab === 'analysis' && <OwnerProjectAnalysis project={project} />}
                 {activeTab === 'payments' && <PaymentsSection project={project} />}
                 {activeTab === 'escrow' && <EscrowSection project={project} />}
                 {activeTab === 'requests' && <RequestsSection project={project} hiring={hiring} initialRequestId={linkedRequestId} />}

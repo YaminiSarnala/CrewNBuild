@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useFocusEffect } from '@react-navigation/native'
 import { useBuilderInbox, useMarkSectionRead } from '../../components/builder/BuilderInbox'
-import { View, Text, Alert, TextInput, Pressable, ScrollView } from 'react-native'
+import { View, Text, Alert, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import { Image } from 'expo-image'
 import { userAvatarSource } from '../../utils/avatars'
 import { House, Truck, Check, X, Plus, ArrowRight, MapPin, CalendarDays, LayoutGrid, List, SlidersHorizontal } from 'lucide-react-native'
@@ -371,7 +371,10 @@ export default function ContractorRequestsScreen({ navigation }) {
                       {flow ? <FlowBadge flow={flow} /> : <RequestStatusBadge category={category} sentLabel={t(isOwnerTab ? 'dash.contractor.status.proposalSent' : 'dash.common.requestSent')} />}
                     </View>
                     {pendingIncoming || canWithdraw ? (
-                      <View style={styles.view9}>
+                      <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.view9}
+                      >
                         {pendingIncoming && isOwnerTab ? (
                           <>
                             <ActionButton small label={t('dash.contractor.quoteAccept')} disabled={busy} onPress={() => startQuote(request)} />
@@ -385,7 +388,7 @@ export default function ContractorRequestsScreen({ navigation }) {
                           </>
                         ) : null}
                         {canWithdraw ? <ActionButton small tone="outline" label={t('property.action.withdraw')} disabled={busy} onPress={() => withdraw(request)} /> : null}
-                      </View>
+                      </KeyboardAvoidingView>
                     ) : null}
                   </Pressable>
                 )
@@ -474,6 +477,10 @@ export default function ContractorRequestsScreen({ navigation }) {
           </View>
         )}
       >
+         <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+          >
         {quoteFor?.budget ? <InfoRow label={t('owner.pa.ownerBudget')} value={money(quoteFor.budget)} strong /> : null}
         <Text style={styles.text13}>{t('dash.contractor.amount')}</Text>
         <TextInput
@@ -487,6 +494,7 @@ export default function ContractorRequestsScreen({ navigation }) {
         />
         {Number(quoteAmount) > 0 ? <Text style={styles.text14}>{money(quoteAmount)}</Text> : null}
         {quoteError ? <Text style={styles.text15}>{quoteError}</Text> : null}
+      </KeyboardAvoidingView>
       </SheetModal>
 
       {/* Request details, with the assignment / negotiation for an accepted owner request. */}
@@ -555,7 +563,7 @@ const styles = createStyles((c) => ({
   text2: { fontSize: 10, fontWeight: '800' },
   view5: { marginTop: 7 },
   view6: { marginTop: 7, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
-  view7: { flex: 1, alignItems: 'flex-end' },
+  view7: { flex: 1, alignItems: 'flex-end', marginLeft: 5 },
   pressable2: { borderBottomWidth: 1, borderColor: c.borderSoft, backgroundColor: c.card, paddingHorizontal: 3.5, paddingVertical: 10.5 },
   view8: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
   actionButton: { flex: 1 },

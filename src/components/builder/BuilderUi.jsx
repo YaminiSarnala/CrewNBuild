@@ -12,7 +12,7 @@ import { COLORS, SHADOW } from '../../theme/tokens'
 import { ink, soft } from '../../theme/tint'
 import { useLanguage } from '../../i18n/LanguageContext'
 import {
-  dashboardBanner, formatPlanDate, isPremium, lockedMessage, offerName, statusName, currentTier,
+  activeBadge, dashboardBanner, formatPlanDate, lockedMessage, offerName, statusName, currentTier,
 } from '../../utils/subscriptionFormat'
 import { createStyles } from '../../theme/createStyles'
 
@@ -201,33 +201,91 @@ export function Notice({ tone = 'info', text }) {
 }
 
 /** A bottom sheet over the screen: title row, scrolling body, optional footer. */
-export function SheetModal({ visible, title, subtitle, onClose, children, footer, tall = false }) {
-  const insets = useSafeAreaInsets()
-  const { t } = useLanguage()
+export function SheetModal({
+  visible,
+  title,
+  subtitle,
+  onClose,
+  children,
+  footer,
+  tall = false,
+}) {
+  const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
+
   return (
-    <Modal visible={!!visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.view4}>
-        <Pressable style={styles.pressable11} onPress={onClose} accessibilityLabel={t('dash.common.close')} />
+    <Modal
+      visible={!!visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
+      <KeyboardAvoidingView
+        style={styles.view4}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      >
+        <Pressable
+          style={styles.pressable11}
+          onPress={onClose}
+          accessibilityLabel={t('dash.common.close')}
+        />
+
         <View
-          style={[styles.view12, [{ maxHeight: tall ? '92%' : '85%', paddingBottom: Math.max(insets.bottom, 12) }, SHADOW.card]]}
+          style={[
+            styles.view12,
+            {
+              maxHeight: tall ? '92%' : '85%',
+              paddingBottom: Math.max(insets.bottom, 12),
+            },
+            SHADOW.card,
+          ]}
         >
           <View style={styles.view13}>
             <View style={styles.view4}>
-              <Text style={styles.text18} numberOfLines={2}>{title}</Text>
-              {subtitle ? <Text style={styles.text19} numberOfLines={2}>{subtitle}</Text> : null}
+              <Text style={styles.text18} numberOfLines={2}>
+                {title}
+              </Text>
+
+              {subtitle ? (
+                <Text style={styles.text19} numberOfLines={2}>
+                  {subtitle}
+                </Text>
+              ) : null}
             </View>
-            <Pressable onPress={onClose} accessibilityLabel={t('dash.common.close')} style={styles.pressable12}>
+
+            <Pressable
+              onPress={onClose}
+              accessibilityLabel={t('dash.common.close')}
+              style={styles.pressable12}
+            >
               <X size={16} color={COLORS.slate[600]} />
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 12 }} keyboardShouldPersistTaps="handled">
+
+          <ScrollView
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={{
+              padding: 20,
+              paddingBottom: 12,
+            }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
             {children}
           </ScrollView>
-          {footer ? <View style={styles.view14}>{footer}</View> : null}
+
+          {footer ? (
+            <View style={styles.view14}>
+              {footer}
+            </View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
-  )
+  );
 }
 
 /**
@@ -382,15 +440,17 @@ export function FreeAccessBanner({ status, onViewPlans }) {
 /** PRO / PREMIUM mark, only for a plan the server says is in force. */
 export function PremiumBadge({ status }) {
   const { t } = useLanguage()
-  if (!isPremium(status) || !status.badge) return null
-  const premium = status.badge === 'PREMIUM'
+  // PRO, PLUS or PREMIUM for the offer in force (Plus shares the server's PREMIUM tier badge).
+  const badge = activeBadge(status)
+  if (!badge) return null
+  const premium = badge === 'PREMIUM'
   return (
     <View
       accessibilityLabel={t(`subscription.badge.${premium ? 'PREMIUM' : 'PRO'}.title`)}
       style={[styles.view27, premium ? styles.view28 : styles.view7]}
     >
       <ShieldCheck size={12} color={premium ? '#fcd34d' : '#fff'} />
-      <Text style={[styles.text31, premium ? styles.text32 : styles.text4]}>{t(premium ? 'subscription.badge.PREMIUM' : 'subscription.badge.PRO')}</Text>
+      <Text style={[styles.text31, premium ? styles.text32 : styles.text4]}>{t(`subscription.badge.${badge}`)}</Text>
     </View>
   )
 }
@@ -511,7 +571,7 @@ const styles = createStyles((c) => ({
   tone10: { borderColor: c.amberBorder, backgroundColor: c.amberSoft, color: c.amberTextStrong },
   view11: { marginBottom: 10.5, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10.5, paddingVertical: 8.75 },
   text17: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  pressable11: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)' },
+  pressable11: { flex: 1, backgroundColor: 'rgba(251, 246, 246, 0.4)' },
   view12: { borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: c.card },
   view13: { flexDirection: 'row', alignItems: 'flex-start', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingHorizontal: 17.5, paddingBottom: 10.5, paddingTop: 14 },
   text18: { fontSize: 16, fontWeight: '800', color: c.text },

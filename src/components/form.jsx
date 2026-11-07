@@ -59,7 +59,7 @@ export function TextField({ label, error, invalid, multiline = false, style, con
   )
 }
 
-// A <select>. `options` are { value, label }; the stored value is `value`.
+// A <select>. `options` are { value, label, disabled? }; the stored value is `value`.
 export function SelectField({
   label,
   value,
@@ -157,7 +157,8 @@ export function SelectField({
                     onChange(option.value)
                     close()
                   }}
-                  style={styles.pressable4}
+                  disabled={option.disabled}
+                  style={[styles.pressable4, option.disabled ? styles.pressable : null]}
                 >
                   <Text
                     style={[styles.text8, active ? styles.text9 : styles.text10, { fontSize: 14 }]}
@@ -308,6 +309,7 @@ export function FormNotice({ message, tone = 'info', style }) {
     info: { box: 'tone4', text: 'tone5' },
     success: { box: 'tone6', text: 'tone7' },
     error: { box: 'tone8', text: 'tone9' },
+    warning: { box: 'tone10', text: 'tone11' },
   }
   const { box, text } = tones[tone] || tones.info
   return (
@@ -454,6 +456,9 @@ const styles = createStyles((c) => ({
   tone7: { color: c.emeraldTextStrong },
   tone8: { borderColor: c.redBorderSoft, backgroundColor: c.redSoft },
   tone9: { color: c.redText },
+  // Pastel amber keeps its dark ink in both themes, like the other amber badges.
+  tone10: { borderColor: '#fde68a', backgroundColor: '#fffbeb' },
+  tone11: { color: '#92400e' },
   view13: { borderRadius: 10.5, borderWidth: 1, paddingHorizontal: 12.25, paddingVertical: 8.75 },
   text18: { fontFamily: 'Inter_700Bold' },
   text19: { fontFamily: 'Inter_600SemiBold', color: c.brandTextSoft },

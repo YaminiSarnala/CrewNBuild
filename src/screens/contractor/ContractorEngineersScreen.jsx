@@ -474,23 +474,7 @@ export default function ContractorEngineersScreen({ navigation }) {
 
           {tab === 'find' ? (
             <>
-              <View style={styles.view}>
-                <Text style={styles.text10}>{t('mobile.partners.findPincodeLabel')}</Text>
-                <View style={styles.view8}>
-                  <TextInput
-                    value={findPincode}
-                    onChangeText={(value) => {
-                      const next = value.replace(/\D/g, '').slice(0, 6)
-                      setFindPincode(next)
-                      if (!next || next.length === 6) loadNearby(next)
-                    }}
-                    keyboardType="number-pad"
-                    placeholder={t('ui.shared.sixDigitPincode')}
-                    placeholderTextColor={COLORS.slate[400]}
-                    style={styles.textInput}
-                  />
-                  <ActionButton label={t('ce.find')} icon={Search} onPress={() => loadNearby()} />
-                </View>
+              <View>
                 {projectList.length ? (
                   <View style={styles.actionButton2}>
                     <Text style={styles.text10}>{t('mobile.partners.requestsForProject')}</Text>
