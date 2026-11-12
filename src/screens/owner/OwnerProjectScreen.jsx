@@ -2,10 +2,11 @@
 // OwnerProjectWorkspace + the Overview and Payments views of ProjectDetailPanel.
 //
 // The tabs are the web's, in the web's order:
-//   builder project: Find Builders | Requests | Assign Builder | Site Activity | Live Camera | Overview | Escrow | Payments
-//   self-construction: Requests | Site Engineer | Suppliers | Site Activity | Live Camera | Overview | Escrow | Payments
+//   builder project: Find Builders | Requests | Assign Builder | Site Activity | Project Analysis | Live Camera | Overview | Escrow | Payments
+//   self-construction: Requests | Site Engineer | Suppliers | Site Activity | Project Analysis | Live Camera | Overview | Escrow | Payments
 // A builder project opens on Find Builders, a self-construction one on
-// Requests, as on the web; `route.params.tab` opens another.
+// Requests, as on the web; `route.params.tab` opens another, and
+// `route.params.edit` (the Projects card's Edit) opens the Overview's Edit form.
 //
 // Overview (with Edit) and Payments are full ports. The other tabs show the
 // sections the app already had until their phases land.
@@ -68,10 +69,10 @@ function projectTabs(project, t) {
         { id: 'assignBuilder', label: t('quote.assignBuilder'), icon: UserCheck },
       ]),
     { id: 'siteActivity', label: t('ui.siteActivity'), icon: Images },
+    // Read-only figures for this project, beside its Site Activity (web 'analysis').
+    { id: 'analysis', label: t('owner.analysis.title'), icon: BarChart3 },
     { id: 'liveCamera', label: t('ui.liveCamera'), icon: Camera },
     { id: 'overview', label: t('ui.overview'), icon: LayoutDashboard },
-    // Read-only figures for this project, beside its Overview (web 'analysis').
-    { id: 'analysis', label: t('owner.analysis.title'), icon: BarChart3 },
     { id: 'escrow', label: t('ui.escrow'), icon: Wallet },
     { id: 'payments', label: t('ui.payments'), icon: Receipt },
   ]
@@ -104,8 +105,15 @@ const numericText = (value) => {
   return rest.length ? `${whole}.${rest.join('')}` : whole
 }
 
-function OverviewEditForm({ project, onSaved, onCancel }) {
+function OverviewEditForm({ project, onSaved, onCancel, focusLandArea = false }) {
   const { t } = useLanguage()
+  const landAreaRef = useRef(null)
+  // Opened from a project card's Edit: start on the land area, as the web does.
+  useEffect(() => {
+    if (!focusLandArea) return undefined
+    const timer = setTimeout(() => landAreaRef.current?.focus(), 350)
+    return () => clearTimeout(timer)
+  }, [focusLandArea])
   const [draft, setDraft] = useState(() => overviewDraftFrom(project))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -193,6 +201,7 @@ function OverviewEditForm({ project, onSaved, onCancel }) {
           keyboardType="decimal-pad"
         />
         <TextField
+          ref={landAreaRef}
           containerStyle={{ flex: 1 }}
           label={t('dash.common.landArea')}
           value={draft.land_area}
@@ -238,11 +247,22 @@ function OverviewEditForm({ project, onSaved, onCancel }) {
   )
 }
 
-function OverviewSection({ project, ownerName, onSaved }) {
+function OverviewSection({ project, ownerName, onSaved, startEditing = false, onEditStarted }) {
   const { t, td } = useLanguage()
   const { isTablet } = useResponsive()
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(startEditing)
+  const [focusLandArea, setFocusLandArea] = useState(startEditing)
   const [savedMessage, setSavedMessage] = useState('')
+  // A later Edit from the Projects list, while this page is already open.
+  useEffect(() => {
+    if (!startEditing) return
+    setSavedMessage('')
+    setEditing(true)
+    setFocusLandArea(true)
+    onEditStarted?.()
+    // onEditStarted only clears the request; a new request is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startEditing])
   const [descriptionOpen, setDescriptionOpen] = useState(false)
   const country = project.project_country
 
@@ -300,6 +320,7 @@ function OverviewSection({ project, ownerName, onSaved }) {
       {editing ? (
         <OverviewEditForm
           project={project}
+          focusLandArea={focusLandArea}
           onCancel={() => setEditing(false)}
           onSaved={async () => {
             await onSaved()
@@ -334,6 +355,7 @@ function OverviewSection({ project, ownerName, onSaved }) {
           <Pressable
             onPress={() => {
               setSavedMessage('')
+              setFocusLandArea(false)
               setEditing(true)
             }}
             accessibilityRole="button"
@@ -531,6 +553,8 @@ export default function OwnerProjectScreen({ navigation, route }) {
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [tab, setTab] = useState(route?.params?.tab || null)
+  // The Projects card's Edit: open the Overview with its Edit form already open.
+  const [editRequested, setEditRequested] = useState(Boolean(route?.params?.edit))
   const [createdNotice, setCreatedNotice] = useState(Boolean(route?.params?.created))
   const tabsRef = useRef(null)
   // A request opened from elsewhere (a notification) starts expanded.
@@ -558,9 +582,10 @@ export default function OwnerProjectScreen({ navigation, route }) {
     const requested = route?.params?.tab
     if (requested) {
       setTab(requested)
-      navigation.setParams({ tab: undefined })
+      if (route?.params?.edit) setEditRequested(true)
+      navigation.setParams({ tab: undefined, edit: undefined })
     }
-  }, [route?.params?.tab, navigation])
+  }, [route?.params?.tab, route?.params?.edit, navigation])
 
   // This project's requests and every builder-hiring action (Phase 3).
   const hiring = useBuilderHiring(project, load)
@@ -658,7 +683,15 @@ export default function OwnerProjectScreen({ navigation, route }) {
               <PanelState loading={loading} error={error}>{null}</PanelState>
             ) : (
               <>
-                {activeTab === 'overview' && <OverviewSection project={project} ownerName={user?.name} onSaved={load} />}
+                {activeTab === 'overview' && (
+                  <OverviewSection
+                    project={project}
+                    ownerName={user?.name}
+                    onSaved={load}
+                    startEditing={editRequested}
+                    onEditStarted={() => setEditRequested(false)}
+                  />
+                )}
                 {activeTab === 'analysis' && <OwnerProjectAnalysis project={project} />}
                 {activeTab === 'payments' && <PaymentsSection project={project} />}
                 {activeTab === 'escrow' && <EscrowSection project={project} />}

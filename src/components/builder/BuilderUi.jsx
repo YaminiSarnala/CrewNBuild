@@ -21,7 +21,7 @@ import { createStyles } from '../../theme/createStyles'
  * Portfolio, Profile Settings): a back arrow, a title and a scrolling body
  * with pull-to-refresh. Tabs use DashboardShell instead.
  */
-export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefresh, right, children }) {
+export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefresh, right, scrollRef, children }) {
   const insets = useSafeAreaInsets()
   const { t } = useLanguage()
   return (
@@ -42,6 +42,7 @@ export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefres
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.view4}>
         <ScrollView
+          ref={scrollRef}
           style={styles.view4}
           contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 28 }}
           keyboardShouldPersistTaps="handled"

@@ -58,9 +58,11 @@ function makeRoleTabs(role) {
           },
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: '800',
+            // The app's own font: a bare fontWeight '800' falls back to a serif
+            // face on phones whose system font has no such weight (Moto Edge).
+            fontFamily: 'Inter_700Bold',
           },
-          tabBarBadgeStyle: { backgroundColor: '#e11d48', color: '#fff', fontSize: 10, fontWeight: '800' },
+          tabBarBadgeStyle: { backgroundColor: '#e11d48', color: '#fff', fontSize: 10, fontFamily: 'Inter_700Bold' },
         }}
       >
         {tabs.map(({ name, label, labelKey, badgeSections, icon: Icon, component }) => {

@@ -1,5 +1,10 @@
 import { apiClient } from './client'
 
+// The House Owner's own Project Analysis: an owner-safe subset of the summary.
+export async function fetchOwnerProjectAnalysis(projectId) {
+  return (await apiClient.get(`/owners/projects/${projectId}/analysis`)).data
+}
+
 export async function fetchCostToolSummary(projectId, workDate) {
   return (await apiClient.get(`/cost-tool/projects/${projectId}/summary`, {
     params: workDate ? { work_date: workDate } : {},

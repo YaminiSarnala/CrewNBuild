@@ -1,6 +1,6 @@
 // Port of web pages/owner/OwnerProjectAnalysisPanel.jsx — the back of an
 // owner's project card: budget, recorded spend and schedule for that one
-// project, from the cost summary. Figures come from analysisFigures
+// project, from the owner's analysis (GET /owners/projects/{id}/analysis). Figures come from analysisFigures
 // (ownerProjectAnalysis.js); nothing here invents a value.
 import { View, Text, Pressable, ActivityIndicator } from 'react-native'
 import Svg, { Circle, G } from 'react-native-svg'
@@ -49,7 +49,7 @@ function Metric({ label, value, bad }) {
 }
 
 export default function OwnerProjectAnalysisPanel({ project, country, state, onRetry, onBack }) {
-  const { t } = useLanguage()
+  const { t, translateMessage } = useLanguage()
   const { isDark } = useTheme()
   const figures = state?.status === 'ready' ? analysisFigures(state.data?.dashboard) : null
   const notAvailable = t('progress.notAvailable')
@@ -66,7 +66,7 @@ export default function OwnerProjectAnalysisPanel({ project, country, state, onR
         </Pressable>
       </View>
 
-      {state?.status === 'ready' && !figures ? <Text style={styles.centerText}>{notAvailable}</Text> : null}
+      {state?.status === 'ready' && !figures ? <Text style={[styles.centerText, { paddingVertical: 24 }]} accessibilityRole="alert">{t('owner.analysis.err.missing')}</Text> : null}
       {!state || state.status === 'loading' ? (
         <View style={styles.center}>
           <ActivityIndicator size="small" color={COLORS.brand[700]} />
@@ -74,8 +74,14 @@ export default function OwnerProjectAnalysisPanel({ project, country, state, onR
         </View>
       ) : null}
       {state?.status === 'error' ? (
-        <View style={styles.center}>
-          <Text style={styles.centerText}>{t('owner.analysis.error')}</Text>
+        <View style={styles.center} accessibilityRole="alert">
+          <View>
+            <Text style={styles.centerText}>{t(`owner.analysis.err.${state.error?.kind || 'unknown'}`)}</Text>
+            {state.error?.message ? <Text style={styles.detailText}>{translateMessage(state.error.message)}</Text> : null}
+            {state.error?.status ? (
+              <Text style={styles.codeText}>{`HTTP ${state.error.status}${state.error.code ? ` · ${state.error.code}` : ''}`}</Text>
+            ) : null}
+          </View>
           <Pressable onPress={onRetry} style={styles.smallButton}>
             <Text style={styles.smallButtonText}>{t('owner.analysis.retry')}</Text>
           </Pressable>
@@ -150,6 +156,8 @@ const styles = createStyles((c) => ({
   smallButtonText: { fontSize: 11, fontWeight: '800', color: c.text },
   center: { alignItems: 'center', gap: 8, paddingVertical: 24 },
   centerText: { textAlign: 'center', fontSize: 11, fontWeight: '600', color: c.textMuted },
+  detailText: { marginTop: 2, textAlign: 'center', fontSize: 10, fontWeight: '500', color: c.textMuted },
+  codeText: { textAlign: 'center', fontSize: 9, fontWeight: '600', color: c.textFaint },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   donutCenter: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
   donutText: { fontSize: 11, fontWeight: '800', color: c.text },

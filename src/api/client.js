@@ -17,7 +17,9 @@ export const AUTH_STORAGE_KEY = 'gharbano_auth'
 // The FastAPI backend is served under /api. Everything outside /api is the web
 // app itself, which answers any path with its HTML page and a 200 — so a
 // missing /api does not fail, it silently returns a web page instead of data.
-export const API_BASE_URL = 'https://crewnbuild.com/api'
+// Set per build profile in eas.json (EXPO_PUBLIC_API_BASE_URL); local dev
+// without it falls back to the live server.
+export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://crewnbuild.com/api').replace(/\/+$/, '')
 
 // The app authenticates with Bearer tokens only. React Native's XHR sends and
 // stores cookies by default, and the server sets session cookies on login; once
@@ -30,7 +32,7 @@ const NO_COOKIES = { withCredentials: false }
 // tokens. Read them from Set-Cookie, falling back to the older JSON body.
 const ACCESS_COOKIE = '__Secure-octabuild-access'
 const REFRESH_COOKIE = '__Secure-octabuild-refresh'
-const API_ORIGIN = 'https://crewnbuild.com'
+const API_ORIGIN = API_BASE_URL.replace(/^(https?:\/\/[^/]+).*$/, '$1')
 
 function cookieValue(setCookie, name) {
   // Android joins repeated Set-Cookie headers with ", ", so search the whole text.

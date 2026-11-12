@@ -17,7 +17,7 @@
  * callback itself is kept in memory and called when the form is saved.
  */
 import { useNavigation } from '@react-navigation/native'
-import { useSelector } from 'react-redux'
+import { useSelector, useStore } from 'react-redux'
 
 let pendingAction = null
 
@@ -40,11 +40,15 @@ export function clearPendingProfileAction() {
 
 export function useProfileGate() {
   const user = useSelector((state) => state.auth.user)
+  const store = useStore()
   const navigation = useNavigation()
 
   /** Returns true when CompleteProfile was opened instead — the caller stops. */
   const requireCompleteProfile = (resume) => {
-    if (!profileIsIncomplete(user)) return false
+    // Read from the store, not from this render: the replayed action is the
+    // closure made before the profile was saved, and its `user` is still the
+    // incomplete one, which sent the owner straight back to the form.
+    if (!profileIsIncomplete(store.getState().auth.user)) return false
     pendingAction = typeof resume === 'function' ? resume : null
     navigation.navigate('CompleteProfile', { gated: true })
     return true

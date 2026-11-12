@@ -190,9 +190,10 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
           <ContentWrap>
           <View style={[styles.view9, { gap: 4, paddingHorizontal: gutter }]}>
             <Pressable
-              onPress={() => setPhotoOpen(true)}
+              // A supplier has no Profile tab: the header photo is the way into it.
+              onPress={() => (user?.role === 'SUPPLIER' ? navigation.navigate('SupplierProfile') : setPhotoOpen(true))}
               accessibilityRole="button"
-              accessibilityLabel={t('photo.title')}
+              accessibilityLabel={user?.role === 'SUPPLIER' ? t('ui.profile') : t('photo.title')}
               style={styles.view10}
             >
               {user?.profile_image_url ? (

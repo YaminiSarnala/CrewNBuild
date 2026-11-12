@@ -45,3 +45,7 @@ export const searchCatalog = async (query, limit = 12) =>
 // One canonical product with every supplier's price against it.
 export const fetchCatalogOffers = async (productId) =>
   (await apiClient.get(`/catalog/products/${productId}/offers`)).data
+
+// The supplier's side: pick a product, name a price.
+export const addSupplierCatalogListing = async (payload) =>
+  (await apiClient.post('/supplier-products/from-catalog', payload)).data

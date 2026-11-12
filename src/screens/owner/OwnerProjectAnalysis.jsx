@@ -2,10 +2,11 @@
 // tab of an owner's project: budget, recorded spending, work-item progress,
 // material usage and schedule for this one project.
 //
-// Read-only. Everything comes from the project payload and the cost summary
-// (GET /cost-tool/projects/{id}/summary), which the backend returns only to
-// this project's owner. Nothing here estimates or fills in a value: a figure
-// the records do not hold reads "Not set" / "Not available".
+// Read-only. Everything comes from the project payload and, for the builder,
+// the cost summary (GET /cost-tool/projects/{id}/summary); for the House Owner,
+// its owner-safe subset (GET /owners/projects/{id}/analysis), which the backend
+// returns only to this project's owner. Nothing here estimates or fills in a
+// value: a figure the records do not hold reads "Not set" / "Not available".
 //
 // Phone differences from the web: hover readouts are taps, and the web's wide
 // tables are stacked rows. Figures and rules are the web's (ownerProjectAnalysis.js).
@@ -18,11 +19,11 @@ import {
 } from 'lucide-react-native'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useTheme } from '../../theme/ThemeContext'
-import { fetchCostToolSummary } from '../../api/costTool'
+import { fetchCostToolSummary, fetchOwnerProjectAnalysis } from '../../api/costTool'
 import { formatPercent, scheduleText } from '../../utils/builderHelpers'
 import { formatProjectDate, money } from './ownerHelpers'
 import {
-  analysisFigures, budgetRows, materialRows, recentExpenses, spendingTrend, workItemProgress,
+  MISSING_ANALYSIS, analysisError, analysisFigures, budgetRows, materialRows, recentExpenses, spendingTrend, workItemProgress,
 } from './ownerProjectAnalysis'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
@@ -301,7 +302,7 @@ function StackRow({ title, titleRight, dotColor, pairs, highlight }) {
 }
 
 export default function OwnerProjectAnalysis({ project, viewer = 'owner' }) {
-  const { t } = useLanguage()
+  const { t, translateMessage } = useLanguage()
   const { isDark } = useTheme()
   const colors = CATEGORY_COLORS[isDark ? 'dark' : 'light']
   const country = project.project_country || 'India'
@@ -313,11 +314,12 @@ export default function OwnerProjectAnalysis({ project, viewer = 'owner' }) {
   useEffect(() => {
     let alive = true
     setState({ status: 'loading' })
-    fetchCostToolSummary(project.id)
+    const request = viewer === 'owner' ? fetchOwnerProjectAnalysis(project.id) : fetchCostToolSummary(project.id)
+    request
       .then((data) => { if (alive) setState({ status: 'ready', data }) })
-      .catch(() => { if (alive) setState({ status: 'error' }) })
+      .catch((error) => { if (alive) setState({ status: 'error', error: analysisError(error) }) })
     return () => { alive = false }
-  }, [project.id, attempt])
+  }, [project.id, viewer, attempt])
   const retry = useCallback(() => setAttempt((value) => value + 1), [])
 
   const data = state.status === 'ready' ? state.data : null
@@ -337,9 +339,15 @@ export default function OwnerProjectAnalysis({ project, viewer = 'owner' }) {
     )
   }
   if (state.status === 'error' || !figures) {
+    // Why it failed, in the backend's own words too, and the HTTP status.
+    const failure = state.status === 'error' ? state.error : MISSING_ANALYSIS
     return (
-      <View style={styles.center}>
-        <Text style={styles.centerText}>{t('owner.analysis.error')}</Text>
+      <View style={styles.center} accessibilityRole="alert">
+        <Text style={styles.centerText}>{t(`owner.analysis.err.${failure.kind}`)}</Text>
+        {failure.message ? <Text style={styles.failureDetail}>{translateMessage(failure.message)}</Text> : null}
+        {failure.status && failure.status !== 200 ? (
+          <Text style={styles.failureCode}>{`HTTP ${failure.status}${failure.code ? ` · ${failure.code}` : ''}`}</Text>
+        ) : null}
         <Pressable onPress={retry} style={styles.retry}>
           <RotateCcw size={14} color={COLORS.graphite} />
           <Text style={styles.retryText}>{t('owner.analysis.retry')}</Text>
@@ -522,6 +530,8 @@ export default function OwnerProjectAnalysis({ project, viewer = 'owner' }) {
 const styles = createStyles((c) => ({
   center: { alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 56 },
   centerText: { fontSize: 13, fontWeight: '600', color: c.textMuted, textAlign: 'center' },
+  failureDetail: { maxWidth: 420, marginTop: -6, fontSize: 12, fontWeight: '500', color: c.textMuted, textAlign: 'center' },
+  failureCode: { marginTop: -6, fontSize: 10, fontWeight: '600', color: c.textFaint },
   retry: { height: 36, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 9, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 12 },
   retryText: { fontSize: 12, fontWeight: '800', color: c.text },
 

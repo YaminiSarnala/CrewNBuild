@@ -31,11 +31,20 @@ import LoginScreen from '../screens/auth/LoginScreen'
 import SignupScreen from '../screens/auth/SignupScreen'
 import CompleteProfileScreen from '../screens/auth/CompleteProfileScreen'
 import PincodeSetupScreen from '../screens/auth/PincodeSetupScreen'
-import { OwnerTabs, ContractorTabs, SupplierTabs, EngineerTabs } from './RoleTabs'
+import SupplierCategoryScreen from '../screens/auth/SupplierCategoryScreen'
+import SupplierHome from '../screens/supplier/SupplierHome'
+import SupplierProfileScreen from '../screens/supplier/SupplierProfileScreen'
+import SupplierAddProductScreen from '../screens/supplier/SupplierAddProductScreen'
+import SupplierListingScreen from '../screens/supplier/SupplierListingScreen'
+import SupplierEditListingScreen from '../screens/supplier/SupplierEditListingScreen'
+import { SupplierProvider } from '../screens/supplier/SupplierContext'
+import { supplierCategoryMissing } from '../screens/supplier/supplierKinds'
+import { OwnerTabs, ContractorTabs, EngineerTabs } from './RoleTabs'
 import NotificationsScreen from '../screens/shared/NotificationsScreen'
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'
 import LiveCameraScreen from '../screens/engineer/LiveCameraScreen'
 import MessagesScreen from '../screens/shared/MessagesScreen'
+import DeleteAccountScreen from '../screens/shared/DeleteAccountScreen'
 import BookTechnicianScreen from '../screens/shared/BookTechnicianScreen'
 import CreateProjectScreen from '../screens/owner/CreateProjectScreen'
 import OwnerProjectScreen from '../screens/owner/OwnerProjectScreen'
@@ -54,7 +63,8 @@ const Stack = createNativeStackNavigator()
 const DASHBOARD_BY_ROLE = {
   OWNER: { name: 'OwnerHome', component: OwnerTabs },
   CONTRACTOR: { name: 'ContractorHome', component: ContractorTabs },
-  SUPPLIER: { name: 'SupplierHome', component: SupplierTabs },
+  // Material / Labour / Equipment is decided inside, from the supplier profile.
+  SUPPLIER: { name: 'SupplierHome', component: SupplierHome },
   ENGINEER: { name: 'EngineerHome', component: EngineerTabs },
 }
 
@@ -99,14 +109,15 @@ export default function RootNavigator() {
 
   // Signed in = the server confirmed an account (no login token is returned any more).
   const signedIn = Boolean(user)
-  // Supplier / Site Engineer are not live yet: one Coming soon screen instead
-  // of their unfinished dashboards (src/config/modules.js).
-  const dashboard = isRoleLive(user?.role || 'OWNER')
+  // Site Engineer is not live yet: one Coming soon screen instead of its
+  // unfinished dashboard (src/config/modules.js). Supplier decides per kind.
+  const dashboard = isRoleLive(user?.role || 'OWNER') || user?.role === 'SUPPLIER'
     ? DASHBOARD_BY_ROLE[user?.role] || DASHBOARD_BY_ROLE.OWNER
     : { name: 'ComingSoonRole', component: ComingSoonRoleScreen }
 
   return (
     <NotificationsProvider signedIn={signedIn}>
+    <SupplierProvider>
     <ComingSoonProvider>
     <NavigationContainer
       key={theme}
@@ -124,12 +135,26 @@ export default function RootNavigator() {
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="Estimate" component={EstimateScreen} />
           </>
+        ) : supplierCategoryMissing(user) ? (
+          // A new supplier chooses a Supplier Category before the pincode step.
+          <Stack.Screen name="SupplierCategory" component={SupplierCategoryScreen} />
         ) : needsLocationPincode(user) ? (
           <Stack.Screen name="PincodeSetup" component={PincodeSetupScreen} />
         ) : (
           <>
             <Stack.Screen name={dashboard.name} component={dashboard.component} />
             <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
+            <Stack.Screen name="SupplierProfile" component={SupplierProfileScreen} />
+            {/* Every role's profile opens the same Delete Account form. */}
+            <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+            {user?.role === 'SUPPLIER' && (
+              <>
+                {/* Products: the catalog picker, a listing's page and its editor. */}
+                <Stack.Screen name="SupplierAddProduct" component={SupplierAddProductScreen} />
+                <Stack.Screen name="SupplierListing" component={SupplierListingScreen} />
+                <Stack.Screen name="SupplierEditListing" component={SupplierEditListingScreen} />
+              </>
+            )}
             <Stack.Screen name="CreateProject" component={CreateProjectScreen} />
             <Stack.Screen name="OwnerProject" component={OwnerProjectScreen} />
             <Stack.Screen name="BuilderProfile" component={BuilderProfileScreen} />
@@ -153,6 +178,7 @@ export default function RootNavigator() {
       </Stack.Navigator>
     </NavigationContainer>
     </ComingSoonProvider>
+    </SupplierProvider>
     </NotificationsProvider>
   )
 }

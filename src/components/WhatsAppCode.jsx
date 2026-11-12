@@ -370,6 +370,121 @@ export function PhoneVerification({ phone, onPhoneChange, onVerifiedChange, labe
   )
 }
 
+/**
+ * The WhatsApp check for a number typed into a profile form (the form keeps its
+ * own phone field). Where the server has the check on, PATCH
+ * /auth/complete-profile only takes a changed Indian number together with the
+ * token this check returns for exactly that number; a different number drops
+ * the token and starts over.
+ */
+export function PhoneCodeCheck({ phone, onVerifiedChange }) {
+  const { t, translateMessage } = useLanguage()
+  const [stage, setStage] = useState('enter')
+  const [code, setCode] = useState(emptyCode)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState('')
+  const [devPreview, setDevPreview] = useState(null)
+  const [secondsLeft, setSecondsLeft] = useCountdown()
+  const gate = useRequestGate()
+  const onVerifiedRef = useRef(onVerifiedChange)
+  onVerifiedRef.current = onVerifiedChange
+
+  useEffect(() => {
+    onVerifiedRef.current?.(null)
+    setStage('enter')
+    setCode(emptyCode())
+    setDevPreview(null)
+    setProblem('')
+  }, [phone])
+
+  async function requestCode() {
+    if (busy) return
+    if (!INDIA_MOBILE.test(phone)) {
+      setProblem(t('signup.phone.invalid'))
+      return
+    }
+    if (!gate.enter()) return
+    setBusy(true)
+    setProblem('')
+    try {
+      const result = await sendPhoneCode(phone)
+      setCode(emptyCode())
+      setDevPreview(devPreviewOf(result))
+      setSecondsLeft(result?.resend_after_seconds || 60)
+      setStage('code')
+    } catch (error) {
+      setProblem(readableError(error, t('signup.phone.sendFailed'), SIGNUP_READABLE))
+    } finally {
+      gate.leave()
+      setBusy(false)
+    }
+  }
+
+  async function submitCode() {
+    if (busy || !codeComplete(code)) return
+    setBusy(true)
+    setProblem('')
+    try {
+      const result = await verifyPhoneCode(phone, code)
+      if (!result?.verification_token) throw new Error('missing token')
+      onVerifiedRef.current?.(result.verification_token)
+      setStage('done')
+    } catch (error) {
+      setProblem(readableError(error, t('signup.flow.otpInvalid'), SIGNUP_READABLE))
+      setCode(emptyCode())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <View style={styles.stack}>
+      {stage === 'enter' ? (
+        <>
+          <Notice>{t('signup.phone.verifyFirst')}</Notice>
+          <OutlineButton
+            label={busy ? t('signup.flow.sending') : t('signup.phone.send')}
+            onPress={requestCode}
+            disabled={!INDIA_MOBILE.test(phone)}
+            busy={busy}
+          />
+        </>
+      ) : null}
+      {stage === 'code' ? (
+        <>
+          <OtpBoxes
+            code={code}
+            onChange={(next) => { setCode(next); setProblem('') }}
+            invalid={Boolean(problem)}
+            disabled={busy}
+            label={t('signup.phone.otpLabel')}
+            note={`+91 ${phone}`}
+          />
+          <Text style={styles.hint}>{t('signup.phone.sent')}</Text>
+          {devPreview ? <DevOtpNotice code={devPreview.code} /> : null}
+          <CodeActions
+            onBack={() => { setStage('enter'); setProblem('') }}
+            secondsLeft={secondsLeft}
+            onResend={requestCode}
+            sending={busy}
+          >
+            <View style={{ flex: 1 }}>
+              <OutlineButton
+                label={busy ? t('signup.flow.checking') : t('signup.flow.verifyOtp')}
+                onPress={submitCode}
+                disabled={!codeComplete(code)}
+                busy={busy}
+              />
+            </View>
+          </CodeActions>
+        </>
+      ) : null}
+      {stage === 'done' ? <Notice tone="success">{t('signup.phone.verified')}</Notice> : null}
+      {problem ? <Notice>{translateMessage(problem)}</Notice> : null}
+    </View>
+  )
+}
+
 const styles = createStyles((c) => ({
   stack: { gap: 10, marginBottom: 14 },
   field: {},

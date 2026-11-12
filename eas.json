@@ -10,6 +10,9 @@
       "android": {
         "buildType": "apk"
       },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://crewnbuild.com/api"
+      },
       "channel": "development"
     },
     "preview": {
@@ -21,17 +24,18 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://YOUR-DEPLOYED-BACKEND-URL"
+        "EXPO_PUBLIC_API_BASE_URL": "https://crewnbuild.com/api"
       },
       "channel": "preview"
     },
     "production": {
+      "credentialsSource": "remote",
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://YOUR-DEPLOYED-BACKEND-URL"
+        "EXPO_PUBLIC_API_BASE_URL": "https://crewnbuild.com/api"
       },
       "channel": "production"
     }

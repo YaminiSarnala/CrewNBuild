@@ -8,6 +8,22 @@ export const LIVE_ROLES = ['OWNER', 'CONTRACTOR']
 
 export const isRoleLive = (role) => LIVE_ROLES.includes(String(role || '').toUpperCase())
 
+/**
+ * Supplier kinds (supplierKind: material / labour / equipment) whose dashboard
+ * is live. Material is being built now, so it opens in development builds only;
+ * set it to ['material'] for every build once it is finished.
+ */
+export const SUPPLIER_LIVE_KINDS = __DEV__ ? ['material'] : []
+
+/** Whether this account gets its real dashboard (Supplier: by its saved kind). */
+export function isAccountLive(user, kind) {
+  if (isRoleLive(user?.role || 'OWNER')) return true
+  return user?.role === 'SUPPLIER' && SUPPLIER_LIVE_KINDS.includes(kind)
+}
+
+/** Whether Sign up offers this role (Supplier once any supplier kind is live). */
+export const isSignupRoleOpen = (role) => isRoleLive(role) || (role === 'SUPPLIER' && SUPPLIER_LIVE_KINDS.length > 0)
+
 /** Owner-side features that lead into an unfinished module. true = Coming soon. */
 export const COMING_SOON = {
   marketplace: true, // construction materials from suppliers (Buy & Sell, Order, Suppliers tab)

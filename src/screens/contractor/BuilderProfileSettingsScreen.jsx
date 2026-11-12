@@ -17,10 +17,10 @@ import { Camera, Plus, Trash2, Building2, ImagePlus } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
 import { ActionButton, LabeledInput, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
 import { fetchContractorProfile } from '../../api/profiles'
-import { completeUserProfile, deleteOwnAccount, updateBusinessLogo, updateProfileImage } from '../../api/auth'
+import { completeUserProfile, updateBusinessLogo, updateProfileImage } from '../../api/auth'
 import { uploadLocalFile } from '../../api/upload'
 import { imageUrl } from '../../api/client'
-import { logoutUser, mergeUser } from '../../store/authSlice'
+import { mergeUser } from '../../store/authSlice'
 import {
   PORTFOLIO_MAX_IMAGES, PORTFOLIO_MAX_PROJECTS, apiErrorText, normalizePortfolioProjects, profileListString,
   splitEditableList,
@@ -112,7 +112,6 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
   const [uploading, setUploading] = useState('')
-  const [deleting, setDeleting] = useState(false)
   // Messages under each field: this screen's checks first, then the server's.
   const [errors, setErrors] = useState({})
   const country = userCountry(user)
@@ -274,29 +273,9 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
   }
   const removeProjectImage = (index, url) => setPortfolio(portfolio.map((item, i) => (i === index ? { ...item, images: item.images.filter((image) => image !== url) } : item)))
 
-  function confirmDelete() {
-    Alert.alert(
-      t('account.deleteTitle'),
-      t('account.deleteBody'),
-      [
-        { text: t('dash.common.cancel'), style: 'cancel' },
-        {
-          text: t('account.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true)
-            try {
-              await deleteOwnAccount()
-              dispatch(logoutUser())
-            } catch (error) {
-              setDeleting(false)
-              Alert.alert(t('account.delete'), apiErrorText(error, t('account.deleteFailed')))
-            }
-          },
-        },
-      ],
-    )
-  }
+  // As the web's DeleteAccountSection: the button opens the Delete Account form.
+  const openDeleteAccount = () => navigation.navigate('DeleteAccount')
+
 
   const photoUrl = profile?.profile_image_url || user?.profile_image_url
   const logoUrl = profile?.company_logo_url
@@ -429,7 +408,7 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
 
       <Panel title={t('account.delete')}>
         <Text style={styles.text12}>{t('account.deleteSub')}</Text>
-        <ActionButton label={t('account.delete')} tone="danger" icon={Trash2} busy={deleting} onPress={confirmDelete} />
+        <ActionButton label={t('account.delete')} tone="danger" icon={Trash2} onPress={openDeleteAccount} />
       </Panel>
     </StackScreenShell>
   )

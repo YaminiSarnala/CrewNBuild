@@ -10,7 +10,7 @@
 // session, so the new account is signed in at once.
 import { useRef, useState } from 'react'
 import { useComingSoon, SoonTag } from '../../components/ComingSoon'
-import { isRoleLive } from '../../config/modules'
+import { isSignupRoleOpen } from '../../config/modules'
 import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, ActivityIndicator } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { ArrowRight, Check } from 'lucide-react-native'
@@ -151,9 +151,9 @@ export default function SignupScreen({ navigation }) {
                 label={t(labelKey)}
                 description={t(descKey)}
                 selected={form.role === value}
-                // Supplier / Site Engineer are not live in the app yet.
-                onPress={() => (isRoleLive(value) ? set('role')(value) : comingSoon.show(value))}
-                badge={isRoleLive(value) ? null : <SoonTag />}
+                // Site Engineer is not live in the app yet; Supplier opens with its first live kind.
+                onPress={() => (isSignupRoleOpen(value) ? set('role')(value) : comingSoon.show(value))}
+                badge={isSignupRoleOpen(value) ? null : <SoonTag />}
                 image={image}
               />
             ))}

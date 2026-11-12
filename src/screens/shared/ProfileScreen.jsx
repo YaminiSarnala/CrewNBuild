@@ -6,16 +6,17 @@ import { useFocusEffect } from '@react-navigation/native'
 import { View, Text, Pressable, TextInput, Alert, Linking } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { Image } from 'expo-image'
-import { Globe, LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle, Trash2, AlertTriangle } from 'lucide-react-native'
+import { Globe, LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle, Trash2 } from 'lucide-react-native'
 import DashboardShell, { Panel } from '../../components/DashboardShell'
 import LanguageSheet from '../../components/LanguageSheet'
 import ProfilePhotoSheet from '../../components/ProfilePhotoSheet'
 import EmailSection from '../../components/EmailSection'
+import Toast, { useToast } from '../../components/Toast'
+import { PhoneCodeCheck, usePhoneConfig } from '../../components/WhatsAppCode'
 import { PincodeAreaHint } from '../../components/form'
 import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
 import { baseFieldErrors, digitsOf, fieldErrorsFrom, isIndia, ownerProfileFields } from '../../utils/profileValidation'
-import Dialog, { DialogButton } from '../../components/Dialog'
-import { completeUserProfile, deleteOwnAccount } from '../../api/auth'
+import { completeUserProfile } from '../../api/auth'
 import { mergeUser, logoutUser } from '../../store/authSlice'
 import { imageSource } from '../../api/client'
 import { COLORS } from '../../theme/tokens'
@@ -72,31 +73,15 @@ export default function ProfileScreen({ navigation }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [photoOpen, setPhotoOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState('')
-
-  // As the web's DeleteAccountSection: the server deletes the account the token
-  // belongs to; the session is only torn down once it reports success.
-  async function confirmDelete() {
-    setDeleting(true)
-    setDeleteError('')
-    try {
-      await deleteOwnAccount()
-      setDeleteOpen(false)
-      dispatch(logoutUser())
-    } catch (error) {
-      const detail = error?.response?.data?.detail
-      setDeleteError((typeof detail === 'string' && td(detail)) || t('account.deleteFailed'))
-      setDeleting(false)
-    }
-  }
+  // The save result floats at the bottom of the screen, where the button is.
+  const { toast, showToast, hideToast } = useToast()
+  const phoneConfig = usePhoneConfig()
+  const [phoneToken, setPhoneToken] = useState(null)
 
   const country = userCountry(user)
   const india = isIndia(country)
   const [draft, setDraft] = useState(() => draftFrom(user))
   const [errors, setErrors] = useState({})
-  const [formError, setFormError] = useState('')
   // The post office picked for the typed pincode (saved as the account's location).
   const [branch, setBranch] = useState(null)
   // Every edit starts from the account as it is now.
@@ -104,8 +89,8 @@ export default function ProfileScreen({ navigation }) {
     if (!editing) return
     setDraft(draftFrom(user))
     setErrors({})
-    setFormError('')
     setBranch(null)
+    setPhoneToken(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing])
 
@@ -119,20 +104,24 @@ export default function ProfileScreen({ navigation }) {
   const change = (field, value) => {
     setDraft((current) => ({ ...current, [field]: value }))
     setErrors((current) => (current[field] ? { ...current, [field]: '' } : current))
-    setFormError('')
   }
+
+  // A changed Indian number passes the WhatsApp check first where the server
+  // has it on; the save carries the token for exactly that number.
+  const phoneCheckNeeded = editing && phoneConfig.signup && india
+    && digitsOf(draft.phone) !== digitsOf(user?.phone) && digitsOf(draft.phone).length === 10
 
   async function save() {
     if (saving) return
     const nextErrors = baseFieldErrors(draft, country)
+    if (!nextErrors.phone && phoneCheckNeeded && !phoneToken) nextErrors.phone = t('signup.phone.verifyFirst')
     if (Object.keys(nextErrors).length) {
-      setErrors(nextErrors)
-      setFormError(t('mobile.profile.fixFields'))
+      setErrors(Object.fromEntries(Object.entries(nextErrors).map(([key, text]) => [key, td(String(text))])))
+      showToast(t('mobile.profile.fixFields'), 'error')
       return
     }
     setSaving(true)
     setErrors({})
-    setFormError('')
     const area = pincodeLookup.status === 'success' ? pincodeLookup.areaDetails : null
     const payload = {
       // The API resets an omitted owner budget / land area / floors, so the
@@ -145,18 +134,21 @@ export default function ProfileScreen({ navigation }) {
       country_of_residence: country,
       // The picked post office, else the area the pincode resolved to.
       ...(branch || area ? { location: branch?.display || branch?.name || area?.display || '' } : {}),
+      ...(phoneCheckNeeded && phoneToken ? { phone_verification_token: phoneToken } : {}),
     }
     try {
       const result = await completeUserProfile(payload)
       dispatch(mergeUser(result?.user || result || payload))
       setEditing(false)
-      Alert.alert('Profile updated', 'Your details have been saved.')
+      showToast(t('dash.msg.profileSaved'), 'success')
     } catch (error) {
       const fields = fieldErrorsFrom(error)
       setErrors(Object.fromEntries(Object.entries(fields).map(([key, text]) => [key, td(String(text))])))
+      // A spent or refused token needs a fresh check.
+      if (fields.phone) setPhoneToken(null)
       const detail = error?.response?.data?.detail
       const message = typeof detail === 'string' ? detail : detail?.message
-      setFormError(message ? td(message) : 'Could not save. Please try again.')
+      showToast(message ? td(message) : t('cp.err.completeProfile'), 'error')
     } finally {
       setSaving(false)
     }
@@ -232,9 +224,9 @@ export default function ProfileScreen({ navigation }) {
                 maxLength={india ? 6 : 10}
                 error={errors.pincode}
               />
+              {phoneCheckNeeded ? <PhoneCodeCheck phone={digitsOf(draft.phone)} onVerifiedChange={setPhoneToken} /> : null}
               {!errors.pincode ? <PincodeAreaHint lookupState={pincodeLookup} selectedBranch={branch} onSelectBranch={setBranch} /> : null}
               {errors.location ? <Text style={styles.fieldError}>{errors.location}</Text> : null}
-              {formError ? <Text style={styles.formError}>{formError}</Text> : null}
               <Pressable onPress={save} disabled={saving} style={[styles.pressable4, saving ? styles.pressable2 : null]}>
                 <Text style={styles.text7}>{saving ? 'Saving…' : 'Save changes'}</Text>
               </Pressable>
@@ -290,7 +282,8 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.deleteSub}>{t('account.deleteSub')}</Text>
           </View>
           <Pressable
-            onPress={() => { setDeleteError(''); setDeleteOpen(true) }}
+            // As the web's DeleteAccountSection: opens the Delete Account form.
+            onPress={() => navigation.navigate('DeleteAccount')}
             accessibilityRole="button"
             style={styles.deleteButton}
           >
@@ -301,28 +294,7 @@ export default function ProfileScreen({ navigation }) {
       </DashboardShell>
       <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
       <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
-      <Dialog
-        visible={deleteOpen}
-        busy={deleting}
-        onClose={() => setDeleteOpen(false)}
-        footer={
-          <>
-            <DialogButton label={t('dash.common.cancel')} look="secondary" disabled={deleting} onPress={() => setDeleteOpen(false)} />
-            <DialogButton label={deleting ? t('account.deleting') : t('account.delete')} look="danger" disabled={deleting} onPress={confirmDelete} />
-          </>
-        }
-      >
-        <View style={styles.deleteHead}>
-          <View style={styles.deleteIcon}>
-            <AlertTriangle size={20} color="#dc2626" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.deleteDialogTitle}>{t('account.deleteTitle')}</Text>
-            <Text style={styles.deleteDialogBody}>{t('account.deleteBody')}</Text>
-          </View>
-        </View>
-        {!!deleteError && <Text style={styles.deleteError}>{deleteError}</Text>}
-      </Dialog>
+      <Toast {...toast} onHide={hideToast} />
     </>
   )
 }
@@ -334,7 +306,6 @@ const styles = createStyles((c) => ({
   view2: { marginTop: 10.5 },
   inputError: { borderColor: '#dc2626' },
   fieldError: { marginTop: 4, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
-  formError: { marginBottom: 8, fontSize: 12.5, fontWeight: '700', color: '#dc2626' },
   emailBlock: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderColor: c.borderSoft },
   textInput: { marginTop: 5.25, height: 38.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, fontWeight: '600', color: c.text },
   view3: { marginBottom: 14, alignItems: 'center', borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 21 },
@@ -369,9 +340,4 @@ const styles = createStyles((c) => ({
     borderColor: '#fda4af', backgroundColor: '#fff1f2', paddingHorizontal: 12,
   },
   deleteButtonText: { fontSize: 12, fontWeight: '800', color: '#be123c' },
-  deleteHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  deleteIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2' },
-  deleteDialogTitle: { fontSize: 17, fontWeight: '800', color: c.text },
-  deleteDialogBody: { marginTop: 4, fontSize: 13.5, lineHeight: 19, color: c.textMuted },
-  deleteError: { marginTop: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fecdd3', backgroundColor: '#fff1f2', padding: 10, fontSize: 13, fontWeight: '700', color: '#be123c' },
 }))

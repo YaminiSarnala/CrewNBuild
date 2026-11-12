@@ -1,7 +1,9 @@
 // Port of the web Projects page (ProjectListTable in ownerProjectViews.jsx):
 // one card per project with its builder, size, progress and active amount,
-// and the card's own actions -- Edit requirement, Delete, Assign Builder.
-// Tapping a card opens the project as a page of its own (OwnerProjectScreen).
+// and the card's own actions -- Edit, Delete, Assign Builder.
+// Tapping a card opens the project as a page of its own (OwnerProjectScreen);
+// Edit opens that page on its Overview with the edit form open, as the web
+// does, instead of a form inside the card.
 //
 // The web also lists estimate drafts saved in the browser; the app has no
 // drafts yet, so every card here is a real project.
@@ -9,19 +11,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { View, Text, Pressable, Alert } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { Image } from 'expo-image'
-import { HardHat, MapPin, Pencil, Plus, RotateCw, Save, Trash2, X } from 'lucide-react-native'
+import { HardHat, MapPin, Pencil, Plus, RotateCw, Trash2 } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useNotifications } from '../../notifications/NotificationsContext'
-import { BudgetInWords, FormNotice, SelectField, TextField } from '../../components/form'
+import { FormNotice } from '../../components/form'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
-import { deleteOwnerProject, fetchOwnerProjects, updateProjectRequirement } from '../../api/projects'
-import { fetchCostToolSummary } from '../../api/costTool'
+import { deleteOwnerProject, fetchOwnerProjects } from '../../api/projects'
+import { fetchOwnerProjectAnalysis } from '../../api/costTool'
+import { analysisError } from './ownerProjectAnalysis'
 import { scheduleText } from '../../utils/builderHelpers'
 import OwnerProjectAnalysisPanel from './OwnerProjectAnalysisPanel'
 import { imageSource } from '../../api/client'
-import { floorCountFor, floorOptionsForCountry, floorTypeForCount, floorTypeLabel } from '../../utils/floorOptions'
 import { FLOOR_TYPE_KEYS, optionLabel } from '../../i18n/optionKeys'
 import { COLORS } from '../../theme/tokens'
 import {
@@ -29,12 +31,6 @@ import {
   normalizeEstimateText, projectBuilderContext,
 } from './ownerHelpers'
 import { createStyles } from '../../theme/createStyles'
-
-const numericText = (value) => {
-  const cleaned = String(value).replace(/[^0-9.]/g, '')
-  const [whole, ...rest] = cleaned.split('.')
-  return rest.length ? `${whole}.${rest.join('')}` : whole
-}
 
 const PILL_TONES = {
   positive: 'tone',
@@ -53,111 +49,7 @@ function CardPill({ text, tone, icon: Icon }) {
   )
 }
 
-// Edit Requirement on the card: title, budget, land area and floors. Every
-// other field is sent back exactly as saved, because the endpoint replaces the
-// whole requirement and resets an omitted budget, land area or floors.
-function EditRequirement({ project, onSaved, onCancel }) {
-  const { t } = useLanguage()
-  const country = project.project_country || ''
-  const [form, setForm] = useState(() => ({
-    title: project.title || '',
-    budget: project.budget ? String(project.budget) : '',
-    land_area: project.land_area ? String(project.land_area) : '',
-    floors: project.floors || 1,
-    // What the save sends: the code actually stored, untouched unless changed.
-    floor_type: project.floor_type || '',
-    // What the dropdown shows: the stored code, or the option matching the
-    // floor count of a project that predates floor_type.
-    floor_type_shown: project.floor_type || floorTypeForCount(country, project.floors),
-  }))
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState({ text: '', tone: 'info' })
-
-  const save = async () => {
-    setSaving(true)
-    setMessage({ text: '', tone: 'info' })
-    try {
-      // Saved to the project record, so the fallback title stays English.
-      await updateProjectRequirement(project.id, {
-        title: form.title.trim() || project.title || 'Untitled project',
-        description: project.description || '',
-        address: project.address || '',
-        pincode: project.pincode || '',
-        building_type: project.building_type || 'RESIDENTIAL',
-        construction_type: project.construction_type || 'CONTRACTOR',
-        budget: Number(form.budget || 0),
-        land_area: Number(form.land_area || 0),
-        floors: Number(form.floors || 1),
-        floor_type: form.floor_type || null,
-      })
-      setMessage({ text: t('dash.owner.estimates.editSaved'), tone: 'success' })
-      await onSaved()
-    } catch (error) {
-      setMessage({ text: apiDetail(error, t('ui.owner.updateRequirementFailed')), tone: 'error' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    // Claims its own touches, so tapping inside the form does not open the project.
-    <View style={styles.view2} onStartShouldSetResponder={() => true}>
-      <Text style={[styles.text2, { fontSize: 10, letterSpacing: 1.4 }]}>
-        {t('dash.owner.estimates.editRequirement')}
-      </Text>
-      <TextField label={t('dash.owner.estimates.editTitle')} value={form.title} onChangeText={(title) => setForm((current) => ({ ...current, title }))} />
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <TextField
-          containerStyle={{ flex: 1 }}
-          label={t('dash.owner.estimates.editBudget')}
-          value={form.budget}
-          onChangeText={(value) => setForm((current) => ({ ...current, budget: numericText(value) }))}
-          keyboardType="decimal-pad"
-        />
-        <TextField
-          containerStyle={{ flex: 1 }}
-          label={t('dash.owner.estimates.editLandArea')}
-          value={form.land_area}
-          onChangeText={(value) => setForm((current) => ({ ...current, land_area: numericText(value) }))}
-          keyboardType="decimal-pad"
-        />
-      </View>
-      <BudgetInWords value={form.budget} country={country || 'India'} />
-      <SelectField
-        label={t('dash.owner.estimates.editFloors')}
-        value={form.floor_type_shown || ''}
-        onChange={(value) => setForm((current) => ({
-          ...current,
-          floor_type: value,
-          floor_type_shown: value,
-          // Keep the count in step with the chosen code; the save posts `floors`.
-          floors: floorCountFor(country, value, current.floors),
-        }))}
-        placeholder={t('cps.selectField', { label: t('dash.common.floors') })}
-        options={floorOptionsForCountry(country).map((option) => ({ value: option.value, label: floorTypeLabel(option.value) }))}
-      />
-      <FormNotice message={message.text} tone={message.tone} style={{ marginBottom: 10 }} />
-      <View style={[styles.view3, { gap: 8 }]}>
-        <Pressable
-          onPress={save}
-          disabled={saving}
-          style={[styles.pressable, saving ? styles.pressable2 : null, { gap: 6 }]}
-        >
-          <Save size={13} color="#ffffff" />
-          <Text style={[styles.text3, { fontSize: 12 }]}>
-            {saving ? t('dash.common.saving') : t('dash.common.save')}
-          </Text>
-        </Pressable>
-        <Pressable onPress={onCancel} style={[styles.pressable3, { gap: 6 }]}>
-          <X size={13} color={COLORS.slate[500]} />
-          <Text style={[styles.text4, { fontSize: 12 }]}>{t('dash.common.cancel')}</Text>
-        </Pressable>
-      </View>
-    </View>
-  )
-}
-
-function ProjectCard({ project, width, editing, deleting, onOpen, onEdit, onCancelEdit, onSaved, onDelete, onAssignBuilder }) {
+function ProjectCard({ project, width, deleting, onOpen, onEdit, onDelete, onAssignBuilder }) {
   const { t, td } = useLanguage()
   const completion = clampPercent(project.completion_percentage)
   const builderContext = projectBuilderContext(project)
@@ -180,15 +72,15 @@ function ProjectCard({ project, width, editing, deleting, onOpen, onEdit, onCanc
     || t('dash.owner.floorsCount', { floors: project.floors || 1 })
   const schedule = scheduleText(project, t)
   // Project Analysis on the back of the card (web OwnerProjectAnalysisPanel):
-  // the cost summary is fetched the first time the card is turned, and again
-  // only after an error.
+  // the owner's analysis is fetched the first time the card is turned, and
+  // again only after an error.
   const [flipped, setFlipped] = useState(false)
   const [analysis, setAnalysis] = useState(null)
   const loadAnalysis = () => {
     setAnalysis({ status: 'loading' })
-    fetchCostToolSummary(project.id)
+    fetchOwnerProjectAnalysis(project.id)
       .then((data) => setAnalysis({ status: 'ready', data }))
-      .catch(() => setAnalysis({ status: 'error' }))
+      .catch((error) => setAnalysis({ status: 'error', error: analysisError(error) }))
   }
   const showAnalysis = () => {
     setFlipped(true)
@@ -263,12 +155,10 @@ function ProjectCard({ project, width, editing, deleting, onOpen, onEdit, onCanc
       </View>
 
       <View style={[styles.view11, { gap: 8 }]}>
-        {!editing ? (
-          <Pressable onPress={onEdit} style={[styles.pressable5, { gap: 5 }]}>
-            <Pencil size={12} color={COLORS.graphite} />
-            <Text style={[styles.text5, { fontSize: 11.5 }]}>{t('dash.owner.estimates.edit')}</Text>
-          </Pressable>
-        ) : null}
+        <Pressable onPress={onEdit} style={[styles.pressable5, { gap: 5 }]}>
+          <Pencil size={12} color={COLORS.graphite} />
+          <Text style={[styles.text5, { fontSize: 11.5 }]}>{t('dash.owner.estimates.edit')}</Text>
+        </Pressable>
         <Pressable
           onPress={onDelete}
           disabled={deleting}
@@ -293,7 +183,6 @@ function ProjectCard({ project, width, editing, deleting, onOpen, onEdit, onCanc
         ) : null}
       </View>
 
-      {editing ? <EditRequirement project={project} onSaved={onSaved} onCancel={onCancelEdit} /> : null}
     </Pressable>
   )
 }
@@ -305,7 +194,6 @@ export default function OwnerProjectsScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
-  const [editingId, setEditingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [deleteMessage, setDeleteMessage] = useState({ text: '', tone: 'success' })
 
@@ -401,12 +289,10 @@ export default function OwnerProjectsScreen({ navigation, route }) {
               key={project.id}
               project={project}
               width={cardWidth}
-              editing={editingId === project.id}
               deleting={deletingId === project.id}
               onOpen={() => navigation.navigate('OwnerProject', { projectId: project.id })}
-              onEdit={() => setEditingId(project.id)}
-              onCancelEdit={() => setEditingId(null)}
-              onSaved={load}
+              // The project's Overview, with its Edit form already open.
+              onEdit={() => navigation.navigate('OwnerProject', { projectId: project.id, tab: 'overview', edit: true })}
               onDelete={() => confirmDelete(project)}
               onAssignBuilder={() => navigation.navigate('OwnerProject', { projectId: project.id, tab: 'assignBuilder' })}
             />
@@ -428,14 +314,8 @@ const styles = createStyles((c) => ({
   tone3: { backgroundColor: c.amberSoft, color: c.amberTextStrong },
   view: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, paddingHorizontal: 8.75, paddingVertical: 3.5 },
   text: { fontFamily: 'Inter_700Bold' },
-  view2: { marginTop: 10.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft40, padding: 10.5 },
-  text2: { marginBottom: 7, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', color: c.brandTextStrong },
-  view3: { flexDirection: 'row' },
-  pressable: { height: 31.5, flexDirection: 'row', alignItems: 'center', borderRadius: 7, backgroundColor: '#134127', paddingHorizontal: 10.5 },
   pressable2: { opacity: 0.6 },
   text3: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
-  pressable3: { height: 31.5, flexDirection: 'row', alignItems: 'center', borderRadius: 7, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5 },
-  text4: { fontFamily: 'Inter_700Bold', color: c.textMuted },
   pressable4: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
   view4: { flexDirection: 'row', alignItems: 'flex-start' },
   view5: { flex: 1 },

@@ -54,11 +54,13 @@ export const TAB_CONFIGS = {
     { name: 'ContractorMoreTab', label: 'More', labelKey: 'mobile.tab.more', icon: PackageSearch, component: ContractorMoreScreen },
   ],
   SUPPLIER: [
-    { name: 'SupplierHomeTab', label: 'Home', icon: LayoutDashboard, component: SupplierDashboard },
-       { name: 'SupplierOrdersTab', label: 'Orders', icon: ShoppingBag, component: SupplierOrdersScreen },
-    { name: 'SupplierRequestsTab', label: 'Requests', icon: ClipboardList, component: SupplierRequestsScreen },
-    { name: 'SupplierProductsTab', label: 'Products', icon: Package, component: SupplierProductsScreen },
-    { name: 'SupplierProfileTab', label: 'Profile', icon: CircleUser, component: ProfileScreen },  ],
+    // Web supplierConstants baseNav, without a More tab: My Projects and Find
+    // Clients open from the Dashboard, and Profile from the header photo.
+    { name: 'SupplierHomeTab', label: 'Dashboard', labelKey: 'shop.dashboard', icon: LayoutDashboard, component: SupplierDashboard },
+    { name: 'SupplierProductsTab', label: 'Products', labelKey: 'ui.products', icon: Package, component: SupplierProductsScreen },
+    { name: 'SupplierOrdersTab', label: 'Orders', labelKey: 'shop.orders', icon: ShoppingBag, component: SupplierOrdersScreen },
+    { name: 'SupplierRequestsTab', label: 'Requests', labelKey: 'ui.requests', badgeSections: ['requests'], icon: ClipboardList, component: SupplierRequestsScreen },
+  ],
   ENGINEER: [
     { name: 'EngineerHomeTab', label: 'Home', icon: LayoutDashboard, component: EngineerDashboard },
         { name: 'EngineerProjectsTab', label: 'Projects', icon: HardHat, component: EngineerProjectsScreen },

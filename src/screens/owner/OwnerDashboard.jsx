@@ -361,7 +361,9 @@ export default function OwnerDashboard({ navigation }) {
   // --- layout --------------------------------------------------------------
   const contentWidth = Math.min(width, maxContentWidth) - gutter * 2
   const quickColumns = isLargeTablet ? 4 : 2
-  const quickWidth = (contentWidth - 12 * (quickColumns - 1)) / quickColumns
+  // Rounded down: a fractional width can round up on some screen densities
+  // (Moto Edge), and then two cards no longer fit on one row.
+  const quickWidth = Math.floor((contentWidth - 12 * (quickColumns - 1)) / quickColumns)
   const twoUp = isTablet // tablets show the list panels side by side
   const pairStyle = twoUp ? { flexDirection: 'row', gap: 16, alignItems: 'stretch' } : { gap: 16 }
   const half = twoUp ? { flex: 1 } : null
@@ -392,7 +394,7 @@ export default function OwnerDashboard({ navigation }) {
               { icon: TrendingUp, tint: metricTints.blue, label: t('dash.owner.overview.overallProgress'), value: `${clampPercent(summary.averageProgress)}%`, onPress: openProjects },
               { icon: ClipboardList, tint: metricTints.rose, label: t('dash.owner.overview.pendingRequests'), value: String(pendingRequestCount) },
             ].map((metric) => (
-              <View key={metric.label} style={isTablet ? { flex: 1 } : { width: (contentWidth - 10) / 2 }}>
+              <View key={metric.label} style={isTablet ? { flex: 1 } : { width: Math.floor((contentWidth - 10) / 2) }}>
                 <Metric {...metric} />
               </View>
             ))}
