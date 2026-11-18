@@ -23,6 +23,7 @@ import { FreeAccessBanner, PlanSummaryCard, Section, Badge } from '../../compone
 import { BudgetRing, DonutChart, StatCard, WelcomeBanner } from '../../components/builder/BuilderDashboardParts'
 import { House3DCard } from '../../components/builder/House3D'
 import useBuilderSubscription from '../../hooks/useBuilderSubscription'
+import ExpiryWarningModal from '../../components/builder/ExpiryWarningModal'
 import { useBuilderInbox } from '../../components/builder/BuilderInbox'
 import { fetchBuilderProjectsWithAssignments } from '../../api/projects'
 import { fetchIncomingRequests } from '../../api/requests'
@@ -190,6 +191,7 @@ export default function ContractorDashboard({ navigation }) {
         onOpenNotifications={() => navigation.navigate('Notifications')}
       >
         <FreeAccessBanner status={subscription.status} onViewPlans={() => navigation.navigate('BuilderSubscription')} />
+                  <ExpiryWarningModal status={subscription.status} userId={user?.id} onViewPlans={() => navigation.navigate('BuilderSubscription')} />
 
         <Section>
           <WelcomeBanner

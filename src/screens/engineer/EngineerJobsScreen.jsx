@@ -1,248 +1,299 @@
-// Port of the web engineer 'findOpportunities' section and its 4 sub-tabs:
-// open opportunities (apply), discover builders (request to join), incoming
-// requests from builders (ACCEPT/REJECT — same action strings as web), and
-// join-by-invite-code.
-import { useState } from 'react'
-import { View, Text, Pressable, TextInput, Alert, ScrollView } from 'react-native'
-import { useSelector } from 'react-redux'
-import { Briefcase, HardHat, Inbox, KeyRound, Check, X, Send, MapPin } from 'lucide-react-native'
-import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
+// The Site Engineer's Find Opportunities tab — port of the web
+// EngineerDashboard 'findOpportunities' section and its four tabs:
+//   Join Builder Team (invite code, my team, builders' requests to join, my
+//   pending requests), Requests (owner and specialist project requests sent to
+//   this engineer), Discover Builders (request to join) and Find Opportunities
+//   (open projects needing a Site Engineer, apply).
+// Wired to: GET /engineers/team, POST /engineers/join, POST /engineers/request-join,
+// POST /engineers/requests/{id}/respond, GET /project-requests/incoming
+// (+ accept / reject), GET /contractors/nearby, GET /contractors/{id}/profile,
+// GET /engineers/opportunities, POST /engineers/opportunities/{id}/apply.
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { View, Text, Pressable } from 'react-native'
+import { useDispatch, useSelector } from 'react-redux'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { MapPin, Users } from 'lucide-react-native'
+import DashboardShell, { useAsyncData } from '../../components/DashboardShell'
+import { Notice, Section, SegmentTabs } from '../../components/builder/BuilderUi'
+import RequestsPanel from '../../components/RequestsPanel'
+import { useLanguage } from '../../i18n/LanguageContext'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
+import { useProfileGate } from '../../hooks/useProfileGate'
 import {
-  fetchEngineerOpportunities, applyEngineerOpportunity, fetchEngineerTeam,
-  respondEngineerJoinRequest, joinEngineerTeam, requestEngineerJoin,
+  applyEngineerOpportunity, fetchEngineerOpportunities, fetchEngineerTeam, joinEngineerTeam,
+  requestEngineerJoin, respondEngineerJoinRequest,
 } from '../../api/engineers'
+import { acceptProjectRequest, fetchIncomingRequests, rejectProjectRequest } from '../../api/requests'
 import { fetchNearbyContractors } from '../../api/projects'
-import { COLORS } from '../../theme/tokens'
+import { fetchContractorProfile } from '../../api/profiles'
 import { userCountry } from '../../utils/countryConfig'
+import { apiErrorText } from '../../utils/builderHelpers'
+import {
+  ContractorProfileSheet, EmptyCard, EngineerContractors, EngineerJoinTeam, EngineerOpportunities, OpportunitySheet,
+} from './engineerParts'
+import { LocationSheet } from '../contractor/ContractorLeadsScreen'
+import { mergeUser } from '../../store/authSlice'
 import { createStyles } from '../../theme/createStyles'
+import { COLORS } from '../../theme/tokens'
 
-const inr = (value) => (Number(value || 0) ? `₹${Number(value).toLocaleString('en-IN')}` : '')
+// "Later" on the location prompt hides it until the app restarts (the web keeps
+// it for the browser session).
+let locationPromptDismissed = false
 
-export default function EngineerJobsScreen({ navigation }) {
+// Applied opportunities are remembered on this device, as the web keeps them in localStorage.
+const APPLIED_KEY = 'octabuild_applied_opportunities'
+const readApplied = async () => {
+  try { return JSON.parse((await AsyncStorage.getItem(APPLIED_KEY)) || '[]') } catch { return [] }
+}
+async function saveApplied(projectId) {
+  const applied = await readApplied()
+  if (!applied.includes(String(projectId))) {
+    await AsyncStorage.setItem(APPLIED_KEY, JSON.stringify([...applied, String(projectId)])).catch(() => {})
+  }
+  return readApplied()
+}
+
+export default function EngineerJobsScreen({ navigation, route }) {
+  const { t, td } = useLanguage()
   const user = useSelector((state) => state.auth.user)
-  const [activeTab, setActiveTab] = useState('opportunities')
+    const dispatch = useDispatch()
+  const country = userCountry(user)
+  const { requireCompleteProfile } = useProfileGate()
+  const [tab, setTab] = useState('joinTeam')
+    // Web LocationLeadsPrompt: an Indian account sets the pincode it is matched on;
+  // with none saved the prompt opens by itself.
+  const locationEligible = Boolean(user?.id) && String(user?.country_of_residence || 'India').trim().toLowerCase() === 'india'
+  const [locationOpen, setLocationOpen] = useState(false)
+  useEffect(() => {
+    if (locationEligible && !String(user?.pincode || '').trim() && !locationPromptDismissed) setLocationOpen(true)
+  }, [locationEligible, user?.pincode])
+  const closeLocation = () => { locationPromptDismissed = true; setLocationOpen(false) }
   const [refreshing, setRefreshing] = useState(false)
-  const [appliedIds, setAppliedIds] = useState(new Set())
-  const [sentBuilderIds, setSentBuilderIds] = useState(new Set())
-  const [busyId, setBusyId] = useState(null)
-  const [inviteCode, setInviteCode] = useState('')
-  const [joining, setJoining] = useState(false)
+  const [appliedKeys, setAppliedKeys] = useState([])
+  const [joinMessage, setJoinMessage] = useState('')
+  const [joinError, setJoinError] = useState('')
+  const [sectionMessage, setSectionMessage] = useState('')
+  const [selectedContractor, setSelectedContractor] = useState(null)
+  const [contractorProfile, setContractorProfile] = useState(null)
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null)
 
-  const opportunities = useAsyncData(() => fetchEngineerOpportunities(userCountry(user)), [userCountry(user)])
   const team = useAsyncData(fetchEngineerTeam, [])
-  const builders = useAsyncData(() => fetchNearbyContractors(user?.pincode, userCountry(user)), [user?.pincode, userCountry(user)])
+  const requests = useAsyncData(fetchIncomingRequests, [])
+  const opportunities = useAsyncData(() => fetchEngineerOpportunities(country), [country])
+  const contractors = useAsyncData(() => (user?.pincode ? fetchNearbyContractors(user.pincode, country) : Promise.resolve([])), [user?.pincode, country])
+  const reloadAll = useCallback(() => Promise.all([team.reload(), requests.reload(), opportunities.reload(), contractors.reload()]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [team.reload, requests.reload, opportunities.reload, contractors.reload])
+  useLiveRefresh(reloadAll)
+  useEffect(() => { readApplied().then(setAppliedKeys) }, [])
 
-  const opportunityList = Array.isArray(opportunities.data) ? opportunities.data : []
+  // Another screen can open a given tab: navigate('EngineerJobsTab', { tab }).
+  const requestedTab = route?.params?.tab
+  useEffect(() => {
+    if (!requestedTab) return
+    setTab(requestedTab)
+    navigation.setParams?.({ tab: undefined })
+  }, [requestedTab, navigation])
+
+  const teams = team.data?.teams || []
   const incomingRequests = team.data?.incoming_requests || []
-  const builderList = Array.isArray(builders.data) ? builders.data : []
+  // Requests addressed TO this engineer (the incoming list holds both directions).
+  const incomingRequestList = useMemo(
+    () => (Array.isArray(requests.data) ? requests.data : []).filter((request) => request.is_receiver),
+    [requests.data],
+  )
+  const pendingRequestCount = incomingRequestList.filter((request) => request.status === 'pending').length
+  const opportunityList = Array.isArray(opportunities.data) ? opportunities.data : []
+  const contractorList = Array.isArray(contractors.data) ? contractors.data : []
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await Promise.all([opportunities.reload(), team.reload(), builders.reload()])
-    setRefreshing(false)
+    try { await reloadAll() } finally { setRefreshing(false) }
   }
 
-  async function apply(opportunity) {
-    const id = opportunity.project_id
-    setBusyId(id)
+  const teamStatusByContractor = (contractorId) => {
+    const row = teams.find((item) => String(item.contractor_id) === String(contractorId))
+    if (!row) return 'none'
+    if (row.status === 'ACTIVE') return 'active'
+    if (row.status === 'PENDING') return 'pending'
+    return 'rejected'
+  }
+
+  async function joinTeam(code) {
+    setJoinMessage('')
+    setJoinError('')
+    if (!code) { setJoinError(t('dash.engineer.msg.enterCode')); return }
     try {
-      await applyEngineerOpportunity(id)
-      setAppliedIds((prev) => new Set(prev).add(id))
+      const result = await joinEngineerTeam(code)
+      setJoinMessage(t('dash.msg.joinedTeam', { company: td(result.company_name || result.contractor_name) }))
+      reloadAll()
     } catch (error) {
-      Alert.alert('Could not apply', error?.response?.data?.detail || 'Please try again.')
-    } finally {
-      setBusyId(null)
+      setJoinError(apiErrorText(error, t('dash.engineer.msg.unableJoin')))
     }
   }
 
-  async function requestJoin(builder) {
-    const id = builder.user_id || builder.id
-    setBusyId(id)
+  async function sendJoinRequest(contractorId) {
+    if (requireCompleteProfile(() => sendJoinRequest(contractorId))) return
+    setSectionMessage('')
     try {
-      await requestEngineerJoin(id)
-      setSentBuilderIds((prev) => new Set(prev).add(id))
+      await requestEngineerJoin(contractorId)
+      setSectionMessage(t('dash.engineer.msg.joinRequestSent'))
+      reloadAll()
     } catch (error) {
-      Alert.alert('Could not send', error?.response?.data?.detail || 'Please try again.')
-    } finally {
-      setBusyId(null)
+      setSectionMessage(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
     }
   }
 
-  async function respond(relationshipId, action) {
+  async function respondToBuilderRequest(relationshipId, action) {
+    // Joining a builder's team needs a complete profile; declining does not.
+    if (action === 'ACCEPT' && requireCompleteProfile(() => respondToBuilderRequest(relationshipId, action))) return
+    setJoinMessage('')
+    setJoinError('')
     try {
       await respondEngineerJoinRequest(relationshipId, action)
-      await team.reload()
+      setJoinMessage(action === 'ACCEPT' ? t('dash.msg.engineerRequestAccepted') : t('dash.msg.engineerRequestRejected'))
+      reloadAll()
     } catch (error) {
-      Alert.alert('Could not update', error?.response?.data?.detail || 'Please try again.')
+      setJoinError(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
     }
   }
 
-  async function joinByCode() {
-    if (!inviteCode.trim()) return
-    setJoining(true)
+  async function respondToProjectRequest(requestId, accept) {
+    if (accept && requireCompleteProfile(() => respondToProjectRequest(requestId, accept))) return
+    setSectionMessage('')
     try {
-      await joinEngineerTeam(inviteCode.trim())
-      Alert.alert('Joined', 'You are now part of the builder\'s team.')
-      setInviteCode('')
-      await team.reload()
+      if (accept) await acceptProjectRequest(requestId)
+      else await rejectProjectRequest(requestId)
+      reloadAll()
     } catch (error) {
-      Alert.alert('Could not join', error?.response?.data?.detail || 'Check the invite code and try again.')
-    } finally {
-      setJoining(false)
+      setSectionMessage(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
+    }
+  }
+
+  async function applyOpportunity(opportunity) {
+    if (requireCompleteProfile(() => applyOpportunity(opportunity))) return
+    setSectionMessage('')
+    try {
+      const result = await applyEngineerOpportunity(opportunity.project_id)
+      setAppliedKeys(await saveApplied(opportunity.project_id))
+      setSectionMessage(t('dash.msg.applicationSent', { name: td(result.receiver_name) || t('dash.theBuilder') }))
+      setSelectedOpportunity(null)
+    } catch (error) {
+      setSectionMessage(apiErrorText(error, t('dash.engineer.msg.unableApply')))
+      if (String(error?.response?.status) === '409') setAppliedKeys(await saveApplied(opportunity.project_id))
+    }
+  }
+
+  async function viewContractorProfile(contractor) {
+    setContractorProfile(null)
+    setSelectedContractor(contractor)
+    try {
+      setContractorProfile(await fetchContractorProfile(contractor.user_id || contractor.id))
+    } catch {
+      setContractorProfile(null)
     }
   }
 
   const tabs = [
-    { id: 'opportunities', label: 'Openings', icon: Briefcase, count: opportunityList.length },
-    { id: 'builders', label: 'Builders', icon: HardHat, count: builderList.length },
-    { id: 'requests', label: 'Requests', icon: Inbox, count: incomingRequests.length },
-    { id: 'joincode', label: 'Join code', icon: KeyRound },
+    { id: 'joinTeam', label: t('ui.joinTeam'), count: incomingRequests.length || undefined },
+    { id: 'requests', label: t('ui.requests'), count: pendingRequestCount || undefined },
+    { id: 'contractors', label: t('ui.discoverBuilders') },
+    { id: 'opportunities', label: t('ui.findOpportunities') },
   ]
 
   return (
     <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 6 }}>
-        {tabs.map(({ id, label, icon: Icon, count }) => {
-          const active = activeTab === id
-          return (
-            <Pressable key={id} onPress={() => setActiveTab(id)} style={[styles.pressable, active ? styles.pressable2 : styles.pressable3]}>
-              <Icon size={13} color={active ? '#fff' : COLORS.slate[400]} />
-              <Text style={[styles.text, active ? styles.text2 : styles.text3]}>
-                {label}{count ? ` (${count})` : ''}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </ScrollView>
-
-      {activeTab === 'opportunities' && (
-        <PanelState loading={opportunities.loading} error={opportunities.error} empty={!opportunityList.length} emptyText="No open opportunities in your area right now.">
-          {opportunityList.map((opportunity) => {
-            const applied = appliedIds.has(opportunity.project_id)
-            return (
-              <View key={opportunity.project_id} style={styles.view}>
-                <Text style={styles.text4} numberOfLines={1}>{opportunity.title}</Text>
-                {!!opportunity.company_name && (
-                  <Text style={styles.text5} numberOfLines={1}>{opportunity.company_name}</Text>
-                )}
-                <View style={styles.view2}>
-                  <MapPin size={11} color={COLORS.slate[400]} />
-                  <Text style={styles.text6} numberOfLines={1}>
-                    {opportunity.address || 'Nearby'}{opportunity.pincode ? ` · ${opportunity.pincode}` : ''}
-                  </Text>
-                  {!!inr(opportunity.budget) && <Text style={styles.text7}>{inr(opportunity.budget)}</Text>}
-                </View>
-                <Pressable
-                  onPress={() => apply(opportunity)}
-                  disabled={applied || busyId === opportunity.project_id}
-                  style={[styles.pressable4, applied ? styles.pressable5 : styles.pressable2, busyId === opportunity.project_id ? styles.pressable6 : null]}
-                >
-                  <Text style={[styles.text8, applied ? styles.text9 : styles.text2]}>
-                    {applied ? 'Applied' : 'Apply'}
-                  </Text>
-                </Pressable>
-              </View>
-            )
-          })}
-        </PanelState>
-      )}
-
-      {activeTab === 'builders' && (
-        <PanelState loading={builders.loading} error={builders.error} empty={!builderList.length} emptyText="No builders found near your pincode.">
-          {builderList.map((builder) => {
-            const id = builder.user_id || builder.id
-            const sent = sentBuilderIds.has(id)
-            return (
-              <View key={id} style={styles.view3}>
-                <View style={styles.view4}>
-                  <Text style={styles.text10} numberOfLines={1}>{builder.name || builder.business_name || 'Builder'}</Text>
-                  <Text style={styles.text5} numberOfLines={1}>
-                    {builder.company_name || builder.address || 'Nearby'}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => requestJoin(builder)}
-                  disabled={sent || busyId === id}
-                  style={[styles.pressable7, sent ? styles.pressable5 : styles.pressable2]}
-                >
-                  <Send size={12} color={sent ? COLORS.brand[700] : '#fff'} />
-                  <Text style={[styles.text, sent ? styles.text9 : styles.text2]}>{sent ? 'Sent' : 'Join'}</Text>
-                </Pressable>
-              </View>
-            )
-          })}
-        </PanelState>
-      )}
-
-      {activeTab === 'requests' && (
-        <PanelState loading={team.loading} error={team.error} empty={!incomingRequests.length} emptyText="No builder requests waiting on you.">
-          {incomingRequests.map((request) => (
-            <View key={request.relationship_id || request.id} style={styles.view3}>
-              <View style={styles.view4}>
-                <Text style={styles.text10} numberOfLines={1}>
-                  {request.contractor_name || request.name || 'Builder'}
-                </Text>
-                <Text style={styles.text5}>wants you on their team</Text>
-              </View>
-              <Pressable onPress={() => respond(request.relationship_id || request.id, 'ACCEPT')} style={styles.pressable8}>
-                <Check size={16} color={COLORS.brand[700]} />
-              </Pressable>
-              <Pressable onPress={() => respond(request.relationship_id || request.id, 'REJECT')} style={styles.pressable9}>
-                <X size={16} color="#e11d48" />
-              </Pressable>
-            </View>
-          ))}
-        </PanelState>
-      )}
-
-      {activeTab === 'joincode' && (
-        <Panel title="Join with an invite code">
-          <Text style={styles.text11}>Got an invitation code from a builder? Enter it below to join their team instantly.</Text>
-          <TextInput
-            value={inviteCode}
-            onChangeText={setInviteCode}
-            placeholder="Invite code"
-            autoCapitalize="characters"
-            style={styles.textInput}
-            placeholderTextColor={COLORS.slate[400]}
-          />
-          <Pressable onPress={joinByCode} disabled={joining || !inviteCode.trim()} style={[styles.pressable10, styles[joining || !inviteCode.trim() ? 'pressable11' : '']]}>
-            <Text style={styles.text12}>{joining ? 'Joining…' : 'Join team'}</Text>
+         <Section>
+        <SegmentTabs tabs={tabs} active={tab} onChange={setTab} />
+        {locationEligible ? (
+          <Pressable onPress={() => setLocationOpen(true)} style={styles.location} accessibilityRole="button">
+            <MapPin size={12} color={COLORS.brand[700]} />
+            <Text style={styles.locationText}>
+              {user?.pincode ? `${t('location.leadsFor', { pincode: user.pincode })} · ${t('location.change')}` : t('location.setLocation')}
+            </Text>
           </Pressable>
-        </Panel>
-      )}
+        ) : null}
+      </Section>
+
+      <Section>
+        {tab === 'joinTeam' ? (
+          <EngineerJoinTeam
+            teams={teams}
+            incomingRequests={incomingRequests}
+            onJoin={joinTeam}
+            onRefresh={reloadAll}
+            onRespondToBuilder={respondToBuilderRequest}
+            joinMessage={joinMessage}
+            joinError={joinError}
+          />
+        ) : null}
+
+        {tab === 'requests' ? (
+          incomingRequestList.length ? (
+            <View>
+              <Notice tone="info" text={sectionMessage} />
+              <RequestsPanel
+                requestList={incomingRequestList}
+                onAccept={(requestId) => respondToProjectRequest(requestId, true)}
+                onReject={(requestId) => respondToProjectRequest(requestId, false)}
+              />
+            </View>
+          ) : (
+            <EmptyCard icon={Users} title={t('ui.requests.noRequests')} body={t('dash.engineer.noRequestsSub')} />
+          )
+        ) : null}
+
+        {tab === 'contractors' ? (
+          <EngineerContractors
+            contractors={contractorList}
+            teamStatusByContractor={teamStatusByContractor}
+            onViewContractor={viewContractorProfile}
+            onRequestJoin={(contractor) => sendJoinRequest(contractor.user_id || contractor.id)}
+            message={sectionMessage}
+          />
+        ) : null}
+
+        {tab === 'opportunities' ? (
+          <EngineerOpportunities
+            opportunities={opportunityList}
+            appliedKeys={appliedKeys}
+            onApply={applyOpportunity}
+            onView={setSelectedOpportunity}
+            message={sectionMessage}
+          />
+        ) : null}
+      </Section>
+
+      <ContractorProfileSheet
+        contractor={selectedContractor}
+        profile={contractorProfile}
+        onClose={() => { setSelectedContractor(null); setContractorProfile(null) }}
+        onRequestJoin={(contractorId) => sendJoinRequest(contractorId)}
+        requestState={selectedContractor ? teamStatusByContractor(selectedContractor.user_id || selectedContractor.id) : 'none'}
+        message={sectionMessage}
+      />
+      <OpportunitySheet
+        opportunity={selectedOpportunity}
+        applied={selectedOpportunity ? appliedKeys.includes(String(selectedOpportunity.project_id)) : false}
+        onApply={applyOpportunity}
+        onClose={() => setSelectedOpportunity(null)}
+        message={sectionMessage}
+      />
+            <LocationSheet
+        visible={locationOpen}
+        currentPincode={user?.pincode || ''}
+        onClose={closeLocation}
+        onSaved={(updatedUser) => {
+          dispatch(mergeUser(updatedUser?.user || updatedUser || {}))
+          setLocationOpen(false)
+          setTab('opportunities')
+        }}
+      />
     </DashboardShell>
   )
 }
 
 const styles = createStyles((c) => ({
-  scrollView: { marginBottom: 14 },
-  pressable: { height: 35, flexDirection: 'row', alignItems: 'center', gap: 5.25, borderRadius: 10.5, paddingHorizontal: 14 },
-  pressable2: { backgroundColor: '#1a5038' },
-  pressable3: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border },
-  text: { fontSize: 11, fontWeight: '800' },
-  text2: { color: '#ffffff' },
-  text3: { color: c.textMuted },
-  view: { marginBottom: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
-  text4: { fontSize: 15, fontWeight: '800', color: c.text },
-  text5: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
-  view2: { marginTop: 5.25, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
-  text6: { flex: 1, fontSize: 11, fontWeight: '600', color: c.textFaint },
-  text7: { fontSize: 11, fontWeight: '800', color: c.textSecondary },
-  pressable4: { marginTop: 10.5, height: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 9999 },
-  pressable5: { backgroundColor: c.brandSoft },
-  pressable6: { opacity: 0.6 },
-  text8: { fontSize: 10.5, lineHeight: 14, fontWeight: '800' },
-  text9: { color: c.brandText },
-  view3: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center', gap: 10.5, borderRadius: 21, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
-  view4: { flex: 1 },
-  text10: { fontSize: 14, fontWeight: '800', color: c.text },
-  pressable7: { flexDirection: 'row', alignItems: 'center', gap: 5.25, borderRadius: 9999, paddingHorizontal: 12.25, paddingVertical: 7 },
-  pressable8: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.brandSoft },
-  pressable9: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: c.roseSoft },
-  text11: { fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
-  textInput: { marginTop: 10.5, height: 38.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 15, fontWeight: '800', letterSpacing: 1.6, color: c.text },
-  pressable10: { marginTop: 10.5, height: 38.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
-  pressable11: { opacity: 0.5 },
-  text12: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+  location: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 5.25, alignSelf: 'flex-start', borderRadius: 9999, borderWidth: 1, borderColor: c.brandBorderStrong, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 5.25 },
+  locationText: { fontSize: 12, fontWeight: '800', color: c.brandTextStrong },
 }))

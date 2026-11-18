@@ -11,3 +11,9 @@ export async function markNotificationsRead() {
 export async function markModuleNotificationsRead(moduleName) {
   return (await apiClient.post('/notifications/read-module', null, { params: { module: moduleName } })).data
 }
+
+
+// Marks unread notifications of these explicit categories (notification.category) read.
+export async function markCategoryNotificationsRead(categories) {
+  return (await apiClient.post('/notifications/read-module', null, { params: { category: categories.join(',') } })).data
+}

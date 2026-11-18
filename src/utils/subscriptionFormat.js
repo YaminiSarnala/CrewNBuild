@@ -306,3 +306,65 @@ export function subscriptionErrorMessage(error, fallback) {
   if (typeof detail === 'string') return detail
   return fallback
 }
+
+
+// ---- The "plan ends in 3/2/1 days" popup (web subscriptionFormat expiryWarning*) ----
+
+export const EXPIRY_WARNING_DAYS = 3
+const DAY_MS = 24 * 60 * 60 * 1000
+// India's time (UTC+05:30, no daylight saving): the backend counts plan days by it.
+export const INDIA_TIME_ZONE = 'Asia/Kolkata'
+const INDIA_OFFSET_MS = 330 * 60 * 1000
+
+/** Whole calendar days from `now` to `at` by India's dates, whatever the phone's timezone. */
+function calendarDaysUntil(at, now) {
+  const day = (ms) => Math.floor((ms + INDIA_OFFSET_MS) / DAY_MS)
+  return day(at) - day(now)
+}
+
+/**
+ * { kind: 'free' | 'pro' | 'premium', days, end } with 1-3 calendar days left;
+ * null with more left, already ended (the banner says so), a renewal already
+ * queued, or plans not sold in this region.
+ */
+export function expiryWarning(status, now = Date.now()) {
+  if (!status || status.region_supported === false) return null
+  let kind = null
+  let end = null
+  if (status.status === TRIAL) {
+    kind = 'free'
+    end = status.free_access_until
+  } else if (status.status === 'ACTIVE' && !(status.queued_periods || []).length) {
+    kind = status.plan_code === 'BUSINESS' ? 'premium' : status.plan_code === 'PROFESSIONAL' ? 'pro' : null
+    end = status.coverage_end
+  }
+  const at = kind && end ? Date.parse(end) : NaN
+  if (!Number.isFinite(at) || at <= now) return null
+  const days = Math.max(1, calendarDaysUntil(at, now))
+  return days <= EXPIRY_WARNING_DAYS ? { kind, days, end } : null
+}
+
+/** The end date the popup shows: India's date, like its day count. */
+export function expiryWarningDate(warning) {
+  const value = new Date(warning?.end || '')
+  if (Number.isNaN(value.getTime())) return '—'
+  try {
+    return value.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: INDIA_TIME_ZONE })
+  } catch {
+    return formatPlanDate(warning.end)
+  }
+}
+
+/** Free and Pro: one "going to expire in {days} days" message with Upgrade; Premium: its renewal text. */
+export function expiryWarningContent(warning) {
+  if (!warning) return null
+  if (warning.kind === 'free' || warning.kind === 'pro') {
+    return { messageKey: 'subscription.expiryWarning.message', values: { days: warning.days }, ctaKey: 'subscription.expiryWarning.upgradeCta' }
+  }
+  return {
+    titleKey: `subscription.expiryWarning.title.${warning.kind}`,
+    bodyKey: `subscription.expiryWarning.body.${warning.kind}`,
+    values: { days: warning.days },
+    ctaKey: 'subscription.expiryWarning.renewCta',
+  }
+}

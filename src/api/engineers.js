@@ -142,3 +142,11 @@ export async function sendProjectSpecialistRequest(projectId, engineerId) {
   )
   return response.data
 }
+
+
+// Every supplier accepted by the project's own Builder (web fetchProjectTeamSuppliers):
+// the Site Engineer's Material Suppliers screen.
+export async function fetchProjectTeamSuppliers(projectId) {
+  const response = await apiClient.get(`/projects/${projectId}/team-suppliers`)
+  return response.data
+}

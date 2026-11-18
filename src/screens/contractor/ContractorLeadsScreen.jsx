@@ -634,8 +634,8 @@ function ClientDetails({ client, state, stateLabel, note, onSend }) {
 }
 
 /** Change the pincode the leads are matched on (web LocationLeadsPrompt). */
-function LocationSheet({ visible, currentPincode, onClose, onSaved }) {
-  const { t } = useLanguage()
+export function LocationSheet({ visible, currentPincode, onClose, onSaved }) {
+    const { t } = useLanguage()
   const [pincode, setPincode] = useState(currentPincode)
   const [areas, setAreas] = useState([])
   const [areaDetails, setAreaDetails] = useState(null)

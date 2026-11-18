@@ -39,3 +39,13 @@ export async function loginWithPhoneCode({ phone, code }) {
   const response = await apiClient.post('/auth/phone/login/verify-code', { phone, code: digitsOf(code) })
   return { ...response.data, ...sessionTokens(response) }
 }
+
+
+
+// Profile Settings: replace the signed-in account's number with one that has
+// just passed the WhatsApp check (sendPhoneCode + verifyPhoneCode). The reply
+// is the updated account.
+export async function changeAccountPhone(phone, verificationToken) {
+  const { data } = await apiClient.post('/auth/phone/change', { phone, phone_verification_token: verificationToken })
+  return data
+}

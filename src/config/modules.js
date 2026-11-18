@@ -4,7 +4,7 @@
 // Flip a flag to open a module — nothing else needs to change.
 
 /** Roles that get their real dashboard. Others land on the Coming soon screen. */
-export const LIVE_ROLES = ['OWNER', 'CONTRACTOR']
+export const LIVE_ROLES = ['OWNER', 'CONTRACTOR', 'ENGINEER']
 
 export const isRoleLive = (role) => LIVE_ROLES.includes(String(role || '').toUpperCase())
 

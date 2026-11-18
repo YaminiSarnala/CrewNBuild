@@ -152,6 +152,15 @@ export default function ContractorEngineersScreen({ navigation }) {
   const [teamProjects, setTeamProjects] = useState('')
   const [teamStatus, setTeamStatus] = useState('')
   const [teamView, setTeamView] = useState('grid')
+    // Find Engineers, My Suppliers and Pending Requests filters (web FindEngineers,
+  // MySuppliers, PendingPartnerRequests).
+  const [findLocation, setFindLocation] = useState('')
+  const [findExperience, setFindExperience] = useState('')
+  const [findSkill, setFindSkill] = useState('')
+  const [supLocation, setSupLocation] = useState('')
+  const [supService, setSupService] = useState('')
+  const [supRating, setSupRating] = useState('')
+  const [pendingType, setPendingType] = useState('')
     const [busy, setBusy] = useState(false)
 
   const activeProject = projectList.find((project) => project.id === findProjectId) || projectList[0] || null
@@ -371,8 +380,34 @@ export default function ContractorEngineersScreen({ navigation }) {
     if (teamStatus === 'active' && busy) return false
     return true
   })
-    const findShown = nearby.filter((engineer) => matches(engineer.name, engineer.pincode, engineer.address, engineer.specialization))
-  const suppliersShown = supplierList.filter((supplier) => matches(supplier.store_name, supplier.name, supplier.pincode, supplier.address, ...(supplier.categories || [])))
+    const experienceOptions = EXPERIENCE_BANDS.map((band) => ({ value: band.value, label: band.to === Infinity ? t('ce.filter.yearsPlus', { from: band.from - 1 }) : t('ce.filter.yearsRange', { from: band.from, to: band.to }) }))
+  const inBand = (engineer, value) => {
+    const band = EXPERIENCE_BANDS.find((item) => item.value === value)
+    const years = Number(engineer.experience_years || 0)
+    return !band || (years >= band.from && years <= band.to)
+  }
+  const pinOptions = (rows) => [...new Set(rows.map((row) => row.pincode).filter(Boolean))].sort().map((pin) => ({ value: pin, label: String(pin) }))
+  const findShown = nearby.filter((engineer) => {
+    if (!matches(engineer.name, engineer.pincode, engineer.address, engineer.specialization)) return false
+    if (findLocation && engineer.pincode !== findLocation) return false
+    if (findExperience && !inBand(engineer, findExperience)) return false
+    if (findSkill && engineer.specialization !== findSkill) return false
+    return true
+  })
+  const skillOptions = [...new Set(nearby.map((engineer) => engineer.specialization).filter(Boolean))].sort().map((value) => ({ value, label: engineerCategory(t, value) }))
+  const serviceLabel = (value) => optionLabel(t, SUPPLIER_CATEGORY_KEYS, value)
+  const serviceOptions = [...new Set(supplierList.flatMap((supplier) => supplier.categories || []).filter(Boolean))].sort().map((value) => ({ value, label: serviceLabel(value) }))
+  let suppliersShown = supplierList.filter((supplier) => {
+    if (!matches(supplier.store_name, supplier.name, supplier.pincode, supplier.address, ...(supplier.categories || []).map(serviceLabel))) return false
+    if (supLocation && supplier.pincode !== supLocation) return false
+    if (supService && !(supplier.categories || []).includes(supService)) return false
+    return true
+  })
+  if (supRating) suppliersShown = [...suppliersShown].sort((a, b) => (supRating === 'high' ? 1 : -1) * (Number(b.rating || 0) - Number(a.rating || 0)))
+  const joinShown = !pendingType || pendingType === 'join' ? pending.filter((engineer) => matches(engineer.name, engineer.pincode, engineer.address)) : []
+  const inviteShown = !pendingType || pendingType === 'invite' ? invitations.filter((invitation) => matches(invitation.phone, invitation.email, invitation.invite_code)) : []
+  const sentShown = !pendingType || pendingType === 'sent' ? outgoing.filter((engineer) => matches(engineer.name, engineer.pincode, engineer.address)) : []
+  const searchPlaceholder = { find: t('ce.findSearchPh'), suppliers: t('ce.sup.searchPh'), pending: t('ce.pend.searchPh') }[tab] || t('ce.filter.searchPh')
   const teamStatusOf = (engineer) => (active.some((item) => item.user_id === engineer.user_id)
     ? 'active'
     : pending.some((item) => item.user_id === engineer.user_id) ? 'pending' : null)
@@ -387,19 +422,47 @@ export default function ContractorEngineersScreen({ navigation }) {
           </View>
           <SegmentTabs tabs={tabs} active={tab} onChange={setTab} />
           <View style={styles.scrollView}>
-            <SearchBox value={search} onChangeText={setSearch} placeholder={t('ce.filter.searchPh')} />
-          </View>
+            <SearchBox value={search} onChangeText={setSearch} placeholder={searchPlaceholder} />
+                      </View>
           {tab === 'team' ? (
             // The web's filter bar: Location, Experience, Projects, Status, Grid / List.
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 8 }}>
               <SelectChip placeholder={t('ce.filter.allLocations')} value={teamLocation} onChange={setTeamLocation} options={locationOptions} />
-              <SelectChip placeholder={t('ce.filter.experience')} value={teamExperience} onChange={setTeamExperience} options={EXPERIENCE_BANDS.map((band) => ({ value: band.value, label: band.to === Infinity ? t('ce.filter.yearsPlus', { from: band.from - 1 }) : t('ce.filter.yearsRange', { from: band.from, to: band.to }) }))} />
-              <SelectChip placeholder={t('ce.filter.projects')} value={teamProjects} onChange={setTeamProjects} options={[{ value: 'on', label: t('ce.filter.onProject') }, { value: 'off', label: t('ce.filter.notOnProject') }]} />
+              <SelectChip placeholder={t('ce.filter.experience')} value={teamExperience} onChange={setTeamExperience} options={experienceOptions} />
+                            <SelectChip placeholder={t('ce.filter.projects')} value={teamProjects} onChange={setTeamProjects} options={[{ value: 'on', label: t('ce.filter.onProject') }, { value: 'off', label: t('ce.filter.notOnProject') }]} />
               <SelectChip placeholder={t('ce.filter.status')} value={teamStatus} onChange={setTeamStatus} options={[{ value: 'active', label: t('ce.active') }, { value: 'busy', label: t('ce.busy') }]} />
               <ViewToggle
                 options={[{ id: 'grid', label: t('ce.view.grid'), icon: LayoutGrid }, { id: 'list', label: t('ce.view.list'), icon: List }]}
                 active={teamView}
-                onChange={setTeamView}
+                              onChange={setTeamView}
+              />
+            </ScrollView>
+          ) : null}
+          {tab === 'find' ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 8 }}>
+              <SelectChip placeholder={t('ce.filter.allLocations')} value={findLocation} onChange={setFindLocation} options={pinOptions(nearby)} />
+              <SelectChip placeholder={t('ce.filter.allExperience')} value={findExperience} onChange={setFindExperience} options={experienceOptions} />
+              <SelectChip placeholder={t('ce.filter.allSkills')} value={findSkill} onChange={setFindSkill} options={skillOptions} />
+            </ScrollView>
+          ) : null}
+          {tab === 'suppliers' ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 8 }}>
+              <SelectChip placeholder={t('ce.filter.allLocations')} value={supLocation} onChange={setSupLocation} options={pinOptions(supplierList)} />
+              <SelectChip placeholder={t('ce.sup.allServices')} value={supService} onChange={setSupService} options={serviceOptions} />
+              <SelectChip placeholder={t('ce.sup.rating')} value={supRating} onChange={setSupRating} options={[{ value: 'high', label: t('ce.sup.ratingHigh') }, { value: 'low', label: t('ce.sup.ratingLow') }]} />
+            </ScrollView>
+          ) : null}
+          {tab === 'pending' ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView} contentContainerStyle={{ gap: 8 }}>
+              <SelectChip
+                placeholder={t('ce.pend.allTypes')}
+                value={pendingType}
+                onChange={setPendingType}
+                options={[
+                  { value: 'join', label: `${t('ce.pendingJoinRequests')} (${pending.length})` },
+                  { value: 'invite', label: `${t('ce.pendingInvitations')} (${invitations.length})` },
+                  { value: 'sent', label: `${t('ce.sentRequests')} (${outgoing.length})` },
+                ]}
               />
             </ScrollView>
           ) : null}
@@ -482,8 +545,8 @@ export default function ContractorEngineersScreen({ navigation }) {
                   </View>
                 ) : null}
               </View>
-              <PanelState loading={nearbyLoading} empty={!findShown.length} emptyText={t('ce.noEngineersFound')}>
-                {findShown.map((engineer) => {
+              <PanelState loading={nearbyLoading} empty={!findShown.length} emptyText={nearby.length ? t('ce.filter.noMatch') : t('ce.noEngineersFound')}>
+                                {findShown.map((engineer) => {
                   const id = engineer.user_id || engineer.id
                   const status = teamStatusOf(engineer)
                   const sent = sentIds.has(id)
@@ -531,9 +594,14 @@ export default function ContractorEngineersScreen({ navigation }) {
           ) : null}
 
           {tab === 'pending' ? (
-            <PanelState loading={team.loading} error={team.error} empty={!pending.length && !invitations.length && !outgoing.length} emptyText={t('ce.noPendingRequests')}>
-              {pending.length ? <Text style={styles.text14}>{t('ce.pendingJoinRequests')}</Text> : null}
-              {pending.filter((engineer) => matches(engineer.name, engineer.pincode)).map((engineer) => (
+                        <PanelState
+              loading={team.loading}
+              error={team.error}
+              empty={!joinShown.length && !inviteShown.length && !sentShown.length}
+              emptyText={!pending.length && !invitations.length && !outgoing.length ? t('ce.noPendingRequests') : t('ce.filter.noMatch')}
+            >
+              {joinShown.length ? <Text style={styles.text14}>{t('ce.pendingJoinRequests')}</Text> : null}
+              {joinShown.map((engineer) => (
                 <Card key={engineer.relationship_id || engineer.user_id}>
                   <Text style={styles.text5}>{engineer.name || engineer.full_name}</Text>
                   <Meta items={[engineerCategory(t, engineer.specialization || engineer.category), engineer.pincode, t('ui.contractor.yearsShort', { years: engineer.experience_years || 0 })]} />
@@ -543,8 +611,8 @@ export default function ContractorEngineersScreen({ navigation }) {
                   </View>
                 </Card>
               ))}
-              {invitations.length ? <Text style={styles.text15}>{t('ce.pendingInvitations')}</Text> : null}
-              {invitations.filter((invitation) => matches(invitation.phone, invitation.email, invitation.invite_code)).map((invitation) => (
+                           {inviteShown.length ? <Text style={styles.text15}>{t('ce.pendingInvitations')}</Text> : null}
+              {inviteShown.map((invitation) => (
                 <Card key={invitation.id}>
                   <Text style={styles.text3}>{invitation.phone || invitation.email || t('ce.waitingForEngineer')}</Text>
                   <Text style={styles.text}>{t('ce.pend.inviteCode')}: <Text style={styles.text16}>{invitation.invite_code}</Text></Text>
@@ -554,8 +622,8 @@ export default function ContractorEngineersScreen({ navigation }) {
                   </View>
                 </Card>
               ))}
-              {outgoing.length ? <Text style={styles.text15}>{t('ce.sentRequests')}</Text> : null}
-              {outgoing.filter((engineer) => matches(engineer.name, engineer.pincode)).map((engineer) => (
+                            {sentShown.length ? <Text style={styles.text15}>{t('ce.sentRequests')}</Text> : null}
+              {sentShown.map((engineer) => (
                 <Card key={`out-${engineer.user_id}`} onPress={() => setEngineerProfile(engineer)}>
                   <Text style={styles.text3}>{engineer.name}</Text>
                   <Meta items={[engineerCategory(t, engineer.specialization), engineer.pincode, t('mobile.partners.awaitingAnswer')]} />

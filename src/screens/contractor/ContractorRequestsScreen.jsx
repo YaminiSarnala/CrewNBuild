@@ -19,7 +19,8 @@ import { useBuilderInbox, useMarkSectionRead } from '../../components/builder/Bu
 import { View, Text, Alert, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import { Image } from 'expo-image'
 import { userAvatarSource } from '../../utils/avatars'
-import { House, Truck, Check, X, Plus, ArrowRight, MapPin, CalendarDays, LayoutGrid, List, SlidersHorizontal } from 'lucide-react-native'
+import { House, Truck, Warehouse, Check, X, Plus, ArrowRight, MapPin, CalendarDays, LayoutGrid, List, SlidersHorizontal } from 'lucide-react-native'
+import StoreBuilderRequestsPanel, { useStoreBuilderRequests } from '../../components/StoreBuilderRequestsPanel'
 import DashboardShell, { PanelState, useAsyncData } from '../../components/DashboardShell'
 import {
   fetchIncomingRequests,
@@ -171,6 +172,9 @@ export default function ContractorRequestsScreen({ navigation }) {
     [list, t],
   )
   const [awards, reloadAwards] = useRequestAwards(ownerRequests)
+    // Requests to and from the Store Managers on this builder's team: their own
+  // records and endpoints, never mixed into the two boards (web contractorSections).
+  const storeManagerRequests = useStoreBuilderRequests()
 
   const currentList = activeTab === 'owner' ? ownerRequests : supplierRequests
   const counts = useMemo(() => {
@@ -205,7 +209,7 @@ export default function ContractorRequestsScreen({ navigation }) {
   async function refresh() {
     setRefreshing(true)
     try {
-      await requests.reload()
+       await Promise.all([requests.reload(), storeManagerRequests.reload()])
       reloadAwards()
     } finally {
       setRefreshing(false)
@@ -274,12 +278,19 @@ export default function ContractorRequestsScreen({ navigation }) {
             tabs={[
               { id: 'owner', label: t('dash.contractor.tab.houseOwnerRequests'), count: ownerRequests.length, icon: House },
               { id: 'supplier', label: t('dash.contractor.tab.supplierRequests'), count: supplierRequests.length, icon: Truck },
+                            { id: 'storeManager', label: t('dash.contractor.tab.storeManagerRequests'), count: storeManagerRequests.data?.requests?.length || 0, icon: Warehouse },
             ]}
             active={activeTab}
             onChange={(id) => { setActiveTab(id); setFilter('all') }}
           />
-        </Section>
+               </Section>
 
+        {activeTab === 'storeManager' ? (
+          <Section>
+            <StoreBuilderRequestsPanel data={storeManagerRequests.data} failed={storeManagerRequests.failed} reload={storeManagerRequests.reload} />
+          </Section>
+        ) : (
+        <>
         <Section>
           <View style={styles.view}>
             {/* Status chips, in the web's colours. */}
@@ -460,8 +471,10 @@ export default function ContractorRequestsScreen({ navigation }) {
                 </View>
               )
             })}
-          </PanelState>
+                 </PanelState>
         </Section>
+        </>
+        )}
       </DashboardShell>
 
       {/* Quotation box — an owner request is answered with a price. */}

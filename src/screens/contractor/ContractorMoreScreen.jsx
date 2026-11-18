@@ -11,8 +11,7 @@ import { createStyles } from '../../theme/createStyles'
 import { useSelector } from 'react-redux'
 import { useLanguage } from '../../i18n/LanguageContext'
 import {
-  Users, ShoppingBag, Search, Store, CircleUser, Package, Activity, CreditCard, Settings, MessageCircle, ChevronRight,
-} from 'lucide-react-native'
+  Users, ShoppingBag, Search, Store, CircleUser, Package, Activity, CreditCard, Settings, MessageCircle, ChevronRight, LifeBuoy,} from 'lucide-react-native'
 import { COLORS } from '../../theme/tokens'
 import { ink, line, soft } from '../../theme/tint'
 import BuilderProductCatalogScreen from './BuilderProductCatalogScreen'
@@ -25,6 +24,7 @@ import { Section, SegmentTabs, PremiumBadge } from '../../components/builder/Bui
 import useBuilderSubscription from '../../hooks/useBuilderSubscription'
 import { useBuilderInbox, useMarkSectionRead } from '../../components/builder/BuilderInbox'
 import { fetchOwnerProjects } from '../../api/projects'
+import HelpCenterSheet from '../../components/HelpCenterSheet'
 
 // Each card's icon colour (light values; tint.js gives the dark ones).
 const TONES = {
@@ -46,6 +46,8 @@ const MENU = [
   { id: 'settings', titleKey: 'ui.profileSettings', subtitleKey: 'mobile.account.more.sub.settings', Icon: Settings, route: 'BuilderProfileSettings', tone: TONES.slate },
   { id: 'messages', titleKey: 'ui.messages', subtitleKey: 'mobile.account.more.sub.messages', Icon: MessageCircle, route: 'Messages', tone: TONES.orange },
   { id: 'profile', titleKey: 'mobile.account.more.myProfile', subtitleKey: 'mobile.account.more.sub.profile', Icon: CircleUser, tone: TONES.brand },
+    // The web account menu's Help & Feedback (opens the Help Center).
+  { id: 'help', titleKey: 'ui.helpFeedback', subtitleKey: 'mobile.account.more.sub.help', Icon: LifeBuoy, tone: TONES.sky },
 ]
 
 // Find Clients moved to the Builder dashboard; an older link to it here still
@@ -106,6 +108,7 @@ function BuySellSection({ navigation }) {
 export default function ContractorMoreScreen({ navigation, route }) {
   const { t } = useLanguage()
   const [section, setSection] = useState(null)
+    const [showHelp, setShowHelp] = useState(false)
   const { status } = useBuilderSubscription()
   const inbox = useBuilderInbox()
   // The web sidebar's badges for the sections that live here.
@@ -132,7 +135,8 @@ export default function ContractorMoreScreen({ navigation, route }) {
   }, [section])
 
   const open = (item) => {
-    if (item.route) navigation.navigate(item.route)
+    if (item.id === 'help') setShowHelp(true)
+    else if (item.route) navigation.navigate(item.route)
     else setSection(item.id)
   }
 
@@ -173,8 +177,8 @@ export default function ContractorMoreScreen({ navigation, route }) {
         {t('mobile.account.more.description')}
       </Text>
 
-      {/* The 8 sections as 8 separate cards, two per row (web sidebar items). */}
-      <View style={styles.grid}>
+      {/* The 9 sections as 9 separate cards, two per row (web sidebar items). */}
+            <View style={styles.grid}>
         {MENU.map((item) => {
           const { id, titleKey, subtitleKey, Icon, tone } = item
           const count = menuBadges[id] || 0
@@ -212,6 +216,7 @@ export default function ContractorMoreScreen({ navigation, route }) {
         </Text>
       </View>
       </View>
+            <HelpCenterSheet visible={showHelp} onClose={() => setShowHelp(false)} />
     </DashboardShell>
   )
 }

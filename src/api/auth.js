@@ -46,3 +46,8 @@ export async function updateProfileImage(profileImageUrl) {
   const response = await apiClient.patch('/auth/profile-image', { profile_image_url: profileImageUrl })
   return response.data
 }
+// A new engineer's category (web services/auth.saveEngineerCategory). Returns { user }.
+export async function saveEngineerCategory(category) {
+  const response = await apiClient.patch('/auth/engineer-category', { specialization: category })
+  return response.data
+}

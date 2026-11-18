@@ -22,6 +22,9 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
 
 const CHECKOUT_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js'
+// The only non-web links the checkout may hand to the phone: UPI and the
+// payment / bank apps it opens (Google Pay, PhonePe, Paytm, BHIM, Cred…).
+const PAYMENT_APP_LINK = /^(upi|intent|tez|gpay|phonepe|paytmmp|paytm|bhim|credpay|mobikwik|amazonpay):/i
 
 function checkoutHtml(order, description) {
   // The order's public key id and amounts come from the server's order answer.
@@ -111,12 +114,13 @@ export default function RazorpayCheckoutModal({ order, description, onSuccess, o
             </View>
           )}
           onError={() => finish(onUnavailable)}
-          // UPI and bank-app links (upi://, intent://, tez://…) open the app on
-          // the phone; ordinary pages stay inside the checkout.
+            // Secure pages stay inside the checkout. Only UPI and payment-app links
+          // (upi://, intent://, tez://…) are handed to the phone; any other link
+          // (http://, file://, an unknown app) is refused.
           onShouldStartLoadWithRequest={(request) => {
             const url = String(request?.url || '')
-            if (/^(https?:|about:|data:|blob:)/i.test(url)) return true
-            Linking.openURL(url).catch(() => {})
+            if (/^(https:|about:|data:|blob:)/i.test(url)) return true
+            if (PAYMENT_APP_LINK.test(url)) Linking.openURL(url).catch(() => {})
             return false
           }}
           style={{ flex: 1, backgroundColor: '#f8fafc' }}

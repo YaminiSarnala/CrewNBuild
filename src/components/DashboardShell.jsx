@@ -6,6 +6,7 @@ import { View, Text, ScrollView, RefreshControl, Pressable, ActivityIndicator } 
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Bell, LogOut, Globe, MessageCircle, Moon, Sun } from 'lucide-react-native'
+import WeatherPill from './weather/WeatherPill'
 import { useTheme } from '../theme/ThemeContext'
 import { useNavigation } from '@react-navigation/native'
 import { useNotifications } from '../notifications/NotificationsContext'
@@ -214,6 +215,8 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
                 {t(roleLabelKey)}
               </Text>
             </View>
+                        {/* The web's top-bar Weather indicator (Builder and Site Engineer dashboards). */}
+            {user?.role === 'CONTRACTOR' || user?.role === 'ENGINEER' ? <WeatherPill /> : null}
             {/* Light / dark, as the web's header toggle: the icon shows the theme you switch to. */}
             <Pressable
               onPress={toggleTheme}

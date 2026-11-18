@@ -29,6 +29,7 @@ import SupplierProductsScreen from '../screens/supplier/SupplierProductsScreen'
 import EngineerProjectsScreen from '../screens/engineer/EngineerProjectsScreen'
 import EngineerSuppliersScreen from '../screens/engineer/EngineerSuppliersScreen'
 import EngineerJobsScreen from '../screens/engineer/EngineerJobsScreen'
+import EngineerMoreScreen from '../screens/engineer/EngineerMoreScreen'
 import ProfileScreen from '../screens/shared/ProfileScreen'
 import MessagesScreen from '../screens/shared/MessagesScreen'
 
@@ -62,9 +63,12 @@ export const TAB_CONFIGS = {
     { name: 'SupplierRequestsTab', label: 'Requests', labelKey: 'ui.requests', badgeSections: ['requests'], icon: ClipboardList, component: SupplierRequestsScreen },
   ],
   ENGINEER: [
-    { name: 'EngineerHomeTab', label: 'Home', icon: LayoutDashboard, component: EngineerDashboard },
-        { name: 'EngineerProjectsTab', label: 'Projects', icon: HardHat, component: EngineerProjectsScreen },
-    { name: 'EngineerSuppliersTab', label: 'Suppliers', icon: PackageSearch, component: EngineerSuppliersScreen },
-    { name: 'EngineerJobsTab', label: 'Jobs', icon: Briefcase, component: EngineerJobsScreen },
-    { name: 'EngineerProfileTab', label: 'Profile', icon: CircleUser, component: ProfileScreen },  ],
+    // Web EngineerDashboard nav: Dashboard, My Projects, Suppliers, Find Opportunities;
+    // Profile Settings, Live Camera, Messages and Notifications live under More.
+    { name: 'EngineerHomeTab', label: 'Dashboard', labelKey: 'ui.dashboard', icon: LayoutDashboard, component: EngineerDashboard },
+    { name: 'EngineerProjectsTab', label: 'My Projects', labelKey: 'ui.myProjects', badgeSections: ['projects'], icon: HardHat, component: EngineerProjectsScreen },
+    { name: 'EngineerSuppliersTab', label: 'Suppliers', labelKey: 'ui.suppliers', badgeSections: ['suppliers'], icon: Truck, component: EngineerSuppliersScreen },
+    { name: 'EngineerJobsTab', label: 'Find Opportunities', labelKey: 'ui.findOpportunities', badgeSections: ['requests'], icon: Briefcase, component: EngineerJobsScreen },
+    { name: 'EngineerMoreTab', label: 'More', labelKey: 'mobile.tab.more', icon: PackageSearch, component: EngineerMoreScreen },
+  ],
 }

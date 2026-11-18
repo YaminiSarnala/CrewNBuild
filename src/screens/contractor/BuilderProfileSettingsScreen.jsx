@@ -30,6 +30,7 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { BUSINESS_TYPE_KEYS, EQUIPMENT_OPTION_KEYS, SERVICE_OPTION_KEYS, optionLabel } from '../../i18n/optionKeys'
 import { createStyles } from '../../theme/createStyles'
 import EmailSection from '../../components/EmailSection'
+import PhoneChangeSection from '../../components/PhoneChangeSection'
 import { PincodeAreaHint } from '../../components/form'
 import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
 import { userCountry } from '../../utils/countryConfig'
@@ -141,6 +142,11 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
   }, [user?.id])
 
   useEffect(() => { load() }, [load])
+    // A number changed in the Mobile number section (verified on WhatsApp) also
+  // replaces the one in this form, so a later Save cannot put the old one back.
+  useEffect(() => {
+    if (user?.phone) setForm((current) => (current && current.phone !== user.phone ? { ...current, phone: user.phone } : current))
+  }, [user?.phone])
 
   const update = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -330,6 +336,9 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
           error={errors.pincode}
         />
         {!errors.pincode ? <PincodeAreaHint lookupState={pincodeLookup} selectedBranch={branch} onSelectBranch={setBranch} /> : null}
+              <View style={styles.emailBlock}>
+          <PhoneChangeSection />
+        </View>
         <View style={styles.emailBlock}>
           <EmailSection />
         </View>

@@ -32,6 +32,11 @@ import SignupScreen from '../screens/auth/SignupScreen'
 import CompleteProfileScreen from '../screens/auth/CompleteProfileScreen'
 import PincodeSetupScreen from '../screens/auth/PincodeSetupScreen'
 import SupplierCategoryScreen from '../screens/auth/SupplierCategoryScreen'
+import EngineerCategoryScreen from '../screens/auth/EngineerCategoryScreen'
+import EngineerSiteLogScreen from '../screens/engineer/EngineerSiteLogScreen'
+import EngineerProfileScreen from '../screens/engineer/EngineerProfileScreen'
+import EngineerStoreRequestsScreen from '../screens/engineer/EngineerStoreRequestsScreen'
+import { engineerCategoryMissing, isStoreManager } from '../utils/engineerProfile'
 import SupplierHome from '../screens/supplier/SupplierHome'
 import SupplierProfileScreen from '../screens/supplier/SupplierProfileScreen'
 import SupplierAddProductScreen from '../screens/supplier/SupplierAddProductScreen'
@@ -41,6 +46,7 @@ import { SupplierProvider } from '../screens/supplier/SupplierContext'
 import { supplierCategoryMissing } from '../screens/supplier/supplierKinds'
 import { OwnerTabs, ContractorTabs, EngineerTabs } from './RoleTabs'
 import NotificationsScreen from '../screens/shared/NotificationsScreen'
+import WeatherScreen from '../screens/shared/WeatherScreen'
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'
 import LiveCameraScreen from '../screens/engineer/LiveCameraScreen'
 import MessagesScreen from '../screens/shared/MessagesScreen'
@@ -111,8 +117,9 @@ export default function RootNavigator() {
   const signedIn = Boolean(user)
   // Site Engineer is not live yet: one Coming soon screen instead of its
   // unfinished dashboard (src/config/modules.js). Supplier decides per kind.
-  const dashboard = isRoleLive(user?.role || 'OWNER') || user?.role === 'SUPPLIER'
-    ? DASHBOARD_BY_ROLE[user?.role] || DASHBOARD_BY_ROLE.OWNER
+  // A Store Manager (an ENGINEER with that category) has its own dashboard on the
+  // web; on the phone it shows Coming soon until that module is built.
+  const dashboard = (isRoleLive(user?.role || 'OWNER') && !isStoreManager(user)) || user?.role === 'SUPPLIER'    ? DASHBOARD_BY_ROLE[user?.role] || DASHBOARD_BY_ROLE.OWNER
     : { name: 'ComingSoonRole', component: ComingSoonRoleScreen }
 
   return (
@@ -135,6 +142,9 @@ export default function RootNavigator() {
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="Estimate" component={EstimateScreen} />
           </>
+        ) : engineerCategoryMissing(user) ? (
+          // Web: a new engineer chooses a category first (/engineer-category).
+          <Stack.Screen name="EngineerCategory" component={EngineerCategoryScreen} />
         ) : supplierCategoryMissing(user) ? (
           // A new supplier chooses a Supplier Category before the pincode step.
           <Stack.Screen name="SupplierCategory" component={SupplierCategoryScreen} />
@@ -146,7 +156,15 @@ export default function RootNavigator() {
             <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
             <Stack.Screen name="SupplierProfile" component={SupplierProfileScreen} />
             {/* Every role's profile opens the same Delete Account form. */}
-            <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+                       <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+            {/* Site Engineer screens (web /engineer site log and profile). */}
+            {user?.role === 'ENGINEER' && (
+              <>
+                <Stack.Screen name="EngineerSiteLog" component={EngineerSiteLogScreen} />
+                <Stack.Screen name="EngineerProfile" component={EngineerProfileScreen} />
+                                <Stack.Screen name="EngineerStoreRequests" component={EngineerStoreRequestsScreen} />
+              </>
+            )}
             {user?.role === 'SUPPLIER' && (
               <>
                 {/* Products: the catalog picker, a listing's page and its editor. */}
@@ -159,6 +177,7 @@ export default function RootNavigator() {
             <Stack.Screen name="OwnerProject" component={OwnerProjectScreen} />
             <Stack.Screen name="BuilderProfile" component={BuilderProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                        <Stack.Screen name="Weather" component={WeatherScreen} />
             <Stack.Screen name="LiveCamera" component={LiveCameraScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
             <Stack.Screen name="BookTechnician" component={BookTechnicianScreen} />
