@@ -11,7 +11,7 @@
 // Phone differences from the web: hover readouts are taps, and the web's wide
 // tables are stacked rows. Figures and rules are the web's (ownerProjectAnalysis.js).
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg'
 import {
   AlertTriangle, BarChart3, CalendarCheck, CalendarDays, CheckCircle2, Clock3, Package,
@@ -27,6 +27,7 @@ import {
 } from './ownerProjectAnalysis'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
+import { SkeletonBlock, SkeletonStats, SkeletonText } from '../../components/Skeleton'
 
 // One colour per spending category, in this order — the web's light steps and
 // its re-stepped dark steps.
@@ -331,10 +332,12 @@ export default function OwnerProjectAnalysis({ project, viewer = 'owner' }) {
   const expenses = useMemo(() => recentExpenses(data?.expenses), [data])
 
   if (state.status === 'loading') {
+    // The analysis's outline: figure cards, a chart and the breakdown.
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={COLORS.brand[700]} />
-        <Text style={styles.centerText}>{t('owner.analysis.loading')}</Text>
+      <View style={{ gap: 14 }} accessibilityLabel={t('owner.analysis.loading')}>
+        <SkeletonStats count={4} width="47%" />
+        <SkeletonBlock height={190} />
+        <SkeletonText lines={4} />
       </View>
     )
   }

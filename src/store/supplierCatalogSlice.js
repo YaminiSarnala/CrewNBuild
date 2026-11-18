@@ -1,6 +1,5 @@
 // The signed-in supplier's OWN catalog (web redux/supplierCatalogSlice.js):
-// their listings, the storefront filters over them, and the buyer-preview
-// basket. Shared by the Products tab and the product / editor / Add Product
+// their listings and the storefront filters over them. Shared by the Products tab and the product / editor / Add Product
 // screens pushed on the root stack.
 //
 // Only what GET /supplier-products returned for this supplier lives here --
@@ -31,8 +30,6 @@ const initialState = {
   // 'idle' until the first load; then 'ready' or 'error'.
   status: 'idle',
   filters: EMPTY_STORE_FILTERS,
-  // { listingId: quantity } -- a preview only; suppliers cannot use the real cart.
-  previewCart: {},
   // The last "added" / "updated" / "deleted" line, shown above the list.
   notice: null,
 }
@@ -57,7 +54,6 @@ const supplierCatalogSlice = createSlice({
     },
     removeSupplierProduct(state, action) {
       state.products = state.products.filter((row) => row.id !== action.payload)
-      delete state.previewCart[action.payload]
     },
     setStoreFilter(state, action) {
       const { key, value } = action.payload
@@ -65,14 +61,6 @@ const supplierCatalogSlice = createSlice({
     },
     clearStoreFilters(state) {
       state.filters = { ...EMPTY_STORE_FILTERS, sort: state.filters.sort }
-    },
-    setPreviewCartQuantity(state, action) {
-      const { id, quantity } = action.payload
-      if (quantity > 0) state.previewCart[id] = quantity
-      else delete state.previewCart[id]
-    },
-    clearPreviewCart(state) {
-      state.previewCart = {}
     },
     // { tone: 'success' | 'error', text } or null.
     setStoreNotice(state, action) {
@@ -95,15 +83,12 @@ export const {
   removeSupplierProduct,
   setStoreFilter,
   clearStoreFilters,
-  setPreviewCartQuantity,
-  clearPreviewCart,
   setStoreNotice,
 } = supplierCatalogSlice.actions
 
 export const selectSupplierProducts = (state) => state.supplierCatalog.products
 export const selectSupplierProductsStatus = (state) => state.supplierCatalog.status
 export const selectStoreFilters = (state) => state.supplierCatalog.filters
-export const selectPreviewCart = (state) => state.supplierCatalog.previewCart
 export const selectStoreNotice = (state) => state.supplierCatalog.notice
 
 /** [value, setValue] over one storefront filter, like useState. */

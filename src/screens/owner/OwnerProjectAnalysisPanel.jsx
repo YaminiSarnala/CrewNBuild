@@ -2,7 +2,7 @@
 // owner's project card: budget, recorded spend and schedule for that one
 // project, from the owner's analysis (GET /owners/projects/{id}/analysis). Figures come from analysisFigures
 // (ownerProjectAnalysis.js); nothing here invents a value.
-import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import Svg, { Circle, G } from 'react-native-svg'
 import { AlertTriangle, RotateCcw } from 'lucide-react-native'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -12,6 +12,7 @@ import { analysisFigures } from './ownerProjectAnalysis'
 import { money } from './ownerHelpers'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
+import { SkeletonBlock, SkeletonText } from '../../components/Skeleton'
 
 const USED = '#126b45'
 const OVER = '#dc2626'
@@ -68,9 +69,9 @@ export default function OwnerProjectAnalysisPanel({ project, country, state, onR
 
       {state?.status === 'ready' && !figures ? <Text style={[styles.centerText, { paddingVertical: 24 }]} accessibilityRole="alert">{t('owner.analysis.err.missing')}</Text> : null}
       {!state || state.status === 'loading' ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="small" color={COLORS.brand[700]} />
-          <Text style={styles.centerText}>{t('owner.analysis.loading')}</Text>
+        <View style={{ gap: 12, paddingVertical: 8 }} accessibilityLabel={t('owner.analysis.loading')}>
+          <SkeletonBlock height={120} />
+          <SkeletonText lines={3} />
         </View>
       ) : null}
       {state?.status === 'error' ? (

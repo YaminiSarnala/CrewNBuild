@@ -13,6 +13,7 @@
 // player closes. The token lives only in this player's memory.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import PianoLoader from '../PianoLoader'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { CalendarClock, Lock, Play, RefreshCw, Search, ShieldCheck, Video, X } from 'lucide-react-native'
 import { DateField, FormNotice, SelectField, TextField } from '../form'
@@ -557,7 +558,7 @@ function ConnectForm({ projectTitle, hasDevice, busy, stage, message, onSubmit }
         disabled={busy}
         style={[styles.pressable12, busy ? styles.pressable13 : null, { gap: 8 }]}
       >
-        {busy ? <ActivityIndicator size="small" color="#ffffff" /> : <ShieldCheck size={16} color="#ffffff" />}
+        {busy ? <PianoLoader color="#ffffff" height={14} /> : <ShieldCheck size={16} color="#ffffff" />}
         <Text style={[styles.text13, { fontSize: 13.5 }]}>
           {busy ? (stage === 'discovering' ? t('ui.cctv.discoveringCameras') : t('ui.cctv.verifyingDvrNvr')) : t('ui.cctv.verifyDevice')}
         </Text>

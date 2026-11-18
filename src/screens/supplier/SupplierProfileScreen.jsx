@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useDispatch, useSelector } from 'react-redux'
 import { Camera, Pencil, Save, Store, Trash2, X } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
+import PreferenceRows from '../../components/PreferenceRows'
 import { ActionButton, InfoRow, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
 import EmailSection from '../../components/EmailSection'
 import { completeUserProfile, updateBusinessLogo, updateProfileImage } from '../../api/auth'
@@ -194,6 +195,8 @@ export default function SupplierProfileScreen({ navigation }) {
             </>
           ) : null}
         </PanelState>
+        {/* Language and Dark Mode (no longer in the header). */}
+        <PreferenceRows style={{ marginTop: 14 }} />
       </Panel>
 
       {profile && editing ? (

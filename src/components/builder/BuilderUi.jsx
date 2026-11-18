@@ -3,6 +3,7 @@
 // NativeWind look as the existing dashboard Panel / PanelState.
 // Built-in text uses the web's translation keys (subscription.*, dash.common.*).
 import { View, Text, Pressable, TextInput, Modal, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, RefreshControl } from 'react-native'
+import PianoLoader from '../PianoLoader'
 import { useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Lock, Clock, Search, CalendarClock, ShieldCheck, ArrowLeft, ChevronDown, Check } from 'lucide-react-native'
@@ -132,7 +133,7 @@ export function ActionButton({ label, onPress, tone = 'primary', disabled, busy,
       accessibilityRole="button"
       style={[styles.pressable7, small ? styles.pressable8 : styles.pressable9, styles[look.box], off ? styles.pressable10 : null, style]}
     >
-      {busy ? <ActivityIndicator size="small" color={look.icon} /> : Icon ? <Icon size={small ? 13 : 15} color={look.icon} /> : null}
+      {busy ? <PianoLoader color={look.icon} height={small ? 12 : 14} keyWidth={small ? 3 : 3.5} gap={small ? 2.5 : 3} /> : Icon ? <Icon size={small ? 13 : 15} color={look.icon} /> : null}
       <Text style={[small ? styles.text8 : styles.text9, styles.text10, styles[look.text]]} numberOfLines={1}>{label}</Text>
     </Pressable>
   )

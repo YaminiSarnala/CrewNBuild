@@ -7,7 +7,7 @@
 // (Escrow, Help & Feedback, Find Clients for supplier) nest inside a tab.
 import {
   LayoutDashboard, HardHat, Users, Crosshair, CircleUser,
-  House as Home, ShoppingBag, ClipboardList, Package, Truck, Briefcase, PackageSearch,MessageCircle
+  House as Home, ShoppingBag, ClipboardList, Package, Truck, Briefcase, PackageSearch,MessageCircle, Construction, Wrench
 } from 'lucide-react-native'
 
 import OwnerDashboard from '../screens/owner/OwnerDashboard'
@@ -26,6 +26,12 @@ import OwnerShopScreen from '../screens/owner/OwnerShopScreen'
 import SupplierOrdersScreen from '../screens/supplier/SupplierOrdersScreen'
 import SupplierRequestsScreen from '../screens/supplier/SupplierRequestsScreen'
 import SupplierProductsScreen from '../screens/supplier/SupplierProductsScreen'
+import SupplierInventoryScreen from '../screens/supplier/SupplierInventoryScreen'
+import SupplierAssignmentsScreen from '../screens/supplier/SupplierAssignmentsScreen'
+import SupplierEquipmentDashboard from '../screens/supplier/SupplierEquipmentDashboard'
+import SupplierLabourServicesScreen from '../screens/supplier/SupplierLabourServicesScreen'
+import SupplierLabourAssignmentsScreen from '../screens/supplier/SupplierLabourAssignmentsScreen'
+import SupplierLabourDashboard from '../screens/supplier/SupplierLabourDashboard'
 import EngineerProjectsScreen from '../screens/engineer/EngineerProjectsScreen'
 import EngineerSuppliersScreen from '../screens/engineer/EngineerSuppliersScreen'
 import EngineerJobsScreen from '../screens/engineer/EngineerJobsScreen'
@@ -60,6 +66,22 @@ export const TAB_CONFIGS = {
     { name: 'SupplierHomeTab', label: 'Dashboard', labelKey: 'shop.dashboard', icon: LayoutDashboard, component: SupplierDashboard },
     { name: 'SupplierProductsTab', label: 'Products', labelKey: 'ui.products', icon: Package, component: SupplierProductsScreen },
     { name: 'SupplierOrdersTab', label: 'Orders', labelKey: 'shop.orders', icon: ShoppingBag, component: SupplierOrdersScreen },
+    { name: 'SupplierRequestsTab', label: 'Requests', labelKey: 'ui.requests', badgeSections: ['requests'], icon: ClipboardList, component: SupplierRequestsScreen },
+  ],
+  // An Equipment Supplier (web equipmentNav): Inventory takes the place of the
+  // Material catalogue, and Assignments (accepted rentals and purchases).
+  SUPPLIER_EQUIPMENT: [
+    { name: 'SupplierHomeTab', label: 'Dashboard', labelKey: 'shop.dashboard', icon: LayoutDashboard, component: SupplierEquipmentDashboard },
+    { name: 'SupplierInventoryTab', label: 'Inventory', labelKey: 'mobile.equipment.tabInventory', icon: Construction, component: SupplierInventoryScreen },
+    { name: 'SupplierAssignmentsTab', label: 'Assignments', labelKey: 'labor.nav.assignments', icon: Truck, component: SupplierAssignmentsScreen },
+    { name: 'SupplierRequestsTab', label: 'Requests', labelKey: 'ui.requests', badgeSections: ['requests'], icon: ClipboardList, component: SupplierRequestsScreen },
+  ],
+  // A Labour Supplier (web laborNav): Services takes the place of the Material
+  // catalogue, and Assignments (the workers on projects now).
+  SUPPLIER_LABOUR: [
+    { name: 'SupplierHomeTab', label: 'Dashboard', labelKey: 'shop.dashboard', icon: LayoutDashboard, component: SupplierLabourDashboard },
+    { name: 'SupplierLabourServicesTab', label: 'Services', labelKey: 'mobile.labour.tabServices', icon: Wrench, component: SupplierLabourServicesScreen },
+    { name: 'SupplierLabourAssignmentsTab', label: 'Assignments', labelKey: 'labor.nav.assignments', icon: HardHat, component: SupplierLabourAssignmentsScreen },
     { name: 'SupplierRequestsTab', label: 'Requests', labelKey: 'ui.requests', badgeSections: ['requests'], icon: ClipboardList, component: SupplierRequestsScreen },
   ],
   ENGINEER: [

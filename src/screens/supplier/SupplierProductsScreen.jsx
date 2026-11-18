@@ -8,7 +8,6 @@
 //   Add product      the catalog picker (SupplierAddProduct)
 //   a card           the product page (SupplierListing)
 //   Edit             the listing editor (SupplierEditListing)
-//   Add / cart       a buyer preview kept on the phone; the real cart is a buyer's
 //
 // The web's floating search panel becomes a search bar that filters the grid
 // as you type, as on the owner's marketplace.
@@ -18,6 +17,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useFocusEffect } from '@react-navigation/native'
 import { ArrowUpDown, LayoutGrid, PackageSearch, Search, X } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
+import { SkeletonGrid } from '../../components/Skeleton'
 import { Notice, SelectChip } from '../../components/builder/BuilderUi'
 import { fetchCatalogCategories } from '../../api/catalog'
 import { clearStoreFilters, selectStoreNotice, setStoreNotice, useStoreFilter } from '../../store/supplierCatalogSlice'
@@ -26,8 +26,8 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
-import { CircleImage, currencySymbol, matchesWords, sellingPrice, usePreviewCart, useSupplierCountry, useSupplierListings } from './products/productParts'
-import { PreviewCartBar, PreviewCartSheet, StorefrontCard, useListingActions } from './products/storefrontParts'
+import { CircleImage, currencySymbol, matchesWords, sellingPrice, useSupplierCountry, useSupplierListings } from './products/productParts'
+import { StorefrontCard, useListingActions } from './products/storefrontParts'
 
 const GAP = 10
 
@@ -38,7 +38,6 @@ export default function SupplierProductsScreen({ navigation }) {
   const { width, maxContentWidth, gutter, isTablet } = useResponsive()
   const { products: productList, status, reload } = useSupplierListings()
   const notice = useSelector(selectStoreNotice)
-  const cart = usePreviewCart(productList)
   const { togglePublish, askDelete, dialog } = useListingActions()
 
   const [categoryId, setCategoryId] = useStoreFilter('storeCategory')
@@ -53,7 +52,6 @@ export default function SupplierProductsScreen({ navigation }) {
 
   const [categories, setCategories] = useState([])
   const [refreshing, setRefreshing] = useState(false)
-  const [cartOpen, setCartOpen] = useState(false)
 
   // Re-read the listings whenever the tab comes back into view (after an add,
   // an edit, or an order that changed stock).
@@ -253,7 +251,7 @@ export default function SupplierProductsScreen({ navigation }) {
 
       <View style={{ paddingHorizontal: gutter, marginTop: 14 }}>
         {status === 'idle' ? (
-          <PanelState loading />
+          <SkeletonGrid count={columns * 2} width={cardWidth} gap={GAP} />
         ) : status === 'error' && productList.length === 0 ? (
           <View style={styles.empty}>
             <PanelState error="Your products could not be loaded." />
@@ -282,8 +280,6 @@ export default function SupplierProductsScreen({ navigation }) {
                 listing={listing}
                 country={country}
                 width={cardWidth}
-                quantity={cart.quantityOf(listing.id)}
-                onQuantity={(quantity) => cart.setQuantity(listing.id, quantity)}
                 onOpen={() => navigation.navigate('SupplierListing', { listingId: listing.id })}
                 onEdit={() => navigation.navigate('SupplierEditListing', { listingId: listing.id })}
                 onTogglePublish={() => togglePublish(listing)}
@@ -292,13 +288,8 @@ export default function SupplierProductsScreen({ navigation }) {
             ))}
           </View>
         )}
-
-        <View style={{ marginTop: 14 }}>
-          <PreviewCartBar cart={cart} country={country} onOpen={() => setCartOpen(true)} />
-        </View>
       </View>
 
-      <PreviewCartSheet open={cartOpen} cart={cart} country={country} onClose={() => setCartOpen(false)} />
       {dialog}
     </DashboardShell>
   )

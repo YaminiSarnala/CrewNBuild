@@ -17,7 +17,7 @@ export default function Navbar({ onLogin, onOpenLanguage }) {
         <View style={styles.view2}>
           <View style={[styles.view3, { gap: 8 }]}>
             <Image
-              source={require('../../assets/logo.png')}
+              source={require('../../assets/icon.png')}
               style={{ width: 32, height: 32 }}
               contentFit="contain"
             />

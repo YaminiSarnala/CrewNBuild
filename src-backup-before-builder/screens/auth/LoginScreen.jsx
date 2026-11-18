@@ -92,7 +92,7 @@ export default function LoginScreen({ navigation }) {
 
           <View className="px-6 pt-10">
             <Image
-              source={require('../../../assets/logo.png')}
+              source={require('../../../assets/icon.png')}
               style={{ width: 44, height: 49 }}
               contentFit="contain"
             />

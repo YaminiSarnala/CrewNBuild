@@ -14,6 +14,7 @@ import { View, Text, Pressable, ScrollView, TextInput, ActivityIndicator } from 
 import { useDispatch, useSelector } from 'react-redux'
 import { Check, ChevronRight, PackageSearch, Search, X } from 'lucide-react-native'
 import { Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { Skeleton, SkeletonGroup, SkeletonRows } from '../../components/Skeleton'
 import { PrimaryButton } from '../../components/ui'
 import {
   addSupplierCatalogListing, fetchCatalogBrands, fetchCatalogCategories, fetchCatalogProducts, fetchCatalogSubcategories, searchCatalog,
@@ -56,12 +57,20 @@ function EmptyNote({ children }) {
   )
 }
 
-function LoadingNote() {
+/** Placeholders while a step loads: the catalog's circles and names, or product rows. */
+function LoadingNote({ rows = false }) {
+  if (rows) return <SkeletonRows count={4} />
   return (
-    <View style={styles.loadingNote}>
-      <ActivityIndicator size="small" color={COLORS.brand[700]} />
-      <Text style={styles.emptyNoteText}>Loading…</Text>
-    </View>
+    <SkeletonGroup>
+      <View style={styles.skeletonTiles} accessibilityRole="progressbar" accessibilityLabel="Loading">
+        {Array.from({ length: 8 }, (_, index) => (
+          <View key={index} style={styles.skeletonTile}>
+            <Skeleton width={64} height={64} radius={32} />
+            <Skeleton width={56} height={10} />
+          </View>
+        ))}
+      </View>
+    </SkeletonGroup>
   )
 }
 
@@ -420,7 +429,7 @@ export default function SupplierAddProductScreen({ navigation }) {
           <View>
             <Text style={styles.label}>CATALOG PRODUCTS</Text>
             {searching && searchResults.length === 0 ? (
-              <LoadingNote />
+              <LoadingNote rows />
             ) : searchResults.length === 0 ? (
               <EmptyNote>{`No catalog products match “${query.trim()}”.`}</EmptyNote>
             ) : (
@@ -499,7 +508,7 @@ export default function SupplierAddProductScreen({ navigation }) {
   const renderProductScreen = () => (
     <View>
       <ScreenTitle path={[category?.name, subcategory?.name, brandName].filter(Boolean)} title="Choose Product" />
-      {catalogProducts.loading && products.length === 0 ? <LoadingNote /> : products.length === 0 ? (
+      {catalogProducts.loading && products.length === 0 ? <LoadingNote rows /> : products.length === 0 ? (
         <EmptyNote>No products for this brand.</EmptyNote>
       ) : tileGrid(products, (row) => (
         <CircleTile key={row.id} width={tileWidth} name={row.name} selected={String(row.id) === String(productId)} onPress={() => chooseProduct(row)}>
@@ -673,6 +682,8 @@ export default function SupplierAddProductScreen({ navigation }) {
 }
 
 const styles = createStyles((c) => ({
+  skeletonTiles: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 16, paddingVertical: 8 },
+  skeletonTile: { width: '23%', alignItems: 'center', gap: 8 },
   progressItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 999, backgroundColor: c.muted, paddingHorizontal: 10, paddingVertical: 5 },
   pillActive: { backgroundColor: '#1a5038' },
@@ -712,7 +723,8 @@ const styles = createStyles((c) => ({
   chosenBrand: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   chosenBrandText: { flex: 1, fontSize: 11, fontFamily: 'Inter_700Bold', color: c.textMuted },
   warning: { marginBottom: 14, borderRadius: 9, backgroundColor: c.amberSoft, paddingHorizontal: 11, paddingVertical: 8, fontSize: 12, lineHeight: 17, fontFamily: 'Inter_700Bold', color: c.amberTextStrong },
-  twoCol: { flexDirection: 'row', gap: 10 },
+  // Inputs line up even when one label wraps onto a second line.
+  twoCol: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
   buyersSee: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold', color: c.textMuted },
   buyersPrice: { fontFamily: 'Manrope_800ExtraBold', color: c.text },
   buyersWas: { textDecorationLine: 'line-through', color: c.textFaint },

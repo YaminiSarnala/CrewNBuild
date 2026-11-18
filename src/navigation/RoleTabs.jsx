@@ -109,5 +109,7 @@ function makeRoleTabs(role) {
 
 export const OwnerTabs = makeRoleTabs('OWNER')
 export const ContractorTabs = makeRoleTabs('CONTRACTOR')
+export const SupplierEquipmentTabs = makeRoleTabs('SUPPLIER_EQUIPMENT')
+export const SupplierLabourTabs = makeRoleTabs('SUPPLIER_LABOUR')
 export const SupplierTabs = makeRoleTabs('SUPPLIER')
 export const EngineerTabs = makeRoleTabs('ENGINEER')

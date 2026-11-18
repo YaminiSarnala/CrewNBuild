@@ -324,7 +324,8 @@ const styles = createStyles((c) => ({
   tileLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textTransform: 'uppercase', color: c.textFaint },
   tileValue: { marginTop: 3, fontSize: 13.5, fontFamily: 'Inter_700Bold', color: c.text },
   form: { marginTop: 16, gap: 12, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
-  twoCol: { flexDirection: 'row', gap: 10 },
+  // Inputs line up even when one label wraps onto a second line.
+  twoCol: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
   readOnlyNote: { fontSize: 11.5, lineHeight: 16, fontFamily: 'Inter_600SemiBold', color: c.textFaint },
   buttons: { marginTop: 4, flexDirection: 'row', gap: 10 },
   bulk: { marginTop: 16, gap: 10 },

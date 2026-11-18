@@ -42,6 +42,12 @@ import SupplierProfileScreen from '../screens/supplier/SupplierProfileScreen'
 import SupplierAddProductScreen from '../screens/supplier/SupplierAddProductScreen'
 import SupplierListingScreen from '../screens/supplier/SupplierListingScreen'
 import SupplierEditListingScreen from '../screens/supplier/SupplierEditListingScreen'
+import SupplierEquipmentItemScreen from '../screens/supplier/SupplierEquipmentItemScreen'
+import { EquipmentProvider } from '../screens/supplier/equipment/EquipmentContext'
+import { LabourProvider } from '../screens/supplier/labour/LabourContext'
+import SupplierLabourServiceScreen from '../screens/supplier/SupplierLabourServiceScreen'
+import SupplierFindClientsScreen from '../screens/supplier/SupplierFindClientsScreen'
+import SupplierMyProjectsScreen from '../screens/supplier/SupplierMyProjectsScreen'
 import { SupplierProvider } from '../screens/supplier/SupplierContext'
 import { supplierCategoryMissing } from '../screens/supplier/supplierKinds'
 import { OwnerTabs, ContractorTabs, EngineerTabs } from './RoleTabs'
@@ -50,6 +56,7 @@ import WeatherScreen from '../screens/shared/WeatherScreen'
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'
 import LiveCameraScreen from '../screens/engineer/LiveCameraScreen'
 import MessagesScreen from '../screens/shared/MessagesScreen'
+import WeatherScreen from '../screens/weather/WeatherScreen'
 import DeleteAccountScreen from '../screens/shared/DeleteAccountScreen'
 import BookTechnicianScreen from '../screens/shared/BookTechnicianScreen'
 import CreateProjectScreen from '../screens/owner/CreateProjectScreen'
@@ -87,7 +94,7 @@ function needsLocationPincode(user) {
 function SplashGate() {
   return (
     <View style={styles.view}>
-      <Image source={require('../../assets/logo.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
+      <Image source={require('../../assets/icon.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
       <ActivityIndicator color="#c3dccd" style={{ marginTop: 24 }} />
     </View>
   )
@@ -125,6 +132,8 @@ export default function RootNavigator() {
   return (
     <NotificationsProvider signedIn={signedIn}>
     <SupplierProvider>
+    <EquipmentProvider>
+    <LabourProvider>
     <ComingSoonProvider>
     <NavigationContainer
       key={theme}
@@ -171,6 +180,11 @@ export default function RootNavigator() {
                 <Stack.Screen name="SupplierAddProduct" component={SupplierAddProductScreen} />
                 <Stack.Screen name="SupplierListing" component={SupplierListingScreen} />
                 <Stack.Screen name="SupplierEditListing" component={SupplierEditListingScreen} />
+                <Stack.Screen name="SupplierEquipmentItem" component={SupplierEquipmentItemScreen} />
+                <Stack.Screen name="SupplierLabourService" component={SupplierLabourServiceScreen} />
+                {/* Opened from the Dashboard (no More tab). */}
+                <Stack.Screen name="SupplierFindClients" component={SupplierFindClientsScreen} />
+                <Stack.Screen name="SupplierMyProjects" component={SupplierMyProjectsScreen} />
               </>
             )}
             <Stack.Screen name="CreateProject" component={CreateProjectScreen} />
@@ -180,6 +194,8 @@ export default function RootNavigator() {
                         <Stack.Screen name="Weather" component={WeatherScreen} />
             <Stack.Screen name="LiveCamera" component={LiveCameraScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
+            {/* Site Weather, from the header weather button on every dashboard. */}
+            <Stack.Screen name="Weather" component={WeatherScreen} />
             <Stack.Screen name="BookTechnician" component={BookTechnicianScreen} />
             
             <Stack.Screen name="Estimate" component={EstimateScreen} />
@@ -197,6 +213,8 @@ export default function RootNavigator() {
       </Stack.Navigator>
     </NavigationContainer>
     </ComingSoonProvider>
+    </LabourProvider>
+    </EquipmentProvider>
     </SupplierProvider>
     </NotificationsProvider>
   )

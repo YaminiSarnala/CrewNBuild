@@ -2,12 +2,16 @@
 // name and role, a notification bell wired to GET /notifications, pull-to-
 // refresh, and consistent loading / error / empty states.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { View, Text, ScrollView, RefreshControl, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+<<<<<<< Updated upstream
 import { Bell, LogOut, Globe, MessageCircle, Moon, Sun } from 'lucide-react-native'
 import WeatherPill from './weather/WeatherPill'
 import { useTheme } from '../theme/ThemeContext'
+=======
+import { Bell, LogOut, MessageCircle } from 'lucide-react-native'
+>>>>>>> Stashed changes
 import { useNavigation } from '@react-navigation/native'
 import { useNotifications } from '../notifications/NotificationsContext'
 import { useDispatch, useSelector } from 'react-redux'
@@ -17,10 +21,13 @@ import { imageSource } from '../api/client'
 import { useResponsive } from '../hooks/useResponsive'
 import { ContentWrap } from './Responsive'
 import ScreenHeader from './ScreenHeader'
-import LanguageSheet from './LanguageSheet'
 import ProfilePhotoSheet from './ProfilePhotoSheet'
+import WeatherButton from './weather/WeatherButton'
+import { SkeletonList, SkeletonRows } from './Skeleton'
 import { SHADOW, COLORS } from '../theme/tokens'
 import { createStyles } from '../theme/createStyles'
+import { useSupplier } from '../screens/supplier/SupplierContext'
+import { optionLabel, SUPPLIER_TYPE_KEYS } from '../i18n/optionKeys'
 
 /**
  * Small async-data hook so every dashboard panel handles loading/error/refresh
@@ -76,13 +83,15 @@ export function Panel({ title, action, children, style }) {
   )
 }
 
-export function PanelState({ loading, error, empty, emptyText, children }) {
+/**
+ * Loading / error / empty / content for one panel. While loading it shows a
+ * skeleton: `skeleton` 'rows' (default, for inside a panel), 'cards' (a
+ * screen's own list of cards), or any element (a shape of the screen's own).
+ */
+export function PanelState({ loading, error, empty, emptyText, skeleton = 'rows', count = 3, children }) {
   if (loading) {
-    return (
-      <View style={styles.view3}>
-        <ActivityIndicator color={COLORS.brand[800]} />
-      </View>
-    )
+    if (skeleton && typeof skeleton === 'object') return skeleton
+    return skeleton === 'cards' ? <SkeletonList count={count} /> : <SkeletonRows count={count} />
   }
   if (error) {
     return (
@@ -148,7 +157,7 @@ export function ShellBackBar({ title, onBack, extra, children }) {
   return <ShellBackContext.Provider value={value}>{children}</ShellBackContext.Provider>
 }
 
-export default function DashboardShell({ children, refreshing, onRefresh, onOpenNotifications, onOpenLanguage }) {
+export default function DashboardShell({ children, refreshing, onRefresh, onOpenNotifications }) {
   const insets = useSafeAreaInsets()
   const dispatch = useDispatch()
   const { t, td } = useLanguage()
@@ -156,12 +165,10 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
   const { gutter } = useResponsive()
   const navigation = useNavigation()
   const { unreadCount, unreadMessages } = useNotifications()
-  const { isDark, toggleTheme } = useTheme()
   const back = useContext(ShellBackContext)
-  // The header opens these itself, so the globe and the photo work on every
-  // tab — not only on a Home screen that passes onOpenLanguage.
-  const [languageOpen, setLanguageOpen] = useState(false)
+  // The header opens the photo sheet itself, so it works on every tab.
   const [photoOpen, setPhotoOpen] = useState(false)
+  const { profile: supplierProfile } = useSupplier()
 
   const roleLabelKey =
     {
@@ -170,7 +177,11 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
       SUPPLIER: 'role.supplier',
       ENGINEER: 'role.engineer',
     }[user?.role] || 'role.owner'
-
+  // A supplier's label follows their saved category ("Material Supplier"), as
+  // the web header does, falling back to "Supplier" until the profile loads.
+  const roleLabel = user?.role === 'SUPPLIER' && supplierProfile?.supplier_category
+    ? optionLabel(t, SUPPLIER_TYPE_KEYS, supplierProfile.supplier_category)
+    : t(roleLabelKey)
   return (
     <View style={styles.view7}>
       {back?.onBack ? (
@@ -212,9 +223,10 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
                 {td(user?.name) || '—'}
               </Text>
               <Text style={[styles.text8, { fontSize: 12 }]}>
-                {t(roleLabelKey)}
+                {roleLabel}
               </Text>
             </View>
+<<<<<<< Updated upstream
                         {/* The web's top-bar Weather indicator (Builder and Site Engineer dashboards). */}
             {user?.role === 'CONTRACTOR' || user?.role === 'ENGINEER' ? <WeatherPill /> : null}
             {/* Light / dark, as the web's header toggle: the icon shows the theme you switch to. */}
@@ -229,6 +241,11 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
             <Pressable onPress={onOpenLanguage || (() => setLanguageOpen(true))} accessibilityLabel={t('language.label')} style={styles.pressable}>
               <Globe size={19} color="#c3dccd" />
             </Pressable>
+=======
+            {/* Weather, messages, notifications and sign out only: Language and
+                Dark Mode are in each role's profile (PreferenceRows). */}
+            <WeatherButton />
+>>>>>>> Stashed changes
             <Pressable onPress={() => navigation.navigate('Messages')} accessibilityLabel={t('dash.common.messages')} style={styles.pressable}>
               <MessageCircle size={19} color="#c3dccd" />
               <CountBadge count={unreadMessages} />
@@ -261,7 +278,6 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
       >
         <ContentWrap>{children}</ContentWrap>
       </ScrollView>
-      <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
       <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
     </View>
   )
@@ -281,13 +297,13 @@ const styles = createStyles((c) => ({
   view6: { position: 'absolute', right: 1.75, top: 1.75, height: 14, minWidth: 14, alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#dc2626', paddingHorizontal: 3.5 },
   text6: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
   view7: { flex: 1, backgroundColor: c.canvas },
-  view8: { backgroundColor: '#134127', paddingBottom: 17.5 },
+  view8: { backgroundColor: '#134127', paddingBottom: 10.5 },
   view9: { flexDirection: 'row', alignItems: 'center', paddingTop: 10.5 },
   view10: { height: 38.5, width: 38.5, overflow: 'hidden', borderRadius: 9999, backgroundColor: '#236645' },
   view11: { height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' },
   text7: { fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },
   scrollView: { flex: 1 },
   text8: { fontFamily: 'Inter_500Medium', color: '#9dc5af' },
-  pressable: { padding: 7 },
+  pressable: { padding: 4 },
   backBar: { backgroundColor: c.card, borderBottomWidth: 1, borderColor: c.border },
 }))

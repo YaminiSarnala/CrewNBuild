@@ -8,16 +8,17 @@
 // the web itself uses a translation key.
 import { useCallback, useEffect, useState } from 'react'
 import { View, Text, Pressable, Switch, TextInput, ActivityIndicator } from 'react-native'
+import PianoLoader from '../../../components/PianoLoader'
 import { useDispatch, useSelector } from 'react-redux'
 import { Image } from 'expo-image'
-import { Check, ImageOff, Minus, Plus, ShoppingCart, Tags, Trash2 } from 'lucide-react-native'
+import { Check, ImageOff, Plus, Tags, Trash2 } from 'lucide-react-native'
 import { imageSource } from '../../../api/client'
 import {
   deleteSupplierProduct, fetchBulkPricing, fetchSupplierProducts, saveBulkPricing, updateSupplierProduct,
 } from '../../../api/supplierProducts'
 import {
-  clearPreviewCart, removeSupplierProduct, selectPreviewCart, selectSupplierProducts, selectSupplierProductsStatus,
-  setPreviewCartQuantity, setSupplierProducts, setSupplierProductsFailed, upsertSupplierProduct,
+  removeSupplierProduct, selectSupplierProducts, selectSupplierProductsStatus, setSupplierProducts, setSupplierProductsFailed,
+  upsertSupplierProduct,
 } from '../../../store/supplierCatalogSlice'
 import { discountedPrice, stockState } from '../../owner/marketplace/shopParts'
 import { countryCurrency, formatMoney, userCountry } from '../../../utils/countryConfig'
@@ -30,7 +31,13 @@ import { createStyles } from '../../../theme/createStyles'
 
 export const sellingPrice = (listing) => discountedPrice(listing.price, listing.discount_percentage)
 export const discountOf = (listing) => Number(listing?.discount_percentage || 0)
-export const money = (value, country) => formatMoney(Math.round(Number(value || 0) * 100) / 100, country)
+// Whole amounts as "₹4,410"; anything with paise as "₹436.50", never "₹436.5".
+export const money = (value, country) => {
+  const amount = Math.round(Number(value || 0) * 100) / 100
+  if (Number.isInteger(amount)) return formatMoney(amount, country)
+  const { symbol, locale } = countryCurrency(country)
+  return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 export const sizeOf = (listing) => listing.size || listing.unit || ''
 export const discountText = (discount) => `${Number(Number(discount).toFixed(2))}% OFF`
 
@@ -116,23 +123,6 @@ export function useSupplierListings() {
   return { products, status, reload, update, remove }
 }
 
-/** The buyer-preview basket: never saved, never ordered. */
-export function usePreviewCart(productList = []) {
-  const dispatch = useDispatch()
-  const basket = useSelector(selectPreviewCart)
-  const lines = Object.entries(basket)
-    .map(([id, quantity]) => ({ listing: productList.find((row) => String(row.id) === String(id)), quantity }))
-    .filter((line) => line.listing)
-  return {
-    quantityOf: (id) => Number(basket[id] || 0),
-    setQuantity: (id, quantity) => dispatch(setPreviewCartQuantity({ id, quantity })),
-    clear: () => dispatch(clearPreviewCart()),
-    lines,
-    count: lines.length,
-    total: lines.reduce((sum, line) => sum + sellingPrice(line.listing) * line.quantity, 0),
-  }
-}
-
 // ---------------------------------------------------------------- pictures
 
 /** A listing or catalog picture, or a neutral "No image yet" box. */
@@ -196,8 +186,9 @@ export function CircleImage({ src, name, size = 84, fit = 'cover' }) {
   }
   return (
     <View style={[styles.circle, styles.circleEmpty, circle]} accessibilityLabel={name}>
-      <ImageOff size={22} color={COLORS.slate[300]} />
-      <Text style={styles.noImageText}>No image</Text>
+      <ImageOff size={Math.min(22, Math.round(size * 0.45))} color={COLORS.slate[300]} />
+      {/* The words only fit a large circle. */}
+      {size >= 60 ? <Text style={styles.noImageText}>No image</Text> : null}
     </View>
   )
 }
@@ -260,43 +251,6 @@ export function CheckRow({ value, onChange, label, hint }) {
 
 /** The currency symbol for price inputs ("₹", "KD"). */
 export const currencySymbol = (country) => countryCurrency(country).symbol
-
-// ---------------------------------------------------------------- buyer preview
-
-/**
- * [ − N + ]  [ Add ] over the preview basket. Before adding, the stepper picks
- * how many; once added it edits the basket itself and the button reads "Added".
- */
-export function QuantityAdd({ quantity, onChange, disabled, large = false }) {
-  const [draft, setDraft] = useState(1)
-  const inCart = quantity > 0
-  const shown = inCart ? quantity : draft
-  const step = (delta) => (inCart ? onChange(quantity + delta) : setDraft((value) => Math.max(1, value + delta)))
-  const height = large ? 46 : 34
-  return (
-    <View style={styles.qtyRow}>
-      <View style={[styles.stepper, { height, width: large ? 132 : 92 }]}>
-        <Pressable onPress={() => step(-1)} disabled={disabled || (!inCart && draft <= 1)} accessibilityLabel="Decrease quantity" style={styles.stepButton}>
-          <Minus size={14} color={disabled ? COLORS.slate[300] : COLORS.slate[600]} />
-        </Pressable>
-        <Text style={[styles.stepValue, { fontSize: large ? 15 : 13 }]}>{disabled ? 0 : shown}</Text>
-        <Pressable onPress={() => step(1)} disabled={disabled} accessibilityLabel="Increase quantity" style={styles.stepButton}>
-          <Plus size={14} color={disabled ? COLORS.slate[300] : COLORS.slate[600]} />
-        </Pressable>
-      </View>
-      <Pressable
-        onPress={() => { if (!inCart) onChange(draft) }}
-        disabled={disabled}
-        style={[styles.addButton, { height }, disabled ? styles.addDisabled : inCart ? styles.addDone : null]}
-      >
-        {disabled ? null : inCart ? <Check size={15} color={COLORS.brand[800]} /> : <ShoppingCart size={15} color="#ffffff" />}
-        <Text style={[styles.addText, { fontSize: large ? 15 : 13 }, disabled ? styles.addTextDisabled : inCart ? styles.addTextDone : null]} numberOfLines={1}>
-          {disabled ? 'Out of Stock' : inCart ? 'Added' : large ? 'Add To Cart' : 'Add'}
-        </Text>
-      </Pressable>
-    </View>
-  )
-}
 
 // ---------------------------------------------------------------- bulk pricing
 
@@ -425,7 +379,7 @@ export function BulkPricingPanel({ productId, unit = '', normalPrice = null, cou
       <BulkPricingEditor enabled={enabled} onToggle={setEnabled} tiers={tiers} onChange={setTiers} unit={unit} normalPrice={normalPrice} country={country} />
       <View style={styles.bulkSaveRow}>
         <Pressable onPress={save} disabled={state.saving} style={[styles.bulkSave, state.saving ? { opacity: 0.6 } : null]}>
-          {state.saving ? <ActivityIndicator size="small" color="#ffffff" /> : <Tags size={14} color="#ffffff" />}
+          {state.saving ? <PianoLoader color="#ffffff" height={14} /> : <Tags size={14} color="#ffffff" />}
           <Text style={styles.bulkSaveText}>Save bulk pricing</Text>
         </Pressable>
         {state.text ? <Text style={[styles.bulkState, state.tone === 'error' ? styles.bulkStateError : styles.bulkStateOk]}>{state.text}</Text> : null}
@@ -550,16 +504,6 @@ const styles = createStyles((c) => ({
   checkBoxOn: { borderColor: '#2e7d55', backgroundColor: '#2e7d55' },
   checkText: { fontSize: 13.5, fontFamily: 'Manrope_800ExtraBold', color: c.text },
   checkHint: { fontSize: 11.5, fontFamily: 'Inter_600SemiBold', color: c.textFaint },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stepper: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden', borderRadius: 9, borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
-  stepButton: { height: '100%', width: 30, alignItems: 'center', justifyContent: 'center' },
-  stepValue: { flex: 1, textAlign: 'center', fontFamily: 'Inter_700Bold', color: c.text },
-  addButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 9, backgroundColor: '#236645', paddingHorizontal: 8 },
-  addDone: { borderWidth: 1, borderColor: c.brandBorderStrong, backgroundColor: c.brandSoft },
-  addDisabled: { backgroundColor: c.mutedStronger },
-  addText: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
-  addTextDone: { color: c.brandTextStrong },
-  addTextDisabled: { color: c.textMuted },
   bulkBox: { borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, padding: 12 },
   bulkHint: { fontSize: 11.5, lineHeight: 16, fontFamily: 'Inter_400Regular', color: c.textMuted },
   tierCard: { borderRadius: 11, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 10, gap: 8 },

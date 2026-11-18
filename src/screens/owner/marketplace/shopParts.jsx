@@ -5,6 +5,7 @@
 // marketplace copy in English; so does the app.
 import { useState } from 'react'
 import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import PianoLoader from '../../../components/PianoLoader'
 import { useDispatch, useSelector } from 'react-redux'
 import { AlertTriangle, CheckCircle2, Clock3, IndianRupee, Minus, Plus, ShoppingCart, Tags, Truck, XCircle } from 'lucide-react-native'
 import { addProductToCart, changeCartQuantity, removeProductFromCart, selectCart } from '../../../store/cartSlice'
@@ -141,7 +142,7 @@ export function CartStepper({ offer, projectId, onMessage, full = false, size = 
         accessibilityRole="button"
         style={[styles.pressable, outOfStock ? styles.pressable2 : styles.pressable3, { height, gap: 5, alignSelf: full ? 'stretch' : 'flex-start' }]}
       >
-        {busy ? <ActivityIndicator size="small" color="#ffffff" /> : <ShoppingCart size={13} color="#ffffff" />}
+        {busy ? <PianoLoader color="#ffffff" height={14} /> : <ShoppingCart size={13} color="#ffffff" />}
         <Text style={[styles.text6, { fontSize: 12 }]}>{outOfStock ? 'Out of stock' : 'Add to Cart'}</Text>
       </Pressable>
     )

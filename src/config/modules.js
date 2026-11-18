@@ -10,10 +10,10 @@ export const isRoleLive = (role) => LIVE_ROLES.includes(String(role || '').toUpp
 
 /**
  * Supplier kinds (supplierKind: material / labour / equipment) whose dashboard
- * is live. Material is being built now, so it opens in development builds only;
- * set it to ['material'] for every build once it is finished.
+ * is live. Material, Equipment and Labour are being built now, so they open in
+ * development builds only; list a kind for every build once it is finished.
  */
-export const SUPPLIER_LIVE_KINDS = __DEV__ ? ['material'] : []
+export const SUPPLIER_LIVE_KINDS = __DEV__ ? ['material', 'equipment', 'labour'] : []
 
 /** Whether this account gets its real dashboard (Supplier: by its saved kind). */
 export function isAccountLive(user, kind) {

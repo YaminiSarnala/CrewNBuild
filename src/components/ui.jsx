@@ -5,7 +5,8 @@
 // framer-motion -> moti (same declarative from/animate API, same easing).
 // ---------------------------------------------------------------------------
 import { useState } from 'react'
-import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
+import PianoLoader from './PianoLoader'
 import { Image } from 'expo-image'
 import { MotiView } from 'moti'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -123,16 +124,12 @@ export function PrimaryButton({ label, onPress, icon, loading, disabled, style, 
       accessibilityRole="button"
       style={[styles.pressable2, full ? styles.pressable : styles.pressable3, isDisabled ? styles.pressable4 : null, style, SHADOW.orange]}
     >
-      {loading ? (
-        <ActivityIndicator color="#ffffff" size="small" />
-      ) : (
-        <>
-          <Text style={[styles.text11, { fontSize: 14 }]}>
-            {label}
-          </Text>
-          {icon}
-        </>
-      )}
+      {/* Loading: the piano keys beside the label (e.g. "Signing in…"). */}
+      {loading ? <PianoLoader /> : null}
+      <Text style={[styles.text11, { fontSize: 14 }]}>
+        {label}
+      </Text>
+      {loading ? null : icon}
     </Pressable>
   )
 }

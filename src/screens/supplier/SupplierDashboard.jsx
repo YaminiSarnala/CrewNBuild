@@ -1,240 +1,196 @@
-// Port of the web src/pages/supplier/SupplierDashboard.jsx.
-// Wired to: GET /supplier-products, GET /supplier/material-requests,
-// GET /suppliers/find-clients, POST /supplier/material-requests/{id}/respond.
-import { useState, useCallback } from 'react'
-import { View, Text, Pressable, Alert } from 'react-native'
-import { Package, Check, X, Plus, HardHat, MapPin } from 'lucide-react-native'
-import DashboardShell, { Panel, PanelState, MetricRow, useAsyncData } from '../../components/DashboardShell'
-import LanguageSheet from '../../components/LanguageSheet'
-import { fetchSupplierProducts } from '../../api/supplierProducts'
-import { fetchSupplierMaterialRequests, respondMaterialRequest } from '../../api/materialRequests'
+// A Material Supplier's Dashboard home (the web SupplierDashboard's
+// "Dashboard" section):
+//
+//   welcome banner      the store's logo and name; a nudge while no product is published
+//   four figure cards   requests, nearby clients, products, categories
+//   My Projects / Find Clients   the supplier has no More tab, so they open from here
+//   search              requests, projects and clients matching the words
+//   Recent Activity, Top Products, Quick Actions, Recent Requests, Sales Overview
+//
+// Every figure comes from records loaded here: the supplier's listings, orders
+// (GET /supplier/material-requests), client requests, projects and nearby clients.
+import { useCallback, useMemo, useState } from 'react'
+import { View, Text, Pressable, TextInput } from 'react-native'
+import { useSelector } from 'react-redux'
+import { useFocusEffect } from '@react-navigation/native'
+import { Building2, ChevronRight, FileText, Package, Search, Tags, UserSearch, Users, X } from 'lucide-react-native'
+import DashboardShell from '../../components/DashboardShell'
+import { SkeletonStats } from '../../components/Skeleton'
+import { StatCard, WelcomeBanner } from '../../components/builder/BuilderDashboardParts'
+import { fetchSupplierMaterialRequests } from '../../api/materialRequests'
+import { fetchIncomingRequests } from '../../api/requests'
 import { fetchSupplierClients } from '../../api/profiles'
 import { fetchSupplierMyProjects } from '../../api/projects'
+import { useLiveRefresh } from '../../hooks/useLiveRefresh'
+import { useLanguage } from '../../i18n/LanguageContext'
+import { useResponsive } from '../../hooks/useResponsive'
+import { userCountry } from '../../utils/countryConfig'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
+import { useSupplier } from './SupplierContext'
+import { money, useSupplierListings } from './products/productParts'
+import { QuickActions, RecentActivity, RecentRequests, SalesOverview, SearchResults, TopProducts } from './dashboard/dashboardParts'
+
+// Records created in the last seven days, from the stored `created_at`.
+const createdThisWeek = (list) => {
+  const since = Date.now() - 7 * 24 * 60 * 60 * 1000
+  return list.filter((item) => item.created_at && new Date(item.created_at).getTime() >= since).length
+}
 
 export default function SupplierDashboard({ navigation }) {
-  const [languageOpen, setLanguageOpen] = useState(false)
+  const { t, td } = useLanguage()
+  const user = useSelector((state) => state.auth.user)
+  const country = userCountry(user)
+  const { gutter, width, maxContentWidth, isTablet } = useResponsive()
+  const { profile } = useSupplier()
+  const { products, status: productsStatus, reload: reloadProducts } = useSupplierListings()
+  const [orders, setOrders] = useState([])
+  const [requests, setRequests] = useState([])
+  const [projects, setProjects] = useState([])
+  const [clients, setClients] = useState([])
   const [refreshing, setRefreshing] = useState(false)
+  const [query, setQuery] = useState('')
 
-  const products = useAsyncData(fetchSupplierProducts, [])
-  const requests = useAsyncData(fetchSupplierMaterialRequests, [])
-  const clients = useAsyncData(fetchSupplierClients, [])
-  const myProjects = useAsyncData(() => fetchSupplierMyProjects().catch(() => []), [])
-  const onRefresh = useCallback(async () => {
-  setRefreshing(true);
+  // Each source loads on its own: one failing never blanks the others.
+  const load = useCallback(async () => {
+    const [orderResult, requestResult, projectResult, clientResult] = await Promise.allSettled([
+      fetchSupplierMaterialRequests(),
+      fetchIncomingRequests(),
+      fetchSupplierMyProjects(),
+      fetchSupplierClients(userCountry(user)),
+      reloadProducts(),
+    ])
+    if (orderResult.status === 'fulfilled') setOrders(Array.isArray(orderResult.value) ? orderResult.value : [])
+    if (requestResult.status === 'fulfilled') setRequests(Array.isArray(requestResult.value) ? requestResult.value : [])
+    if (projectResult.status === 'fulfilled') setProjects(Array.isArray(projectResult.value) ? projectResult.value : [])
+    if (clientResult.status === 'fulfilled') setClients(Array.isArray(clientResult.value) ? clientResult.value : [])
+  }, [user, reloadProducts])
+  useFocusEffect(useCallback(() => { load() }, [load]))
+  useLiveRefresh(load)
 
-  await Promise.all([
-    products.reload(),
-    requests.reload(),
-    clients.reload(),
-    myProjects.reload(),
-  ]);
-
-  setRefreshing(false);
-}, [products, requests, clients, myProjects]);
-
-  async function respond(id, action) {
-    try {
-      await respondMaterialRequest(id, action)
-      await requests.reload()
-    } catch (error) {
-      Alert.alert('Could not update', error?.response?.data?.detail || 'Please try again.')
-    }
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await load()
+    setRefreshing(false)
   }
 
-  const productList = Array.isArray(products.data) ? products.data : []
-  const requestList = Array.isArray(requests.data) ? requests.data : []
-  const clientList = Array.isArray(clients.data) ? clients.data : []
-  const myProjectList = Array.isArray(myProjects.data) ? myProjects.data : []
+  // Nearby clients not yet linked to this supplier by a request (as Find Clients shows them).
+  const discoverable = useMemo(() => {
+    const linked = new Set()
+    requests.forEach((request) => {
+      if (request.status === 'withdrawn') return
+      const other = request.is_sender ? request.receiver_id : request.sender_id
+      if (['SUPPLIER_TO_OWNER', 'OWNER_TO_SUPPLIER'].includes(request.request_type)) linked.add(`OWNER:${other}`)
+      else if (['SUPPLIER_TO_CONTRACTOR', 'CONTRACTOR_TO_SUPPLIER'].includes(request.request_type)) linked.add(`CONTRACTOR:${other}`)
+    })
+    return clients.filter((client) => !linked.has(`${client.type}:${client.user_id}`))
+  }, [clients, requests])
+
+  const openTab = (name) => navigation.navigate(name)
+  const fmt = (value) => money(value, country)
+  const published = products.filter((product) => product.is_published !== false).length
+  const storeName = profile?.store_name || user?.name || t('role.supplier')
+
+  const stats = [
+    { title: t('dash.supplier.statRequests'), value: requests.length, sub: t('dash.sup.newThisWeek', { count: createdThisWeek(requests) }), icon: FileText, theme: 'blue', onPress: () => openTab('SupplierRequestsTab') },
+    { title: t('dash.supplier.statClients'), value: discoverable.length, sub: ' ', icon: Users, theme: 'purple', onPress: () => navigation.navigate('SupplierFindClients') },
+    { title: t('dash.supplier.statProducts'), value: products.length, sub: t('dash.sup.newThisWeek', { count: createdThisWeek(products) }), icon: Package, theme: 'green', onPress: () => openTab('SupplierProductsTab') },
+    { title: t('dash.supplier.statCategories'), value: new Set(products.map((product) => product.category)).size, sub: ' ', icon: Tags, theme: 'orange', onPress: () => openTab('SupplierProductsTab') },
+  ]
+  const columns = isTablet ? 4 : 2
+  const inner = Math.min(width, maxContentWidth) - gutter * 2
+  // Rounded down so two cards always fit one row on every screen density.
+  const statWidth = Math.floor((inner - 10 * (columns - 1)) / columns)
+
   return (
-    <>
-      <DashboardShell
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        onOpenLanguage={() => setLanguageOpen(true)}
-        onOpenNotifications={() => navigation.navigate('Notifications')}
-      >
-        <MetricRow
-          items={[
-            { label: 'Products', value: String(productList.length) },
-            { label: 'Requests', value: String(requestList.length) },
-            { label: 'Projects', value: String(myProjectList.length) },
-                    ]}
+    <DashboardShell refreshing={refreshing} onRefresh={onRefresh}>
+      <View style={{ paddingHorizontal: gutter, gap: 14 }}>
+        <WelcomeBanner
+          // The store logo leads: this banner is the shop's own front.
+          imagePath={profile?.store_logo_url || user?.profile_image_url || ''}
+          role="SUPPLIER"
+          name={storeName}
+          title={t('dash.supplier.hero.welcome', { name: `, ${td(user?.name) || storeName}` })}
+          subtitle={t('dash.supplier.hero.sub')}
         />
+        {published === 0 ? (
+          <Pressable onPress={() => navigation.navigate('SupplierAddProduct')} style={styles.nudge}>
+            <Text style={styles.nudgeText}>{t('dash.supplier.hero.noProducts', { name: td(user?.name) || storeName })}</Text>
+          </Pressable>
+        ) : null}
 
-        <Panel
-          title="Material requests"
-        >
-          <PanelState
-            loading={requests.loading}
-            error={requests.error}
-            empty={requestList.length === 0}
-            emptyText="No incoming material requests."
-          >
-            {requestList.map((request) => (
-              <View key={request.id} style={styles.view}>
-                <Text style={[styles.text, { fontSize: 14.5 }]}>
-                  {request.material_name || request.title || `Request #${request.id}`}
-                </Text>
-                <Text style={[styles.text2, { fontSize: 12.5 }]}>
-                  {request.quantity ? `${request.quantity} ${request.unit || ''}` : ''}
-                  {request.status ? ` · ${request.status}` : ''}
-                </Text>
-                <View style={[styles.view2, { gap: 10 }]}>
-                  <Pressable
-                    onPress={() => respond(request.id, 'ACCEPT')}
-                    style={[styles.pressable, { gap: 6 }]}
-                  >
-                    <Check size={14} color="#ffffff" />
-                    <Text style={[styles.text3, { fontSize: 13 }]}>
-                      Accept
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => respond(request.id, 'REJECT')}
-                    style={[styles.pressable2, { gap: 6 }]}
-                  >
-                    <X size={14} color="#dc2626" />
-                    <Text style={[styles.text4, { fontSize: 13 }]}>
-                      Decline
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
+        {/* Figures wait for the first load, so they never flash 0. */}
+        {productsStatus === 'idle' ? (
+          <SkeletonStats count={4} width={statWidth} />
+        ) : (
+          <View style={styles.stats}>
+            {stats.map((stat) => (
+              <StatCard key={stat.title} style={{ width: statWidth }} title={stat.title} value={String(stat.value)} sub={stat.sub} theme={stat.theme} icon={stat.icon} onPress={stat.onPress} />
             ))}
-          </PanelState>
-        </Panel>
+          </View>
+        )}
 
-        <Panel
-          title="My catalogue"
-          action={
-            <Pressable
-              onPress={() => navigation.navigate('AddProduct')}
-              accessibilityRole="button"
-              style={[styles.pressable3, { gap: 4 }]}
-            >
-              <Plus size={13} color={COLORS.brand[800]} />
-              <Text style={[styles.text5, { fontSize: 12 }]}>
-                Add
-              </Text>
+        {/* My Projects and Find Clients open from here (no More tab). */}
+        <View style={styles.navRow}>
+          {[
+            { route: 'SupplierMyProjects', label: t('ui.myProjects'), icon: Building2 },
+            { route: 'SupplierFindClients', label: t('ui.findClients'), icon: UserSearch },
+          ].map(({ route, label, icon: Icon }) => (
+            <Pressable key={route} onPress={() => navigation.navigate(route)} style={styles.navCard} accessibilityRole="button">
+              <View style={styles.navIcon}><Icon size={18} color={COLORS.brand[800]} /></View>
+              <Text style={styles.navText} numberOfLines={1}>{label}</Text>
+              <ChevronRight size={16} color={COLORS.slate[400]} />
             </Pressable>
-          }
-        >
-          <PanelState
-            loading={products.loading}
-            error={products.error}
-            empty={productList.length === 0}
-            emptyText="No products listed yet."
-          >
-            {productList.map((product) => (
-              <View key={product.id} style={[styles.view3, { gap: 10 }]}>
-                <View style={styles.view4}>
-                  <Package size={16} color={COLORS.brand[800]} />
-                </View>
-                <View style={styles.view5}>
-                  <Text style={[styles.text, { fontSize: 14 }]}>
-                    {product.name}
-                  </Text>
-                  <Text style={[styles.text6, { fontSize: 12 }]}>
-                    {product.category || '—'}
-                  </Text>
-                </View>
-                <Text style={[styles.text7, { fontSize: 14 }]}>
-                  ₹{Number(product.price || 0).toLocaleString('en-IN')}
-                </Text>
-              </View>
-            ))}
-          </PanelState>
-        </Panel>
-        <Panel title="My projects">
-          <PanelState loading={myProjects.loading} empty={!myProjectList.length} emptyText="No project assignments yet. When a builder assigns you to a site, it appears here.">
-            {myProjectList.map((project) => {
-              const projectId = project.id || project.project_id
-              const projectOrders = requestList.filter((order) => order.project_id === projectId)
-              return (
-                <View key={projectId} style={styles.view6}>
-                  <View style={styles.view7}>
-                    <HardHat size={15} color="#166534" />
-                    <Text style={styles.text8} numberOfLines={1}>
-                      {project.project_title || project.title || 'Project'}
-                    </Text>
-                    {!!projectOrders.length && (
-                      <View style={styles.view8}>
-                        <Text style={styles.text9}>{projectOrders.length} orders</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.view9}>
-                    <MapPin size={11} color="#94a3b8" />
-                    <Text style={styles.text10} numberOfLines={1}>
-                      {project.address || 'Location not set'}{project.pincode ? ` · ${project.pincode}` : ''}
-                    </Text>
-                  </View>
-                  {!!(project.contractor_name || project.engineer_name) && (
-                    <Text style={styles.text11} numberOfLines={1}>
-                      {[project.contractor_name && `Builder: ${project.contractor_name}`, project.engineer_name && `Engineer: ${project.engineer_name}`].filter(Boolean).join(' · ')}
-                    </Text>
-                  )}
-                  {projectOrders.slice(0, 3).map((order) => (
-                    <Text key={order.id} style={styles.text12} numberOfLines={1}>
-                      • {order.request_code || `Order #${order.id}`} · {order.status || 'PENDING'}
-                    </Text>
-                  ))}
-                </View>
-              )
-            })}
-          </PanelState>
-        </Panel>
-        <Panel title="Nearby clients">
-          <PanelState
-            loading={clients.loading}
-            error={clients.error}
-            empty={clientList.length === 0}
-            emptyText="No clients found in your delivery area yet."
-          >
-            {clientList.slice(0, 8).map((client) => (
-              <View key={client.id} style={styles.view10}>
-                <Text style={[styles.text, { fontSize: 14 }]}>
-                  {client.name || client.company_name}
-                </Text>
-                <Text style={[styles.text6, { fontSize: 12 }]}>
-                  {client.pincode || '—'}
-                </Text>
-              </View>
-            ))}
-          </PanelState>
-        </Panel>
-      </DashboardShell>
-      <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
-    </>
+          ))}
+        </View>
+
+        <View style={styles.searchBox}>
+          <Search size={16} color={COLORS.slate[400]} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={`${t('ui.requests')}, ${t('ui.myProjects')}, ${t('ui.findClients')}`}
+            placeholderTextColor={COLORS.slate[400]}
+            autoCorrect={false}
+            style={styles.searchInput}
+          />
+          {query ? <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search"><X size={15} color={COLORS.slate[500]} /></Pressable> : null}
+        </View>
+        {query.trim() ? (
+          <SearchResults
+            query={query.trim()}
+            requests={requests}
+            projects={projects}
+            clients={discoverable}
+            onRequests={() => openTab('SupplierRequestsTab')}
+            onProjects={() => navigation.navigate('SupplierMyProjects')}
+            onClients={() => navigation.navigate('SupplierFindClients')}
+          />
+        ) : null}
+
+        <RecentActivity orders={orders} products={products} projects={projects} onViewAll={() => openTab('SupplierOrdersTab')} />
+        <TopProducts orders={orders} money={fmt} onViewAll={() => openTab('SupplierProductsTab')} />
+        <QuickActions
+          onAddProduct={() => navigation.navigate('SupplierAddProduct')}
+          onProducts={() => openTab('SupplierProductsTab')}
+          onFindClients={() => navigation.navigate('SupplierFindClients')}
+          onRequests={() => openTab('SupplierRequestsTab')}
+        />
+        <RecentRequests requests={requests} onOpen={() => openTab('SupplierRequestsTab')} />
+        <SalesOverview orders={orders} money={fmt} onOrders={() => openTab('SupplierOrdersTab')} />
+      </View>
+    </DashboardShell>
   )
 }
 
 const styles = createStyles((c) => ({
-  view: { marginBottom: 14, borderRadius: 14, backgroundColor: c.subtle, padding: 14 },
-  text: { fontFamily: 'Inter_700Bold', color: c.text },
-  text2: { marginTop: 3.5, fontFamily: 'Inter_400Regular', color: c.textMuted },
-  view2: { marginTop: 10.5, flexDirection: 'row' },
-  pressable: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, backgroundColor: '#134127', paddingVertical: 8.75 },
-  text3: { fontFamily: 'Inter_700Bold', color: '#ffffff' },
-  pressable2: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.card, paddingVertical: 8.75 },
-  text4: { fontFamily: 'Inter_700Bold', color: '#dc2626' },
-  pressable3: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 5.25 },
-  text5: { fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
-  view3: { marginBottom: 10.5, flexDirection: 'row', alignItems: 'center' },
-  view4: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: c.brandSoft },
-  view5: { flex: 1 },
-  text6: { fontFamily: 'Inter_400Regular', color: c.textMuted },
-  text7: { fontFamily: 'Manrope_800ExtraBold', color: c.brandTextStrong },
-  view6: { marginBottom: 10.5, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
-  view7: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  text8: { flex: 1, fontSize: 14, fontWeight: '800', color: c.text },
-  view8: { borderRadius: 9999, backgroundColor: c.brandSoftStrong, paddingHorizontal: 7, paddingVertical: 1.75 },
-  text9: { fontSize: 10, fontWeight: '800', color: c.brandTextStrong },
-  view9: { marginTop: 5.25, flexDirection: 'row', alignItems: 'center', gap: 5.25 },
-  text10: { flex: 1, fontSize: 11, fontWeight: '600', color: c.textFaint },
-  text11: { marginTop: 3.5, fontSize: 11, fontWeight: '600', color: c.textMuted },
-  text12: { marginTop: 5.25, fontSize: 12, fontWeight: '600', color: c.textMuted },
-  view10: { marginBottom: 10.5 },
+  nudge: { borderRadius: 14, borderWidth: 1, borderColor: c.brandBorderStrong, backgroundColor: c.brandSoft, paddingHorizontal: 14, paddingVertical: 10 },
+  nudgeText: { fontSize: 12.5, lineHeight: 18, fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  navRow: { flexDirection: 'row', gap: 10 },
+  navCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 12, paddingVertical: 13 },
+  navIcon: { height: 34, width: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: c.brandSoft },
+  navText: { flex: 1, fontSize: 13, fontFamily: 'Inter_700Bold', color: c.text },
+  searchBox: { height: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 12 },
+  searchInput: { flex: 1, height: '100%', fontSize: 13.5, fontFamily: 'Inter_500Medium', color: c.text },
 }))

@@ -6,9 +6,9 @@ import { useFocusEffect } from '@react-navigation/native'
 import { View, Text, Pressable, TextInput, Alert, Linking } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { Image } from 'expo-image'
-import { Globe, LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle, Trash2 } from 'lucide-react-native'
+import { LifeBuoy, LogOut, Wrench,Pencil, Camera, MessageCircle, Trash2 } from 'lucide-react-native'
 import DashboardShell, { Panel } from '../../components/DashboardShell'
-import LanguageSheet from '../../components/LanguageSheet'
+import PreferenceRows from '../../components/PreferenceRows'
 import ProfilePhotoSheet from '../../components/ProfilePhotoSheet'
 import EmailSection from '../../components/EmailSection'
 import Toast, { useToast } from '../../components/Toast'
@@ -69,7 +69,6 @@ export default function ProfileScreen({ navigation }) {
   const { gutter } = useResponsive()
   // Opening Profile clears its general notifications, as on the web.
   useFocusEffect(useCallback(() => { markSectionRead('profile') }, [markSectionRead]))
-  const [languageOpen, setLanguageOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [photoOpen, setPhotoOpen] = useState(false)
@@ -262,10 +261,7 @@ export default function ProfileScreen({ navigation }) {
               {COMING_SOON.technician ? <SoonTag /> : null}
             </Pressable>
           )}
-          <Pressable onPress={() => setLanguageOpen(true)} style={styles.pressable5}>
-            <Globe size={16} color={COLORS.brand[700]} />
-            <Text style={styles.text8}>Language</Text>
-          </Pressable>
+          <PreferenceRows />
           <Pressable onPress={() => Linking.openURL('mailto:support@octabuild.com')} style={styles.pressable5}>
             <LifeBuoy size={16} color={COLORS.brand[700]} />
             <Text style={styles.text8}>Help & feedback</Text>
@@ -292,7 +288,6 @@ export default function ProfileScreen({ navigation }) {
           </Pressable>
         </View>
       </DashboardShell>
-      <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
       <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
       <Toast {...toast} onHide={hideToast} />
     </>

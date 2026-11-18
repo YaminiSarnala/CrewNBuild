@@ -5,7 +5,7 @@
 // on it cannot be opened. Picking a day shows its photos (tap for full screen)
 // and videos. Read-only: GET /projects/{id}/photos.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, Pressable, Modal, FlatList, useWindowDimensions, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, Modal, FlatList, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
@@ -17,6 +17,7 @@ import { imageSource } from '../../api/client'
 import { formatDate } from '../../utils/formatters'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
+import { Skeleton, SkeletonGroup } from '../../components/Skeleton'
 
 const localDateKey = (value = new Date()) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
 
@@ -184,7 +185,18 @@ export default function SitePhotoCalendar({ project, onRequestUpdate, requesting
             <Text key={day} style={[styles.text6, { fontSize: 9.5, color: COLORS.brand[700] }]}>{t(`se.weekday.${day}`)}</Text>
           ))}
         </View>
-        {loading ? <ActivityIndicator color={COLORS.brand[700]} style={{ paddingVertical: 30 }} /> : (
+        {loading ? (
+          // The month's day cells, as placeholders.
+          <SkeletonGroup>
+            <View style={styles.view10}>
+              {Array.from({ length: 35 }, (_, index) => (
+                <View key={index} style={{ width: '14.28%', padding: 2 }}>
+                  <Skeleton height={44} radius={8} />
+                </View>
+              ))}
+            </View>
+          </SkeletonGroup>
+        ) : (
           <View style={styles.view10}>
             {cells.map((date, index) => {
               if (!date) return <View key={`blank-${index}`} style={{ width: '14.28%', padding: 2 }} />

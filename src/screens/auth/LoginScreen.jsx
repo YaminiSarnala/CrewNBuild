@@ -90,7 +90,7 @@ export default function LoginScreen({ navigation }) {
         >
           <View style={styles.view2}>
             <Image
-              source={require('../../../assets/logo.png')}
+              source={require('../../../assets/icon.png')}
               style={{ width: 52, height: 52 }}
               contentFit="contain"
             />

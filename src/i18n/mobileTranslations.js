@@ -15,6 +15,8 @@ import house3d from './mobile/house3d.js'
 import photo from './mobile/photo.js'
 import whatsapp from './mobile/whatsapp.js'
 import profileForm from './mobile/profileForm.js'
+import equipment from './mobile/equipment.js'
+import labour from './mobile/labour.js'
 
 const CORE = {
   en: {
@@ -40,7 +42,7 @@ const CORE = {
   },
 }
 
-const PARTS = [dashboard, partners, projects, billing, account, soon, house3d, photo, whatsapp, profileForm]
+const PARTS = [dashboard, partners, projects, billing, account, soon, house3d, photo, whatsapp, profileForm, equipment, labour]
 
 export const MOBILE_TRANSLATIONS = Object.fromEntries(
   Object.entries(CORE).map(([code, table]) => [code, Object.assign({}, table, ...PARTS.map((part) => part[code] || {}))]),

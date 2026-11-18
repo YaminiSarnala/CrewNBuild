@@ -10,7 +10,7 @@
 // Money is never summed across countries: each project shows its own currency
 // and the budget totals are one line per country.
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { View, Text, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, Pressable, ScrollView, Alert } from 'react-native'
 import { Image } from 'expo-image'
 import { useFocusEffect } from '@react-navigation/native'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
@@ -20,7 +20,7 @@ import {
   Layers, Package, TrendingUp, Users, X,
 } from 'lucide-react-native'
 import DashboardShell, { useAsyncData } from '../../components/DashboardShell'
-import LanguageSheet from '../../components/LanguageSheet'
+import { SkeletonGrid, SkeletonRows } from '../../components/Skeleton'
 import StatusPill from '../../components/StatusPill'
 import { fetchOwnerProjects } from '../../api/projects'
 import { fetchIncomingRequests, acceptProjectRequest, rejectProjectRequest } from '../../api/requests'
@@ -218,7 +218,6 @@ export default function OwnerDashboard({ navigation }) {
   const { requireCompleteProfile } = useProfileGate()
   const comingSoon = useComingSoon()
   const { gutter, isTablet, isLargeTablet, width, maxContentWidth } = useResponsive()
-  const [languageOpen, setLanguageOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [busyRequestId, setBusyRequestId] = useState(null)
   const [decisionMessage, setDecisionMessage] = useState('')
@@ -380,7 +379,6 @@ export default function OwnerDashboard({ navigation }) {
       <DashboardShell
         refreshing={refreshing}
         onRefresh={onRefresh}
-        onOpenLanguage={() => setLanguageOpen(true)}
         onOpenNotifications={() => navigation.navigate('Notifications')}
       >
         <View style={{ paddingHorizontal: gutter, gap: 16 }}>
@@ -434,7 +432,7 @@ export default function OwnerDashboard({ navigation }) {
           >
             <Text style={[styles.text18, { fontSize: 12 }]}>{t('owner.materials.subtitle')}</Text>
             {products.loading ? (
-              <ActivityIndicator color={COLORS.brand[800]} style={{ paddingVertical: 20 }} />
+              <SkeletonGrid count={2} width={150} imageHeight={90} style={{ marginTop: 10, flexWrap: 'nowrap' }} />
             ) : productList.length ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {productList.map((product) => (
@@ -455,7 +453,7 @@ export default function OwnerDashboard({ navigation }) {
                 </View>
               )}
               {requests.loading ? (
-                <ActivityIndicator color={COLORS.brand[800]} style={{ paddingVertical: 20 }} />
+                <SkeletonRows count={3} />
               ) : requestList.length ? (
                 <ScrollView style={{ maxHeight: PANEL_LIST_MAX }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
                   {requestList.map((request) => {
@@ -543,7 +541,7 @@ export default function OwnerDashboard({ navigation }) {
           <View style={pairStyle}>
             <Card title={t('dash.owner.overview.statusTitle')} icon={ClipboardList} style={half}>
               {projects.loading ? (
-                <ActivityIndicator color={COLORS.brand[800]} style={{ paddingVertical: 20 }} />
+                <SkeletonRows count={3} avatar={false} />
               ) : projects.error ? (
                 <Text style={[styles.text25, { fontSize: 12.5 }]}>{projects.error}</Text>
               ) : projectList.length ? (
@@ -633,7 +631,6 @@ export default function OwnerDashboard({ navigation }) {
           </View>
         </View>
       </DashboardShell>
-      <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
     </>
   )
 }

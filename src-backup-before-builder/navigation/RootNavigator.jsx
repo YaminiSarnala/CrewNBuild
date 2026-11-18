@@ -50,7 +50,7 @@ const DASHBOARD_BY_ROLE = {
 function SplashGate() {
   return (
     <View className="flex-1 items-center justify-center bg-brand-800">
-      <Image source={require('../../assets/logo.png')} style={{ width: 72, height: 80 }} contentFit="contain" />
+      <Image source={require('../../assets/icon.png')} style={{ width: 72, height: 80 }} contentFit="contain" />
       <ActivityIndicator color="#c3dccd" style={{ marginTop: 24 }} />
     </View>
   )

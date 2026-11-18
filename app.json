@@ -54,7 +54,7 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-secure-store",
@@ -71,7 +71,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "imageWidth": 300,
+          "imageWidth": 340,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }

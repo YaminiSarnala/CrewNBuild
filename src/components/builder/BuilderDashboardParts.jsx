@@ -126,8 +126,12 @@ export function HeroConstructionScene({ width = '100%', height = 70 }) {
  * Like the web it stays cream in the dark theme, so its text uses fixed
  * colours (#083E2B / #3d5246), not the theme utilities that turn light.
  */
+<<<<<<< Updated upstream
 export function WelcomeBanner({ name, subtitle, imagePath, title, role = 'CONTRACTOR', aside = null }) {
 
+=======
+export function WelcomeBanner({ name, subtitle, imagePath, title, role = 'CONTRACTOR' }) {
+>>>>>>> Stashed changes
   return (
     <Gradient
       colors={['#F3F4F6', '#EEF4F0', '#DFF0E6']}
@@ -137,7 +141,11 @@ export function WelcomeBanner({ name, subtitle, imagePath, title, role = 'CONTRA
       style={{ borderRadius: 20, borderWidth: 1, borderColor: '#083E2B', overflow: 'hidden', padding: 14 }}
     >
       <View style={styles.view}>
+<<<<<<< Updated upstream
         <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(18,107,69,0.4)' }}>
+=======
+        <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(244,183,64,0.5)' }}>
+>>>>>>> Stashed changes
           <Image source={avatarFromPath(imagePath, role)} style={{ width: 36, height: 36 }} contentFit="cover" />
         </View>
                 <View style={styles.view2}>
@@ -163,14 +171,14 @@ const STAT_THEMES = {
 }
 
 /** One of the four coloured figure cards (web ContractorAnalyticsSection). */
-export function StatCard({ title, value, sub, theme = 'blue', icon: Icon, onPress }) {
+export function StatCard({ title, value, sub, theme = 'blue', icon: Icon, onPress, style }) {
   const colors = STAT_THEMES[theme] || STAT_THEMES.blue
   const chip = softStrong(colors.chip, colors.icon)
   const tone = ink(colors.icon)
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.pressable, { backgroundColor: soft(colors.card, colors.icon), borderColor: line(colors.border, colors.icon) }]}
+      style={[styles.pressable, { backgroundColor: soft(colors.card, colors.icon), borderColor: line(colors.border, colors.icon) }, style]}
     >
       <View style={styles.view4}>
         <View style={[styles.view5, { backgroundColor: chip }]}>

@@ -18,7 +18,6 @@ import {
   Home, Building2, Wrench, Monitor, MoreHorizontal, ChevronRight,
 } from 'lucide-react-native'
 import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
-import LanguageSheet from '../../components/LanguageSheet'
 import { FreeAccessBanner, PlanSummaryCard, Section, Badge } from '../../components/builder/BuilderUi'
 import { BudgetRing, DonutChart, StatCard, WelcomeBanner } from '../../components/builder/BuilderDashboardParts'
 import { House3DCard } from '../../components/builder/House3D'
@@ -114,7 +113,6 @@ function useBudgetTotals(projectList) {
 
 export default function ContractorDashboard({ navigation }) {
   const { t, td } = useLanguage()
-  const [languageOpen, setLanguageOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   const user = useSelector((state) => state.auth.user)
@@ -187,7 +185,6 @@ export default function ContractorDashboard({ navigation }) {
       <DashboardShell
         refreshing={refreshing}
         onRefresh={onRefresh}
-        onOpenLanguage={() => setLanguageOpen(true)}
         onOpenNotifications={() => navigation.navigate('Notifications')}
       >
         <FreeAccessBanner status={subscription.status} onViewPlans={() => navigation.navigate('BuilderSubscription')} />
@@ -395,7 +392,6 @@ export default function ContractorDashboard({ navigation }) {
           )}
         </Panel>
       </DashboardShell>
-      <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
     </>
   )
 }

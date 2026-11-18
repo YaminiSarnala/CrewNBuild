@@ -6,7 +6,8 @@
 // server without the route, or one where it is off, keeps e-mail and password,
 // exactly as the web does.
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, TextInput, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, Pressable } from 'react-native'
+import PianoLoader from './PianoLoader'
 import { ArrowLeft, ClipboardPaste, ShieldCheck } from 'lucide-react-native'
 import { useLanguage } from '../i18n/LanguageContext'
 import { readPhoneVerificationConfig, sendPhoneCode, verifyPhoneCode } from '../api/phoneVerification'
@@ -225,7 +226,7 @@ export function OutlineButton({ label, onPress, disabled, busy }) {
       accessibilityRole="button"
       style={({ pressed }) => [styles.outline, (disabled || busy) && styles.dimmed, pressed && styles.outlinePressed]}
     >
-      {busy ? <ActivityIndicator size="small" color={BRAND} /> : null}
+      {busy ? <PianoLoader color={BRAND} height={14} /> : null}
       <Text style={styles.outlineText}>{label}</Text>
     </Pressable>
   )

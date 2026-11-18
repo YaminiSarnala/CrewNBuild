@@ -98,7 +98,12 @@ const en = {
   'store.buy.totalNote': 'At the listed price. The payment is for the price the server confirms, including any bulk price.',
   'store.buy.emptyOrder': 'Add products from the list to build an order.',
   'store.buy.availableQty': '{quantity} {unit} available',
+<<<<<<< Updated upstream
   'store.buy.paid': 'Payment verified for purchase #{reference} ({amount}). Once the supplier accepts, receive the goods under Buy → Purchase History to add them to your Catalog.',  'store.buy.payFailed': 'The payment failed. Nothing was charged as paid and no stock was added. You can try again.',
+=======
+  'store.buy.paid': 'Payment verified for purchase #{reference} ({amount}). Once the supplier accepts, receive the goods under Buy → Purchase History to add them to your Catalog.',
+  'store.buy.payFailed': 'The payment failed. Nothing was charged as paid and no stock was added. You can try again.',
+>>>>>>> Stashed changes
   'store.buy.payPending': 'Payment for #{reference} was not completed. Nothing was added. If you did pay, use Check payment under Payments.',
   'store.buy.verifyFailed': 'The payment could not be verified, so it was not recorded as paid.',
   'store.buy.checkoutUnavailable': 'Razorpay Checkout could not be loaded. Check your connection and try again.',
@@ -107,7 +112,11 @@ const en = {
   'store.buy.noProjectsSub': 'Join a builder under Builders. You can buy for that builder\'s projects.',
   'store.buy.noProducts': 'No supplier products',
   'store.buy.noProductsSub': 'Products from suppliers your builder has accepted appear here.',
+<<<<<<< Updated upstream
    'store.buy.purchases': 'Purchase History',
+=======
+  'store.buy.purchases': 'Purchase History',
+>>>>>>> Stashed changes
   'store.buy.tabProducts': 'Buy Products',
   'store.buy.tabHistory': 'Purchase History',
   'store.buy.noPurchases': 'No purchases yet',
@@ -152,7 +161,11 @@ const en = {
   'store.overview.noMovementsSub': 'Purchases received and requests issued appear here.',
   'store.overview.recentPurchases': 'Recent purchases',
   'store.overview.awaitingReceipt': 'Awaiting receipt',
+<<<<<<< Updated upstream
     'store.overview.heroSub': 'Keep your store stocked, issue materials to your sites, and track purchases, deliveries and payments in one place.',
+=======
+  'store.overview.heroSub': 'Keep your store stocked, issue materials to your sites, and track purchases, deliveries and payments in one place.',
+>>>>>>> Stashed changes
   'store.quick.catalog': 'Manage catalog',
   'store.quick.buy': 'Buy from suppliers',
   'store.quick.requests': 'Review requests',
@@ -199,7 +212,12 @@ const en = {
   'store.engineer.myRequests': 'Your store requests',
   'store.engineer.noRequests': 'No requests yet',
   'store.engineer.noRequestsSub': 'Requests you send for this project appear here.',
+<<<<<<< Updated upstream
   'store.engineer.sentNumbered': 'Your material request has been sent to the Store Manager. Request ID {id} · {name}',  'store.engineer.cart': 'Cart',
+=======
+  'store.engineer.sentNumbered': 'Your material request has been sent to the Store Manager. Request ID {id} · {name}',
+  'store.engineer.cart': 'Cart',
+>>>>>>> Stashed changes
   'store.engineer.cartFor': 'Requesting from {name} (Store Manager)',
   'store.engineer.cartShort': 'The store is short by {quantity}. The Store Manager will procure the rest from a supplier.',
   'store.engineer.cartRequested': 'Requested: {quantity}',
@@ -248,7 +266,11 @@ const en = {
   'store.requests.approvedToIssue': 'Approved. The request is now under Approvals, where you issue the materials.',
   'store.requests.requestedOn': 'Requested {date}',
   'store.requests.approvedOn': 'approved {date}',
+<<<<<<< Updated upstream
     'store.approvals.issueNow': 'Issue now',
+=======
+  'store.approvals.issueNow': 'Issue now',
+>>>>>>> Stashed changes
   'store.approvals.issueMaterials': 'Issue materials',
   'store.approvals.historyUnderRequests': 'Fulfilled, rejected and cancelled requests are kept under Requests (All, or Approved for fulfilled ones).',
   'store.col.approvedBy': 'Approved by',
@@ -269,9 +291,15 @@ const en = {
   'store.buy.receiptStatus.RECEIVED': 'All received',
   'store.buy.receiptStatus.PARTLY_RECEIVED': 'Partly received',
   'store.buy.receiptStatus.NOT_RECEIVED': 'Not received yet',
+<<<<<<< Updated upstream
     'store.payments.recordId': 'Transaction {id}',
   'store.payments.paidOn': 'Paid {date}',
     'store.payments.forRequest': 'for store request {id}',
+=======
+  'store.payments.recordId': 'Transaction {id}',
+  'store.payments.paidOn': 'Paid {date}',
+  'store.payments.forRequest': 'for store request {id}',
+>>>>>>> Stashed changes
   'store.payments.gatewayOrder': 'Gateway order',
   'store.payments.gatewayPayment': 'Gateway payment',
   'store.payments.status.PAID': 'Paid',
@@ -281,14 +309,22 @@ const en = {
   'store.engineer.noStoreManager': 'No Store Manager is assigned to this project\'s Builder team',
   'store.engineer.noStoreManagerSub': 'Material requests go to your Builder\'s Store Manager. Ask your Builder to add a Store Manager to the team; nothing is sent to a supplier.',
   'store.engineer.cancel': 'Cancel request',
+<<<<<<< Updated upstream
     'store.engineer.cancelled': 'Request {id} cancelled.',
+=======
+  'store.engineer.cancelled': 'Request {id} cancelled.',
+>>>>>>> Stashed changes
   'store.status.cancelled': 'Cancelled',
   'store.timeline.CANCELLED': 'Request cancelled by the Site Engineer',
   'store.requests.builder': 'Builder',
   'store.requests.details': 'Details',
   'store.requests.hideDetails': 'Hide details',
   'store.requests.requestId': 'Request ID',
+<<<<<<< Updated upstream
     'store.requests.searchId': 'Search by Request ID',
+=======
+  'store.requests.searchId': 'Search by Request ID',
+>>>>>>> Stashed changes
   'store.requests.noSearchMatch': 'No matching requests found.',
   'store.engineer.allCategories': 'All',
   'store.engineer.moreThanStock': 'You can request more than is in stock: the Store Manager buys the rest from a supplier and sends it when it arrives.',
@@ -316,7 +352,11 @@ const en = {
   'store.requests.insufficientRest': '{name}: {remaining} {unit} still to deliver and {available} {unit} in stock. Purchase another {shortage} {unit}.',
   'store.approvals.issueRest': 'Issue remaining',
   'store.timeline.PARTIALLY_ISSUED': 'Part of the materials issued',
+<<<<<<< Updated upstream
     'dash.contractor.tab.storeManagerRequests': 'Store Manager Requests',
+=======
+  'dash.contractor.tab.storeManagerRequests': 'Store Manager Requests',
+>>>>>>> Stashed changes
   'store.close': 'Close',
   'store.viewDetails': 'View details',
   'store.filter.all': 'All',
@@ -512,7 +552,11 @@ const ar = {
   'store.overview.allStocked': 'لا يوجد نقص في المخزون',
   'store.overview.allStockedSub': 'تظهر هنا المنتجات التي بلغت حد انخفاض المخزون.',
   'store.overview.latestRequests': 'طلبات بانتظارك',
+<<<<<<< Updated upstream
     'store.overview.heroSub': 'حافظ على مخزون متجرك، واصرف المواد إلى مواقعك، وتابع المشتريات والشحنات والمدفوعات في مكان واحد.',
+=======
+  'store.overview.heroSub': 'حافظ على مخزون متجرك، واصرف المواد إلى مواقعك، وتابع المشتريات والشحنات والمدفوعات في مكان واحد.',
+>>>>>>> Stashed changes
   'store.quick.catalog': 'إدارة الكتالوج',
   'store.quick.buy': 'الشراء من الموردين',
   'store.quick.requests': 'مراجعة الطلبات',
@@ -590,7 +634,12 @@ const ar = {
   'store.buy.totalNote': 'بالسعر المعروض. يُدفع السعر الذي يؤكده الخادم، بما في ذلك أي سعر بالجملة.',
   'store.buy.emptyOrder': 'أضف منتجات من القائمة لإنشاء طلب.',
   'store.buy.availableQty': 'متوفر {quantity} {unit}',
+<<<<<<< Updated upstream
   'store.buy.paid': 'تم التحقق من الدفع للشراء رقم {reference} ({amount}). بعد قبول المورد، استلم البضاعة من سجل المشتريات لإضافتها إلى الكتالوج.',  'store.buy.payFailed': 'فشل الدفع. لم يُسجَّل أي دفع ولم يُضف أي مخزون. يمكنك المحاولة مرة أخرى.',
+=======
+  'store.buy.paid': 'تم التحقق من الدفع للشراء رقم {reference} ({amount}). بعد قبول المورد، استلم البضاعة من سجل المشتريات لإضافتها إلى الكتالوج.',
+  'store.buy.payFailed': 'فشل الدفع. لم يُسجَّل أي دفع ولم يُضف أي مخزون. يمكنك المحاولة مرة أخرى.',
+>>>>>>> Stashed changes
   'store.buy.payPending': 'لم يكتمل الدفع للطلب رقم {reference}. لم يُضف شيء. إذا دفعت، استخدم "التحقق من الدفع" في المدفوعات.',
   'store.buy.verifyFailed': 'تعذر التحقق من الدفع، لذلك لم يُسجَّل كمدفوع.',
   'store.buy.checkoutUnavailable': 'تعذر تحميل Razorpay Checkout. تحقق من الاتصال وحاول مرة أخرى.',
@@ -726,7 +775,11 @@ const ar = {
   'store.requests.requestedOn': 'طُلب {date}',
   'store.requests.approvedOn': 'وُوفق عليه {date}',
   'store.approvals.issueNow': 'الصرف الآن',
+<<<<<<< Updated upstream
     'store.approvals.issueMaterials': 'صرف المواد',
+=======
+  'store.approvals.issueMaterials': 'صرف المواد',
+>>>>>>> Stashed changes
   'store.approvals.historyUnderRequests': 'تبقى الطلبات المنفذة والمرفوضة والملغاة في الطلبات (الكل، أو الموافق عليها للطلبات المنفذة).',
   'store.col.approvedBy': 'تمت الموافقة بواسطة',
   'store.approvals.owedHeld': 'المتبقي {owed} {unit} · في المخزن {held} {unit}',
@@ -746,7 +799,11 @@ const ar = {
   'store.buy.receiptStatus.RECEIVED': 'استُلم بالكامل',
   'store.buy.receiptStatus.PARTLY_RECEIVED': 'استُلم جزئيًا',
   'store.buy.receiptStatus.NOT_RECEIVED': 'لم يُستلم بعد',
+<<<<<<< Updated upstream
    'store.payments.recordId': 'المعاملة {id}',
+=======
+  'store.payments.recordId': 'المعاملة {id}',
+>>>>>>> Stashed changes
   'store.payments.paidOn': 'دُفع {date}',
   'store.payments.forRequest': 'لطلب المخزن رقم {id}',
   'store.payments.gatewayOrder': 'طلب البوابة',
@@ -765,7 +822,11 @@ const ar = {
   'store.requests.details': 'التفاصيل',
   'store.requests.hideDetails': 'إخفاء التفاصيل',
   'store.requests.requestId': 'رقم الطلب',
+<<<<<<< Updated upstream
     'store.requests.searchId': 'ابحث برقم الطلب',
+=======
+  'store.requests.searchId': 'ابحث برقم الطلب',
+>>>>>>> Stashed changes
   'store.requests.noSearchMatch': 'لم يتم العثور على طلبات مطابقة.',
   'store.engineer.allCategories': 'الكل',
   'store.engineer.moreThanStock': 'يمكنك طلب كمية أكبر من المتوفر: يشتري مدير المخزن الباقي من مورد ويرسله عند وصوله.',

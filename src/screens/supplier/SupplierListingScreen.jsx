@@ -6,7 +6,7 @@
 //   what it costs and how much is in stock -- from THIS supplier's listing
 //   "You may also like" -- this supplier's other listings only
 //
-// Add To Cart is the buyer preview; nothing is ordered from here.
+// No cart, quantity or Add to Cart: a supplier sells these products, never buys them.
 import { useEffect, useMemo, useState } from 'react'
 import { View, Text, Pressable, ScrollView } from 'react-native'
 import { useSelector } from 'react-redux'
@@ -18,14 +18,14 @@ import { StackScreenShell, Section } from '../../components/builder/BuilderUi'
 import { fetchCatalogProduct } from '../../api/catalog'
 import { imageSource } from '../../api/client'
 import { selectSupplierProducts } from '../../store/supplierCatalogSlice'
-import { BulkPricingList, ServiceBadges, StockBadge, stockState } from '../owner/marketplace/shopParts'
+import { BulkPricingList, ServiceBadges, StockBadge } from '../owner/marketplace/shopParts'
 import { useResponsive } from '../../hooks/useResponsive'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
 import {
-  BrandLogo, ProductImage, QuantityAdd, discountOf, discountText, money, sellingPrice, usePreviewCart, useSupplierCountry,
+  BrandLogo, ProductImage, discountOf, discountText, money, sellingPrice, useSupplierCountry,
 } from './products/productParts'
-import { PreviewCartBar, PreviewCartSheet, StorefrontCard, useListingActions } from './products/storefrontParts'
+import { StorefrontCard, useListingActions } from './products/storefrontParts'
 
 const RELATED = 4
 
@@ -87,8 +87,6 @@ export default function SupplierListingScreen({ navigation, route }) {
   const { width, maxContentWidth, gutter } = useResponsive()
   const productList = useSelector(selectSupplierProducts)
   const listing = productList.find((row) => String(row.id) === String(listingId)) || null
-  const cart = usePreviewCart(productList)
-  const [cartOpen, setCartOpen] = useState(false)
   const { togglePublish, askDelete, dialog } = useListingActions({ onDeleted: () => navigation.goBack() })
 
   const [master, setMaster] = useState(null)
@@ -137,7 +135,6 @@ export default function SupplierListingScreen({ navigation, route }) {
   const highlights = (product?.highlights || []).map((line) => String(line || '').trim()).filter(Boolean)
   const tiers = listing.bulk_pricing || []
   const bestTier = tiers.reduce((low, tier) => (!low || tier.unit_price < low.unit_price ? tier : low), null)
-  const outOfStock = stockState(listing.quantity, listing.low_stock_threshold) === 'out'
   const unpublished = listing.is_published === false
   const empty = <Text style={styles.muted}>{loading ? 'Loading…' : 'No information available.'}</Text>
   const inner = Math.min(width, maxContentWidth) - gutter * 2
@@ -192,11 +189,6 @@ export default function SupplierListingScreen({ navigation, route }) {
           <StockBadge quantity={listing.quantity} threshold={listing.low_stock_threshold} unit={listing.unit} style={{ marginTop: 10 }} />
         </View>
 
-        {/* Purchase (buyer preview) */}
-        <View style={{ marginTop: 16 }}>
-          <QuantityAdd quantity={cart.quantityOf(listing.id)} onChange={(quantity) => cart.setQuantity(listing.id, quantity)} disabled={outOfStock} large />
-          <Text style={styles.previewNote}>Buyer preview: this is how buyers add your product to their cart. Nothing is ordered from here.</Text>
-        </View>
 
         {/* Service strip */}
         <View style={styles.serviceStrip}>
@@ -268,21 +260,14 @@ export default function SupplierListingScreen({ navigation, route }) {
                   country={country}
                   width={relatedWidth}
                   layout="row"
-                  quantity={cart.quantityOf(item.id)}
-                  onQuantity={(value) => cart.setQuantity(item.id, value)}
                   onOpen={() => navigation.push('SupplierListing', { listingId: item.id })}
                 />
               ))}
             </View>
           </View>
         ) : null}
-
-        <View style={{ marginTop: 16 }}>
-          <PreviewCartBar cart={cart} country={country} onOpen={() => setCartOpen(true)} />
-        </View>
       </Section>
 
-      <PreviewCartSheet open={cartOpen} cart={cart} country={country} onClose={() => setCartOpen(false)} />
       {dialog}
     </StackScreenShell>
   )
@@ -304,7 +289,6 @@ const styles = createStyles((c) => ({
   price: { fontSize: 28, letterSpacing: -0.5, fontFamily: 'Manrope_800ExtraBold', color: c.text },
   was: { fontSize: 14, fontFamily: 'Inter_500Medium', color: c.textFaint, textDecorationLine: 'line-through' },
   off: { overflow: 'hidden', borderRadius: 6, backgroundColor: c.brandSoft, paddingHorizontal: 7, paddingVertical: 2, fontSize: 12.5, fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
-  previewNote: { marginTop: 7, fontSize: 11.5, lineHeight: 16, fontFamily: 'Inter_400Regular', color: c.textFaint },
   serviceStrip: { marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft },
   serviceItem: { width: '50%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 10 },
   serviceText: { flexShrink: 1, fontSize: 12.5, fontFamily: 'Inter_600SemiBold', color: c.text },

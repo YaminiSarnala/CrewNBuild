@@ -847,7 +847,11 @@ const en = {
   'site.estimate.errState': 'Select a state.',
   'site.estimate.errCity': 'Select a city.',
   'site.estimate.errPincode': 'Enter a valid pincode.',
+<<<<<<< Updated upstream
     'site.estimate.loc.invalidPin': 'Enter a valid 6-digit Indian PIN code.',
+=======
+  'site.estimate.loc.invalidPin': 'Enter a valid 6-digit Indian PIN code.',
+>>>>>>> Stashed changes
   'site.estimate.loc.notFound': 'This PIN code was not found. Please check and try again.',
   'site.estimate.loc.stateMismatch': 'This PIN code does not belong to the selected state.',
   'site.estimate.loc.cityMismatch': 'This PIN code does not match the selected city.',
@@ -1963,7 +1967,11 @@ const en = {
   'labor.engineer.sendRequest': 'Send Labor Request',
   'labor.engineer.assignedSupplier': 'Assigned Labor Supplier',
   'labor.engineer.noTrades': 'This supplier has no active trades yet.',
+<<<<<<< Updated upstream
     'labor.engineer.noneAvailable': 'No {trade} workers are available right now.',
+=======
+  'labor.engineer.noneAvailable': 'No {trade} workers are available right now.',
+>>>>>>> Stashed changes
   'labor.error.workersAvailable': 'Only {count} {trade} workers are available right now.',
   'labor.error.workersMax': 'Workers cannot be more than {count}.',
   'labor.error.tradesLoad': 'This supplier\'s trades could not be loaded. Please try again.',
@@ -5962,7 +5970,11 @@ const te = {
   'site.estimate.errState': 'రాష్ట్రాన్ని ఎంచుకోండి.',
   'site.estimate.errCity': 'నగరాన్ని ఎంచుకోండి.',
   'site.estimate.errPincode': 'సరైన పిన్‌కోడ్ నమోదు చేయండి.',
+<<<<<<< Updated upstream
     'site.estimate.loc.invalidPin': 'సరైన 6 అంకెల భారతీయ పిన్ కోడ్‌ను నమోదు చేయండి.',
+=======
+  'site.estimate.loc.invalidPin': 'సరైన 6 అంకెల భారతీయ పిన్ కోడ్‌ను నమోదు చేయండి.',
+>>>>>>> Stashed changes
   'site.estimate.loc.notFound': 'ఈ పిన్ కోడ్ కనుగొనబడలేదు. దయచేసి తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.',
   'site.estimate.loc.stateMismatch': 'ఈ పిన్ కోడ్ ఎంచుకున్న రాష్ట్రానికి చెందినది కాదు.',
   'site.estimate.loc.cityMismatch': 'ఈ పిన్ కోడ్ ఎంచుకున్న నగరానికి సరిపోలడం లేదు.',
@@ -9911,7 +9923,11 @@ const hi = {
   'site.estimate.errState': 'राज्य चुनें।',
   'site.estimate.errCity': 'शहर चुनें।',
   'site.estimate.errPincode': 'मान्य पिनकोड दर्ज करें।',
+<<<<<<< Updated upstream
     'site.estimate.loc.invalidPin': 'मान्य 6 अंकों का भारतीय पिन कोड दर्ज करें।',
+=======
+  'site.estimate.loc.invalidPin': 'मान्य 6 अंकों का भारतीय पिन कोड दर्ज करें।',
+>>>>>>> Stashed changes
   'site.estimate.loc.notFound': 'यह पिन कोड नहीं मिला। कृपया जाँचें और फिर से प्रयास करें।',
   'site.estimate.loc.stateMismatch': 'यह पिन कोड चुने गए राज्य का नहीं है।',
   'site.estimate.loc.cityMismatch': 'यह पिन कोड चुने गए शहर से मेल नहीं खाता।',
@@ -13860,7 +13876,11 @@ const ta = {
   'site.estimate.errState': 'மாநிலத்தைத் தேர்ந்தெடுக்கவும்.',
   'site.estimate.errCity': 'நகரத்தைத் தேர்ந்தெடுக்கவும்.',
   'site.estimate.errPincode': 'சரியான பின்கோடு உள்ளிடவும்.',
+<<<<<<< Updated upstream
     'site.estimate.loc.invalidPin': 'சரியான 6 இலக்க இந்திய பின் கோடை உள்ளிடவும்.',
+=======
+  'site.estimate.loc.invalidPin': 'சரியான 6 இலக்க இந்திய பின் கோடை உள்ளிடவும்.',
+>>>>>>> Stashed changes
   'site.estimate.loc.notFound': 'இந்த பின் கோடு கண்டறியப்படவில்லை. சரிபார்த்து மீண்டும் முயற்சிக்கவும்.',
   'site.estimate.loc.stateMismatch': 'இந்த பின் கோடு தேர்ந்தெடுத்த மாநிலத்தைச் சேர்ந்தது அல்ல.',
   'site.estimate.loc.cityMismatch': 'இந்த பின் கோடு தேர்ந்தெடுத்த நகரத்துடன் பொருந்தவில்லை.',
@@ -17809,7 +17829,11 @@ const kn = {
   'site.estimate.errState': 'ರಾಜ್ಯವನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
   'site.estimate.errCity': 'ನಗರವನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
   'site.estimate.errPincode': 'ಮಾನ್ಯ ಪಿನ್‌ಕೋಡ್ ನಮೂದಿಸಿ.',
+<<<<<<< Updated upstream
     'site.estimate.loc.invalidPin': 'ಮಾನ್ಯ 6 ಅಂಕಿಯ ಭಾರತೀಯ ಪಿನ್ ಕೋಡ್ ನಮೂದಿಸಿ.',
+=======
+  'site.estimate.loc.invalidPin': 'ಮಾನ್ಯ 6 ಅಂಕಿಯ ಭಾರತೀಯ ಪಿನ್ ಕೋಡ್ ನಮೂದಿಸಿ.',
+>>>>>>> Stashed changes
   'site.estimate.loc.notFound': 'ಈ ಪಿನ್ ಕೋಡ್ ಕಂಡುಬಂದಿಲ್ಲ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   'site.estimate.loc.stateMismatch': 'ಈ ಪಿನ್ ಕೋಡ್ ಆಯ್ಕೆ ಮಾಡಿದ ರಾಜ್ಯಕ್ಕೆ ಸೇರಿಲ್ಲ.',
   'site.estimate.loc.cityMismatch': 'ಈ ಪಿನ್ ಕೋಡ್ ಆಯ್ಕೆ ಮಾಡಿದ ನಗರಕ್ಕೆ ಹೊಂದುವುದಿಲ್ಲ.',
@@ -21758,7 +21782,11 @@ const ml = {
   'site.estimate.errState': 'സംസ്ഥാനം തിരഞ്ഞെടുക്കുക.',
   'site.estimate.errCity': 'നഗരം തിരഞ്ഞെടുക്കുക.',
   'site.estimate.errPincode': 'സാധുവായ പിൻകോഡ് നൽകുക.',
+<<<<<<< Updated upstream
     'site.estimate.loc.invalidPin': 'സാധുവായ 6 അക്ക ഇന്ത്യൻ പിൻ കോഡ് നൽകുക.',
+=======
+  'site.estimate.loc.invalidPin': 'സാധുവായ 6 അക്ക ഇന്ത്യൻ പിൻ കോഡ് നൽകുക.',
+>>>>>>> Stashed changes
   'site.estimate.loc.notFound': 'ഈ പിൻ കോഡ് കണ്ടെത്താനായില്ല. ദയവായി പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.',
   'site.estimate.loc.stateMismatch': 'ഈ പിൻ കോഡ് തിരഞ്ഞെടുത്ത സംസ്ഥാനത്തിലേതല്ല.',
   'site.estimate.loc.cityMismatch': 'ഈ പിൻ കോഡ് തിരഞ്ഞെടുത്ത നഗരവുമായി പൊരുത്തപ്പെടുന്നില്ല.',
@@ -25775,7 +25803,11 @@ const ar = {
   'site.estimate.errState': 'اختر المحافظة.',
   'site.estimate.errCity': 'اختر المدينة.',
   'site.estimate.errPincode': 'أدخل رمزاً بريدياً صحيحاً.',
+<<<<<<< Updated upstream
     'site.estimate.loc.invalidPin': 'أدخل رمز PIN هندياً صحيحاً من 6 أرقام.',
+=======
+  'site.estimate.loc.invalidPin': 'أدخل رمز PIN هندياً صحيحاً من 6 أرقام.',
+>>>>>>> Stashed changes
   'site.estimate.loc.notFound': 'لم يتم العثور على رمز PIN هذا. يُرجى التحقق والمحاولة مرة أخرى.',
   'site.estimate.loc.stateMismatch': 'رمز PIN هذا لا يتبع الولاية المحددة.',
   'site.estimate.loc.cityMismatch': 'رمز PIN هذا لا يطابق المدينة المحددة.',
@@ -26829,7 +26861,11 @@ const ar = {
   'labor.engineer.sendRequest': 'إرسال طلب العمالة',
   'labor.engineer.assignedSupplier': 'مورّد العمالة المعيَّن',
   'labor.engineer.noTrades': 'لا توجد لدى هذا المورّد حِرف نشطة بعد.',
+<<<<<<< Updated upstream
     'labor.engineer.noneAvailable': 'لا يتوفر عمال {trade} حاليًا.',
+=======
+  'labor.engineer.noneAvailable': 'لا يتوفر عمال {trade} حاليًا.',
+>>>>>>> Stashed changes
   'labor.error.workersAvailable': 'المتاح حاليًا {count} فقط من عمال {trade}.',
   'labor.error.workersMax': 'لا يمكن أن يزيد عدد العمال على {count}.',
   'labor.error.tradesLoad': 'تعذّر تحميل حِرف هذا المورّد. يرجى المحاولة مرة أخرى.',

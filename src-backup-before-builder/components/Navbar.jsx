@@ -16,7 +16,7 @@ export default function Navbar({ onLogin, onOpenLanguage }) {
         <View className="flex-row items-center justify-between px-5 py-3">
           <View className="flex-row items-center" style={{ gap: 8 }}>
             <Image
-              source={require('../../assets/logo.png')}
+              source={require('../../assets/icon.png')}
               style={{ width: 28, height: 31 }}
               contentFit="contain"
             />
