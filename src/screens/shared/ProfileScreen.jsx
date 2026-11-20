@@ -262,7 +262,7 @@ export default function ProfileScreen({ navigation }) {
             </Pressable>
           )}
           <PreferenceRows />
-          <Pressable onPress={() => Linking.openURL('mailto:support@octabuild.com')} style={styles.pressable5}>
+          <Pressable onPress={() => Linking.openURL('mailto:support@crewnbuild.com')} style={styles.pressable5}>
             <LifeBuoy size={16} color={COLORS.brand[700]} />
             <Text style={styles.text8}>Help & feedback</Text>
           </Pressable>

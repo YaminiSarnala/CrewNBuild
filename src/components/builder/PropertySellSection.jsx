@@ -229,8 +229,10 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
   )
 }
 
-export default function PropertySellSection({ projects = [], defaultCountry = 'India' }) {
-  const { t } = useLanguage()
+// `editRequest` ({ id, at }): open this listing's Edit form (from the Buy tab's
+// own-listing Edit button, as the web's View & manage → Edit property).
+export default function PropertySellSection({ projects = [], defaultCountry = 'India', editRequest = null }) {
+    const { t } = useLanguage()
   const mine = useAsyncData(() => fetchMyPropertyListings(), [])
   const [formOpen, setFormOpen] = useState(false)
   const [editingListing, setEditingListing] = useState(null)
@@ -275,6 +277,11 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
     }
   }
 
+
+    useEffect(() => {
+    if (editRequest?.id) openEdit({ id: editRequest.id })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequest?.id, editRequest?.at])
   const changeStatus = async (listing, status) => {
     setBusyId(listing.id)
     try {
@@ -345,9 +352,8 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
                     onPress={() => changeStatus(listing, action.status)}
                   />
                 ))}
-                {listing.status !== 'SOLD' ? (
-                  <ActionButton small tone="brandOutline" icon={Pencil} label={t('dash.common.edit')} disabled={busyId === listing.id} onPress={() => openEdit(listing)} />
-                ) : null}
+                           {/* Edit is offered for every status, as the web's Edit property. */}
+                <ActionButton small tone="brandOutline" icon={Pencil} label={t('property.editProperty')} disabled={busyId === listing.id} onPress={() => openEdit(listing)} />
                 <ActionButton small tone="danger" icon={Trash2} label={t('dash.common.delete')} disabled={busyId === listing.id} onPress={() => removeListing(listing)} />
               </View>
             </View>

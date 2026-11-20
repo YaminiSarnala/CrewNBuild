@@ -3,16 +3,20 @@
 import { useState } from 'react'
 import { View, Text, Pressable, TextInput, Alert } from 'react-native'
 import { useSelector } from 'react-redux'
-import { MapPin, BedDouble, Send } from 'lucide-react-native'
+import { MapPin, BedDouble, Send, Pencil } from 'lucide-react-native'
 import { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
 import { toast } from '../../components/Toast'
 import { fetchPropertyListings, fetchMyPropertyListings, sendPropertyRequest } from '../../api/properties'
 import { COLORS } from '../../theme/tokens'
+import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
 
 const money = (value) => (Number(value || 0) ? `₹${Number(value).toLocaleString('en-IN')}` : 'Price on request')
 
-export default function PropertyMarketSection() {
+// `onManage(listing)`: the seller's own listing opens its Edit form (the Builder's
+// Sell tab). Without it (Owner shop) own listings simply show no enquiry button.
+export default function PropertyMarketSection({ onManage = null }) {
+  const { t } = useLanguage()
   const user = useSelector((state) => state.auth.user)
   const [search, setSearch] = useState('')
   const [sentIds, setSentIds] = useState(new Set())
@@ -64,6 +68,12 @@ export default function PropertyMarketSection() {
             <View key={listing.id} style={styles.view}>
               <Text style={styles.text} numberOfLines={1}>{listing.title}</Text>
               <Text style={styles.text2}>{listing.status || 'LISTED'}</Text>
+                            {onManage ? (
+                <Pressable onPress={() => onManage(listing)} hitSlop={6} style={styles.manage} accessibilityRole="button">
+                  <Pencil size={12} color={COLORS.brand[700]} />
+                  <Text style={styles.manageText}>{t('property.editProperty')}</Text>
+                </Pressable>
+              ) : null}
             </View>
           ))}
         </Panel>
@@ -95,6 +105,12 @@ export default function PropertyMarketSection() {
                 )}
                 {!!listing.built_up_area && <Text style={styles.text6}>{listing.built_up_area} sq.ft</Text>}
               </View>
+                            {isMine && onManage ? (
+                <Pressable onPress={() => onManage(listing)} style={[styles.pressable, styles.pressable2]} accessibilityRole="button">
+                  <Pencil size={13} color={COLORS.brand[700]} />
+                  <Text style={[styles.text7, styles.text8]}>{t('property.editProperty')}</Text>
+                </Pressable>
+              ) : null}
               {!isMine && (
                 <Pressable
                   onPress={() => enquire(listing)}
@@ -136,4 +152,6 @@ const styles = createStyles((c) => ({
   text7: { fontSize: 10.5, lineHeight: 14, fontWeight: '800' },
   text8: { color: c.brandText },
   text9: { color: '#ffffff' },
+    manage: { marginLeft: 10, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  manageText: { fontSize: 11, fontWeight: '800', color: c.brandText },
 }))

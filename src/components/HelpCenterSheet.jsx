@@ -35,7 +35,7 @@ export default function HelpCenterSheet({ visible, onClose }) {
       onClose={onClose}
       footer={(
         <Text style={styles.footer}>
-          {`${t('ui.contractor.helpFooterBefore')} `}<Text style={styles.email}>support@octabuild.com</Text>{` ${t('ui.contractor.helpFooterAfter')}`}
+          {`${t('ui.contractor.helpFooterBefore')} `}<Text style={styles.email}>support@crewnbuild.com</Text>{` ${t('ui.contractor.helpFooterAfter')}`}
         </Text>
       )}
     >
