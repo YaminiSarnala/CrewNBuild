@@ -12,7 +12,9 @@
 // does. The session is renewed every 45 seconds while open and ended when the
 // player closes. The token lives only in this player's memory.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, Alert } from 'react-native'
+import { useSelector } from 'react-redux'
+import { useNavigation } from '@react-navigation/native'
 import PianoLoader from '../PianoLoader'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { CalendarClock, Lock, Play, RefreshCw, Search, ShieldCheck, Video, X } from 'lucide-react-native'
@@ -23,6 +25,8 @@ import {
   searchRecordings, startPlaybackSession, startRecordedPlayback,
 } from '../../api/cctv'
 import { COLORS } from '../../theme/tokens'
+import useBuilderSubscription from '../../hooks/useBuilderSubscription'
+import { hasFeature } from '../../utils/subscriptionFormat'
 import { createStyles } from '../../theme/createStyles'
 
 const RENEW_INTERVAL_MS = 45000
@@ -92,22 +96,29 @@ const QUALITY_OPTIONS = [
   { variant: 'SUB', labelKey: 'dash.engineer.liveCamera.qualitySd', configured: (channel) => Boolean(channel.has_sub_stream) },
 ]
 
-function QualitySelector({ channel, value, onChange }) {
+// `hdLocked`: a builder whose plan has SD only (HD is Premium; the server refuses
+// the MAIN stream too). HD is then struck through and explains the plan instead.
+function QualitySelector({ channel, value, onChange, hdLocked = false, onHdLocked = null }) {
   const { t } = useLanguage()
   return (
     <View style={styles.view3} accessibilityLabel={t('dash.engineer.liveCamera.quality')}>
       {QUALITY_OPTIONS.map((option) => {
         const configured = option.configured(channel)
         const selected = value === option.variant
+                const locked = hdLocked && option.variant === 'MAIN'
         return (
           <Pressable
             key={option.variant}
             disabled={!configured}
-            onPress={() => !selected && onChange(option.variant)}
+                     onPress={() => {
+              if (locked) { onHdLocked?.(); return }
+              if (!selected) onChange(option.variant)
+            }}
+            accessibilityHint={locked ? t('subscription.limit.reached.hd') : undefined}
             style={[styles.pressable, selected ? styles.pressable2 : null, configured ? null : styles.pressable3]}
           >
-            <Text style={[styles.text3, selected ? styles.text4 : styles.text, { fontSize: 11 }]}>{t(option.labelKey)}</Text>
-          </Pressable>
+            <Text style={[styles.text3, selected ? styles.text4 : styles.text, { fontSize: 11 }, locked ? { textDecorationLine: 'line-through', opacity: 0.55 } : null]}>{t(option.labelKey)}</Text>
+                      </Pressable>
         )
       })}
     </View>
@@ -161,8 +172,8 @@ function usePlaybackSession(start, key, t) {
   return { session, error, retry: () => setAttempt((value) => value + 1) }
 }
 
-function LivePlayer({ channel, variant, title, subtitle, onVariantChange, onStateChange, onClose }) {
-  const { t } = useLanguage()
+function LivePlayer({ channel, variant, title, subtitle, onVariantChange, onStateChange, onClose, hdLocked, onHdLocked }) {
+    const { t } = useLanguage()
   const { session, error, retry } = usePlaybackSession(
     () => startPlaybackSession(channel.id, { transport: 'LL_HLS', streamVariant: variant }),
     `${channel.id}:${variant}`,
@@ -201,7 +212,7 @@ function LivePlayer({ channel, variant, title, subtitle, onVariantChange, onStat
       )}
       <View style={[styles.view8, { gap: 8 }]}>
         <StatusPill state={error ? 'offline' : state} />
-        <QualitySelector channel={channel} value={variant} onChange={onVariantChange} />
+               <QualitySelector channel={channel} value={variant} onChange={onVariantChange} hdLocked={hdLocked} onHdLocked={onHdLocked} />
         {error || state === 'offline' ? (
           <Pressable onPress={retry} style={[styles.pressable5, { gap: 5 }]}>
             <RefreshCw size={13} color={COLORS.slate[600]} />
@@ -219,7 +230,7 @@ function RecordedPlayer({ channel, segment, title, subtitle, onClose }) {
   const { t } = useLanguage()
   const [speed, setSpeed] = useState('1')
   // Speed is applied by the recorder, so a new speed is a new session.
-  const { session, error } = usePlaybackSession(
+    const { session, error, retry } = usePlaybackSession(
     () => startRecordedPlayback(channel.id, { start: segment.start_local, end: segment.end_local, speed }),
     `${channel.id}:${segment.start_local}:${segment.end_local}:${speed}`,
     t,
@@ -239,8 +250,17 @@ function RecordedPlayer({ channel, segment, title, subtitle, onClose }) {
         <StreamView session={session} live={false} />
       ) : (
         <View style={[styles.view7, { aspectRatio: 16 / 9 }]}>
-          {error ? <Text style={[styles.text7, { fontSize: 12.5 }]}>{error}</Text> : <ActivityIndicator color="#ffffff" />}
-        </View>
+          {error ? (
+            <>
+              <Text style={[styles.text7, { fontSize: 12.5 }]}>{error}</Text>
+              {/* As the web's "Play from the start": opens the recording again. */}
+              <Pressable onPress={retry} style={[styles.pressable5, { gap: 5, marginTop: 10, alignSelf: 'center' }]}>
+                <RefreshCw size={13} color={COLORS.slate[600]} />
+                <Text style={[styles.text8, { fontSize: 11.5 }]}>{t('dash.engineer.recorded.restart')}</Text>
+              </Pressable>
+            </>
+          ) : <ActivityIndicator color="#ffffff" />}
+                  </View>
       )}
       <View style={[styles.view9, { gap: 8 }]}>
         <Text style={[styles.text9, { fontSize: 10.5 }]}>{t('dash.engineer.recorded.speed')}</Text>
@@ -290,8 +310,22 @@ function CameraViewer({ devices, projectTitle }) {
 
   const activeCamera = cameras.find(({ channel }) => channel.id === activeChannelId) || null
   const recCamera = cameras.find(({ channel }) => channel.id === recCameraId) || null
-  const qualityOf = (channel) => qualityByChannel[channel.id] || preferredVariant(channel)
-  const chooseQuality = (channelId, variant) => setQualityByChannel((current) => ({ ...current, [channelId]: variant }))
+  // HD is Premium for builders in India (the server refuses the MAIN stream
+  // otherwise); owners, engineers and builders elsewhere keep both. Until the
+  // builder's plan is known it is treated as SD (web ProjectCameraViewer).
+  const navigation = useNavigation()
+  const isBuilder = useSelector((state) => state.auth.user?.role) === 'CONTRACTOR'
+  const { status: builderStatus, unavailable: plansUnavailable } = useBuilderSubscription({ enabled: isBuilder })
+  const hdLocked = isBuilder && !plansUnavailable && builderStatus?.region_supported !== false && !hasFeature(builderStatus, 'hd_video')
+  const explainHd = () => Alert.alert(t('dash.engineer.liveCamera.qualityHd'), t('subscription.limit.reached.hd'), [
+    { text: t('dash.common.cancel'), style: 'cancel' },
+    { text: t('subscription.expiryWarning.upgradeCta'), onPress: () => navigation.navigate('BuilderSubscription') },
+  ])
+  const qualityOf = (channel) => {
+    const variant = qualityByChannel[channel.id] || preferredVariant(channel)
+    return hdLocked && variant === 'MAIN' && channel.has_sub_stream ? 'SUB' : variant
+  }
+    const chooseQuality = (channelId, variant) => setQualityByChannel((current) => ({ ...current, [channelId]: variant }))
   const cameraSubtitle = (channel) => [
     td(projectTitle),
     td(channel.location_label),
@@ -365,6 +399,8 @@ function CameraViewer({ devices, projectTitle }) {
           onVariantChange={(variant) => chooseQuality(activeCamera.channel.id, variant)}
           onStateChange={setActiveState}
           onClose={() => setActiveChannelId(null)}
+                    hdLocked={hdLocked}
+          onHdLocked={explainHd}
         />
       ) : null}
 
@@ -486,8 +522,7 @@ function CameraViewer({ devices, projectTitle }) {
                       </View>
                     </View>
                     <View style={[styles.view20, { gap: 8 }]}>
-                      <QualitySelector channel={channel} value={qualityOf(channel)} onChange={(variant) => chooseQuality(channel.id, variant)} />
-                      <StatusPill state={pillState} />
+                      <QualitySelector channel={channel} value={qualityOf(channel)} onChange={(variant) => chooseQuality(channel.id, variant)} hdLocked={hdLocked} onHdLocked={explainHd} />                      <StatusPill state={pillState} />
                       <Pressable
                         onPress={() => { setActiveState('connecting'); setActiveChannelId(channel.id) }}
                         disabled={!available || isActive}

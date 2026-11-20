@@ -39,3 +39,10 @@ export async function startConversation(conversationDetails) {
   const response = await apiClient.post('/messages/start', conversationDetails)
   return response.data
 }
+
+// Edit one of your own text messages; the reply is the updated message
+// (the other side gets it as an `edit` event on the chat socket).
+export async function editConversationMessage(messageId, body) {
+  const response = await apiClient.put(`/messages/${messageId}`, { body })
+  return response.data
+}
