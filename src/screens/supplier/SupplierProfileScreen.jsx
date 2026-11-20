@@ -19,7 +19,8 @@ import { toast } from '../../components/Toast'
 import EmailSection from '../../components/EmailSection'
 import { completeUserProfile, updateBusinessLogo, updateProfileImage } from '../../api/auth'
 import { uploadLocalFile } from '../../api/upload'
-import { imageUrl } from '../../api/client'
+import { imageSource } from '../../api/client'
+import ProfilePhotoSheet from '../../components/ProfilePhotoSheet'
 import { mergeUser } from '../../store/authSlice'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { optionLabel, BUSINESS_TYPE_KEYS, DOCUMENT_TYPE_KEYS, SUPPLIER_CATEGORY_KEYS, SUPPLIER_TYPE_KEYS } from '../../i18n/optionKeys'
@@ -74,6 +75,7 @@ export default function SupplierProfileScreen({ navigation }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState('')
+  const [photoOpen, setPhotoOpen] = useState(false)
   const formState = useSupplierProfileForm(profile, user)
   const text = supplierTextKeys(formState.kind)
 
@@ -145,7 +147,8 @@ export default function SupplierProfileScreen({ navigation }) {
   // As the web's DeleteAccountSection: the button opens the Delete Account form.
   const openDeleteAccount = () => navigation.navigate('DeleteAccount')
 
-  const photoUrl = profile?.profile_image_url || user?.profile_image_url
+  // The account photo is the user's (the photo sheet updates it there first).
+  const photoUrl = user?.profile_image_url || profile?.profile_image_url
   const logoUrl = profile?.store_logo_url
   const documents = listOf(profile?.documents)
   const gallery = listOf(profile?.gallery)
@@ -169,10 +172,10 @@ export default function SupplierProfileScreen({ navigation }) {
               ['photo', t('dash.common.changeImage'), photoUrl],
               ['logo', t('dash.supplier.profile.storeLogo'), logoUrl],
             ].map(([kind, label, url]) => (
-              <Pressable key={kind} onPress={() => changeImage(kind)} disabled={Boolean(uploading) || !profile} style={styles.photo}>
+              <Pressable key={kind} onPress={() => (kind === 'photo' ? setPhotoOpen(true) : changeImage(kind))} disabled={Boolean(uploading) || (kind === 'logo' && !profile)} style={styles.photo}>
                 <View style={[styles.photoBox, uploading === kind ? styles.dim : null]}>
                   {url ? (
-                    <Image source={{ uri: imageUrl(url) }} style={styles.photoImage} contentFit="cover" />
+                    <Image source={imageSource(url)} style={styles.photoImage} contentFit="cover" />
                   ) : kind === 'logo' ? (
                     <Store size={26} color={COLORS.brand[700]} />
                   ) : (
@@ -247,7 +250,7 @@ export default function SupplierProfileScreen({ navigation }) {
             {gallery.length ? (
               <View style={styles.gallery}>
                 {gallery.map((image) => (
-                  <Image key={image} source={{ uri: imageUrl(image) }} style={styles.galleryImage} contentFit="cover" />
+                  <Image key={image} source={imageSource(image)} style={styles.galleryImage} contentFit="cover" />
                 ))}
               </View>
             ) : null}
@@ -263,6 +266,7 @@ export default function SupplierProfileScreen({ navigation }) {
           </Panel>
         </>
       ) : null}
+      <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
     </StackScreenShell>
   )
 }

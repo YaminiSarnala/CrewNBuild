@@ -16,7 +16,14 @@ import { imageSource } from '../api/client'
 import { useResponsive } from '../hooks/useResponsive'
 import { ContentWrap } from './Responsive'
 import ScreenHeader from './ScreenHeader'
-import ProfilePhotoSheet from './ProfilePhotoSheet'
+// Where the header photo leads, per role: the Owner's Profile tab, the
+// Builder's and Site Engineer's Profile Settings, the Supplier's profile.
+const PROFILE_SCREEN_BY_ROLE = {
+  OWNER: 'OwnerProfileTab',
+  CONTRACTOR: 'BuilderProfileSettings',
+  ENGINEER: 'EngineerProfile',
+  SUPPLIER: 'SupplierProfile',
+}
 import { ToastHost } from './Toast'
 import { ScrollToErrorProvider, useScrollToErrorContainer } from './ScrollToError'
 import WeatherButton from './weather/WeatherButton'
@@ -165,8 +172,9 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
   const navigation = useNavigation()
   const { unreadCount, unreadMessages } = useNotifications()
   const back = useContext(ShellBackContext)
-  // The header opens the photo sheet itself, so it works on every tab.
-  const [photoOpen, setPhotoOpen] = useState(false)
+  // The header photo opens the account's profile screen (every role); the
+  // photo is changed there, by tapping it.
+  const openProfile = () => navigation.navigate(PROFILE_SCREEN_BY_ROLE[user?.role] || 'OwnerProfileTab')
   const { profile: supplierProfile } = useSupplier()
   const ownScrollRef = useRef(null)
   const pageScrollRef = scrollRef || ownScrollRef
@@ -204,10 +212,9 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
           <ContentWrap>
           <View style={[styles.view9, { gap: 4, paddingHorizontal: gutter }]}>
             <Pressable
-              // A supplier has no Profile tab: the header photo is the way into it.
-              onPress={() => (user?.role === 'SUPPLIER' ? navigation.navigate('SupplierProfile') : setPhotoOpen(true))}
+              onPress={openProfile}
               accessibilityRole="button"
-              accessibilityLabel={user?.role === 'SUPPLIER' ? t('ui.profile') : t('photo.title')}
+              accessibilityLabel={t('ui.profile')}
               style={styles.view10}
             >
               {user?.profile_image_url ? (
@@ -268,7 +275,6 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
           <ContentWrap>{children}</ContentWrap>
         </ScrollToErrorProvider>
       </ScrollView>
-      <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
       <ToastHost />
     </View>
   )

@@ -4,6 +4,8 @@
 // Save for the whole form. Photo: the same picker as every dashboard.
 // Wired to: PUT /auth/complete-profile (completeUserProfile), POST /files/upload
 // + PATCH /auth/profile-image, the e-mail code endpoints and Delete Account.
+import PreferenceRows from '../../components/PreferenceRows'
+import ProfilePhotoSheet from '../../components/ProfilePhotoSheet'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { Image } from 'expo-image' 
@@ -58,7 +60,9 @@ export default function EngineerProfileScreen({ navigation }) {
   const user = useSelector((state) => state.auth.user)
   const profile = user?.engineer_profile || {}
   const required = requiredProfileFields(user)
-  const { changePhoto, busy: photoBusy } = useProfilePhoto()
+  const { busy: photoBusy } = useProfilePhoto()
+  // Tapping the photo opens the camera / gallery choice (ProfilePhotoSheet).
+  const [photoOpen, setPhotoOpen] = useState(false)
 
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(() => buildForm(user, profile))
@@ -128,10 +132,6 @@ export default function EngineerProfileScreen({ navigation }) {
     }
   }
 
-  async function uploadPhoto() {
-    if (await changePhoto('library')) toast.success(t('dash.engineer.msg.profilePhotoUpdated'))
-  }
-
   const categoryChoices = engineerCategoryChoices(profile?.specialization, form.specialization)
   const mark = (field) => (required.has(field) ? ' *' : '')
 
@@ -150,14 +150,19 @@ export default function EngineerProfileScreen({ navigation }) {
           {/* The photo sits above the fields it belongs to. */}
           <View style={styles.pr10}>
             <Text style={styles.pr4}>{t('dash.engineer.profilePhoto')}</Text>
-            <Image source={avatarFromPath(user?.profile_image_url, 'ENGINEER')} style={{ width: 112, height: 112, borderRadius: 16 }} contentFit="cover" />
-            <ActionButton small tone="outline" label={t('dash.engineer.uploadPhoto')} busy={photoBusy} onPress={uploadPhoto} />
+            <Pressable onPress={() => setPhotoOpen(true)} accessibilityRole="button" accessibilityLabel={t('photo.title')}>
+              <Image source={avatarFromPath(user?.profile_image_url, 'ENGINEER')} style={{ width: 112, height: 112, borderRadius: 16 }} contentFit="cover" />
+            </Pressable>
+            <ActionButton small tone="outline" label={t('dash.engineer.uploadPhoto')} busy={photoBusy} onPress={() => setPhotoOpen(true)} />
             <View style={styles.pr11}>
                         <ShieldCheck size={13} color={ink('#1a5038')} />
               <Text style={styles.pr12}>{t('role.engineer')}</Text>
             </View>
             <Text style={styles.pr13}>{t('dash.engineer.profileVisibleNote')}</Text>
           </View>
+
+          {/* Language and Dark Mode (no longer in the header), as in every role's profile. */}
+          <PreferenceRows style={{ marginBottom: 14 }} />
 
           {editing ? (
             <View>
@@ -227,6 +232,7 @@ export default function EngineerProfileScreen({ navigation }) {
           </View>
         </View>
       </Section>
+      <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
     </StackScreenShell>
   )
 }

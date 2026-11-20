@@ -121,8 +121,7 @@ export default function RootNavigator() {
 
   // Signed in = the server confirmed an account (no login token is returned any more).
   const signedIn = Boolean(user)
-  // Site Engineer is not live yet: one Coming soon screen instead of its
-  // unfinished dashboard (src/config/modules.js). Supplier decides per kind.
+  // Every role has its dashboard (src/config/modules.js); Supplier decides per kind.
   // A Store Manager (an ENGINEER with that category) has its own dashboard on the
   // web; on the phone it shows Coming soon until that module is built.
   const dashboard = (isRoleLive(user?.role || 'OWNER') && !isStoreManager(user)) || user?.role === 'SUPPLIER'    ? DASHBOARD_BY_ROLE[user?.role] || DASHBOARD_BY_ROLE.OWNER

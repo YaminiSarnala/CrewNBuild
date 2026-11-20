@@ -2,6 +2,7 @@
 // Same 7 languages as translations.js. Merged in ../mobileTranslations.js.
 export default {
   en: {
+    'mobile.account.preferences': 'Preferences',
     'mobile.account.more.eyebrow': 'BUILDER WORKSPACE',
     'mobile.account.more.description': 'Access your business tools, marketplace, plan and account.',
     'mobile.account.more.partnersNote': 'My Partners is available directly from the bottom navigation.',
@@ -51,6 +52,7 @@ export default {
     'mobile.account.settings.savedWithProfile': 'Saved with the rest of your profile.',
   },
   ar: {
+    'mobile.account.preferences': 'التفضيلات',
     'mobile.account.more.eyebrow': 'مساحة عمل المقاول',
     'mobile.account.more.description': 'الوصول إلى أدوات عملك والسوق وخطتك وحسابك.',
     'mobile.account.more.partnersNote': 'الشركاء متاحون مباشرة من شريط التنقل السفلي.',
@@ -100,6 +102,7 @@ export default {
     'mobile.account.settings.savedWithProfile': 'يُحفظ مع باقي ملفك الشخصي.',
   },
   te: {
+    'mobile.account.preferences': 'ప్రాధాన్యతలు',
     'mobile.account.more.eyebrow': 'నిర్మాణదారు వర్క్‌స్పేస్',
     'mobile.account.more.description': 'మీ వ్యాపార సాధనాలు, మార్కెట్‌ప్లేస్, ప్లాన్ మరియు ఖాతాను యాక్సెస్ చేయండి.',
     'mobile.account.more.partnersNote': 'నా భాగస్వాములు దిగువ నావిగేషన్ నుండి నేరుగా అందుబాటులో ఉంది.',
@@ -149,6 +152,7 @@ export default {
     'mobile.account.settings.savedWithProfile': 'మీ మిగిలిన ప్రొఫైల్‌తో పాటు సేవ్ చేయబడుతుంది.',
   },
   hi: {
+    'mobile.account.preferences': 'प्राथमिकताएँ',
     'mobile.account.more.eyebrow': 'बिल्डर वर्कस्पेस',
     'mobile.account.more.description': 'अपने बिज़नेस टूल, मार्केटप्लेस, प्लान और खाते तक पहुँचें।',
     'mobile.account.more.partnersNote': 'मेरे भागीदार सीधे नीचे के नेविगेशन से उपलब्ध है।',
@@ -198,6 +202,7 @@ export default {
     'mobile.account.settings.savedWithProfile': 'आपकी बाकी प्रोफ़ाइल के साथ सेव होता है।',
   },
   ta: {
+    'mobile.account.preferences': 'விருப்பங்கள்',
     'mobile.account.more.eyebrow': 'கட்டுநர் பணியிடம்',
     'mobile.account.more.description': 'உங்கள் வணிகக் கருவிகள், சந்தை, திட்டம் மற்றும் கணக்கை அணுகுங்கள்.',
     'mobile.account.more.partnersNote': 'எனது கூட்டாளர்கள் கீழே உள்ள வழிசெலுத்தலில் நேரடியாகக் கிடைக்கும்.',
@@ -247,6 +252,7 @@ export default {
     'mobile.account.settings.savedWithProfile': 'உங்கள் சுயவிவரத்தின் மற்ற விவரங்களுடன் சேமிக்கப்படும்.',
   },
   kn: {
+    'mobile.account.preferences': 'ಆದ್ಯತೆಗಳು',
     'mobile.account.more.eyebrow': 'ನಿರ್ಮಾಣಕಾರ ಕಾರ್ಯಸ್ಥಳ',
     'mobile.account.more.description': 'ನಿಮ್ಮ ವ್ಯಾಪಾರ ಸಾಧನಗಳು, ಮಾರುಕಟ್ಟೆ, ಪ್ಲಾನ್ ಮತ್ತು ಖಾತೆಯನ್ನು ಪ್ರವೇಶಿಸಿ.',
     'mobile.account.more.partnersNote': 'ನನ್ನ ಪಾಲುದಾರರು ಕೆಳಗಿನ ನ್ಯಾವಿಗೇಶನ್‌ನಿಂದ ನೇರವಾಗಿ ಲಭ್ಯವಿದೆ.',
@@ -296,6 +302,7 @@ export default {
     'mobile.account.settings.savedWithProfile': 'ನಿಮ್ಮ ಉಳಿದ ಪ್ರೊಫೈಲ್‌ನೊಂದಿಗೆ ಉಳಿಸಲಾಗುತ್ತದೆ.',
   },
   ml: {
+    'mobile.account.preferences': 'മുൻഗണനകൾ',
     'mobile.account.more.eyebrow': 'നിർമ്മാതാവിന്റെ വർക്ക്‌സ്‌പേസ്',
     'mobile.account.more.description': 'നിങ്ങളുടെ ബിസിനസ് ടൂളുകൾ, മാർക്കറ്റ്പ്ലേസ്, പ്ലാൻ, അക്കൗണ്ട് എന്നിവ ആക്‌സസ് ചെയ്യുക.',
     'mobile.account.more.partnersNote': 'എന്റെ പങ്കാളികൾ താഴെയുള്ള നാവിഗേഷനിൽ നിന്ന് നേരിട്ട് ലഭ്യമാണ്.',

@@ -16,10 +16,9 @@ import { COLORS } from '../../theme/tokens'
 import { ink, line, soft } from '../../theme/tint'
 import BuilderProductCatalogScreen from './BuilderProductCatalogScreen'
 import ShopHubScreen from '../shared/ShopHubScreen'
-import PropertyMarketSection from '../shared/PropertyMarketSection'
 import ProfileScreen from '../shared/ProfileScreen'
 import DashboardShell, { ShellBackBar, useAsyncData } from '../../components/DashboardShell'
-import PropertySellSection from '../../components/builder/PropertySellSection'
+import PropertyBuySellHub from '../../components/property/PropertyBuySellHub'
 import { Section, SegmentTabs, PremiumBadge } from '../../components/builder/BuilderUi'
 import useBuilderSubscription from '../../hooks/useBuilderSubscription'
 import { useBuilderInbox, useMarkSectionRead } from '../../components/builder/BuilderInbox'
@@ -98,9 +97,13 @@ function BuySellSection({ navigation }) {
       onOpenNotifications={() => navigation.navigate('Notifications')}
     >
       {tabs}
-      {tab === 'sell'
-                  ? <PropertySellSection projects={projectList} defaultCountry={user?.country_of_residence || 'India'} />
-        : <PropertyMarketSection />}
+      <PropertyBuySellHub
+        tab={tab}
+        onTabChange={setTab}
+        hideTabs
+        projects={projectList}
+        defaultCountry={user?.country_of_residence || 'India'}
+      />
     </DashboardShell>
   )
 }

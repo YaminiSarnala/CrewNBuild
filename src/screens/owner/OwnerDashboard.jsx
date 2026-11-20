@@ -299,8 +299,7 @@ export default function OwnerDashboard({ navigation }) {
   // --- navigation targets --------------------------------------------------
   const openProjects = () => navigation.navigate('OwnerProjectsTab')
   const openProject = (project, tab) => navigation.navigate('OwnerProject', { projectId: project.id, ...(tab ? { tab } : {}) })
-  // Technicians, the materials marketplace and property buy & sell belong to
-  // modules that are not live yet (src/config/modules.js).
+  // Each opens only when its module is live (src/config/modules.js COMING_SOON).
   const bookTechnician = (trade = null) => {
     if (COMING_SOON.technician) return comingSoon.show('technician')
     navigation.navigate('BookTechnician', trade ? { trade } : undefined)

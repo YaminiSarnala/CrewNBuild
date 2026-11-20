@@ -1,19 +1,14 @@
-// Which parts of the app are live. Homeowner is finished and Builder is being
-// built by the team, so both stay open; Supplier and Site Engineer (and the
-// owner features that depend on them) show "Coming soon" until they are ready.
-// Flip a flag to open a module — nothing else needs to change.
+// Which parts of the app are live. Homeowner, Builder, Supplier (material,
+// equipment, labour) and Site Engineer are finished and open in every build.
+// Features still in progress show "Coming soon" -- flip a flag to open one.
 
 /** Roles that get their real dashboard. Others land on the Coming soon screen. */
 export const LIVE_ROLES = ['OWNER', 'CONTRACTOR', 'ENGINEER']
 
 export const isRoleLive = (role) => LIVE_ROLES.includes(String(role || '').toUpperCase())
 
-/**
- * Supplier kinds (supplierKind: material / labour / equipment) whose dashboard
- * is live. Material, Equipment and Labour are being built now, so they open in
- * development builds only; list a kind for every build once it is finished.
- */
-export const SUPPLIER_LIVE_KINDS = __DEV__ ? ['material', 'equipment', 'labour'] : []
+/** Supplier kinds (supplierKind: material / labour / equipment) whose dashboard is live. */
+export const SUPPLIER_LIVE_KINDS = ['material', 'equipment', 'labour']
 
 /** Whether this account gets its real dashboard (Supplier: by its saved kind). */
 export function isAccountLive(user, kind) {
@@ -26,10 +21,10 @@ export const isSignupRoleOpen = (role) => isRoleLive(role) || (role === 'SUPPLIE
 
 /** Owner-side features that lead into an unfinished module. true = Coming soon. */
 export const COMING_SOON = {
-  marketplace: true, // construction materials from suppliers (Buy & Sell, Order, Suppliers tab)
-  property: true, // property buy & sell
+  marketplace: false, // construction materials from suppliers (Buy & Sell, Order, Suppliers tab)
+  property: false, // property buy & sell
   technician: true, // Book a technician
-  siteEngineer: true, // project Site Engineer tab
+  siteEngineer: false, // project Site Engineer tab
 }
 
 /** Popup / panel copy per feature (translation keys). */

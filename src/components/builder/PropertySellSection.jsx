@@ -5,18 +5,20 @@
 // (PATCH /property-listings/{id}/status) and delete. The seller is always taken
 // from the token on the server. Photos go through POST /files/upload.
 // Strings use the web property.* keys; mobile-only ones are mobile.account.*.
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { View, Text, Pressable, Alert, Switch } from 'react-native'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { Plus, Pencil, Trash2, ImagePlus } from 'lucide-react-native'
+import { Plus, Pencil, Trash2, ImagePlus, Video } from 'lucide-react-native'
 import { Panel, PanelState, useAsyncData } from '../DashboardShell'
 import {
   createPropertyListing, deletePropertyListing, fetchMyPropertyListings, fetchPropertyListing, updatePropertyListing,
   updatePropertyListingImages, updatePropertyListingStatus,
 } from '../../api/properties'
 import { uploadLocalFile } from '../../api/upload'
-import { imageUrl } from '../../api/client'
+import { imageSource } from '../../api/client'
+import { PincodeAreaHint } from '../form'
+import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
 import { apiErrorText, asList, money } from '../../utils/builderHelpers'
 import { ActionButton, Badge, LabeledInput, SegmentTabs, SheetModal } from './BuilderUi'
 import { toast } from '../Toast'
@@ -66,22 +68,24 @@ function listingToForm(listing) {
   }
 }
 
-async function pickImages(multiple, t) {
+async function pickImages(multiple, t, mediaType = 'images') {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
   if (!permission.granted) {
     toast.error(t('mobile.account.permissionPropertyPhotos'), { title: t('mobile.account.permissionTitle') })
     return []
   }
-  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsMultipleSelection: multiple })
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: [mediaType], quality: 0.8, allowsMultipleSelection: multiple })
   return result.canceled ? [] : (result.assets || [])
 }
 
-function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
+export function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
   const { t } = useLanguage()
   const editing = Boolean(listing?.id)
   const [details, setDetails] = useState(() => (editing ? listingToForm(listing) : blankListing(defaultCountry)))
   const [coverImageUrl, setCoverImageUrl] = useState(listing?.cover_image_url || '')
   const [galleryUrls, setGalleryUrls] = useState(() => (listing?.images || []).map((image) => image.image_url).filter(Boolean))
+  // One optional walkthrough video (web PropertyForm), through the same upload.
+  const [videoUrl, setVideoUrl] = useState(listing?.video_url || '')
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState('')
   // Messages under each required field that is missing.
@@ -92,6 +96,49 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
     setErrors((current) => (current[field] ? { ...current, [field]: '' } : current))
   }
   const numeric = (field) => (value) => update(field, value.replace(/[^\d.]/g, ''))
+
+  // The web's pincode -> area lookup: a resolved pincode replaces city and
+  // state, and fills the address only while it is empty. An edit looks up only
+  // once the pincode is changed.
+  const [branch, setBranch] = useState(null)
+  const onAreaResolved = useCallback((area) => {
+    setBranch(null)
+    setDetails((current) => ({
+      ...current,
+      address: current.address || area.display || '',
+      city: area.city || area.district || current.city || '',
+      state: area.state || current.state || '',
+    }))
+  }, [])
+  const pincodeLookup = usePincodeAreaLookup(
+    editing && details.pincode === String(listing?.pincode || '') ? '' : details.pincode,
+    onAreaResolved,
+    details.country,
+  )
+  const selectBranch = (picked) => {
+    setBranch(picked || null)
+    if (!picked) return
+    setDetails((current) => ({
+      ...current,
+      city: picked.city || picked.district || current.city,
+      state: picked.state || current.state,
+      address: current.address.trim() ? current.address : (picked.display || current.address),
+    }))
+  }
+
+  async function addVideo() {
+    const [asset] = await pickImages(false, t, 'videos')
+    if (!asset) return
+    setUploading(true)
+    try {
+      const url = uploadedUrl(await uploadLocalFile(asset, 'property.mp4'))
+      if (url) setVideoUrl(url)
+    } catch {
+      toast.error(t('property.form.uploadFailed'))
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function addPhotos(cover) {
     const assets = await pickImages(!cover, t)
@@ -114,6 +161,8 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
     if (!details.title.trim()) found.title = t('mobile.account.property.enterTitle')
     if (!details.address.trim()) found.address = t('mobile.account.property.enterAddress')
     if (!details.pincode.trim()) found.pincode = t('mobile.account.property.enterAddress')
+    // Required on the web form too.
+    if (!details.description.trim()) found.description = t('property.form.descriptionPh')
     if (!(Number(details.price) > 0)) found.price = t('mobile.account.property.enterPrice')
     if (Object.keys(found).length) {
       setErrors(found)
@@ -148,7 +197,7 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
       age_years: numberOrZero(details.age_years),
       facing: details.facing || null,
       cover_image_url: coverImageUrl || null,
-      video_url: listing?.video_url || null,
+      video_url: videoUrl || null,
       source_project_id: details.source_project_id ? Number(details.source_project_id) : null,
     }
     try {
@@ -168,9 +217,10 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
       <Text style={styles.text2}>{t('mobile.account.property.listingFor')}</Text>
       <SegmentTabs dense tabs={LISTING_TYPES.map(([id, key]) => ({ id, label: t(key) }))} active={details.listing_type} onChange={(value) => update('listing_type', value)} />
       <View style={styles.view}>
-        <LabeledInput label={t('dash.common.description')} value={details.description} onChangeText={(value) => update('description', value)} multiline />
+        <LabeledInput label={`${t('dash.common.description')} *`} value={details.description} onChangeText={(value) => update('description', value)} placeholder={t('property.form.descriptionPh')} multiline error={errors.description} />
         <LabeledInput label={`${t('property.form.addressPh')} *`} value={details.address} onChangeText={(value) => update('address', value)} error={errors.address} />
         <LabeledInput label={`${t('dash.common.pincode')} *`} value={details.pincode} onChangeText={(value) => update('pincode', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} error={errors.pincode} />
+        {!errors.pincode ? <PincodeAreaHint lookupState={pincodeLookup} selectedBranch={branch} onSelectBranch={selectBranch} /> : null}
         <LabeledInput label={t('property.form.cityPh')} value={details.city} onChangeText={(value) => update('city', value)} />
         <LabeledInput label={t('property.form.statePh')} value={details.state} onChangeText={(value) => update('state', value)} />
         <LabeledInput label={`${t('property.price')} *`} value={details.price} onChangeText={numeric('price')} keyboardType="numeric" hint={Number(details.price) > 0 ? money(details.price, details.country) : ''} error={errors.price} />
@@ -204,14 +254,14 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
 
       <Text style={styles.text4}>{t('mobile.account.property.coverPhoto')}</Text>
       <View style={styles.view3}>
-        {coverImageUrl ? <Image source={{ uri: imageUrl(coverImageUrl) }} style={{ width: 84, height: 64, borderRadius: 10 }} contentFit="cover" /> : null}
+        {coverImageUrl ? <Image source={imageSource(coverImageUrl)} style={{ width: 84, height: 64, borderRadius: 10 }} contentFit="cover" /> : null}
         <ActionButton small tone="brandOutline" icon={ImagePlus} label={coverImageUrl ? t('mobile.account.property.changeCover') : t('property.form.uploadCover')} disabled={uploading} onPress={() => addPhotos(true)} />
       </View>
       <Text style={styles.text2}>{t('cps.gallery')} ({galleryUrls.length})</Text>
       <View style={styles.view4}>
         {galleryUrls.map((url) => (
           <Pressable key={url} onPress={() => setGalleryUrls((current) => current.filter((item) => item !== url))} style={styles.pressable}>
-            <Image source={{ uri: imageUrl(url) }} style={{ width: 64, height: 64 }} contentFit="cover" />
+            <Image source={imageSource(url)} style={{ width: 64, height: 64 }} contentFit="cover" />
           </Pressable>
         ))}
         <Pressable onPress={() => addPhotos(false)} disabled={uploading} style={[styles.pressable2, uploading ? styles.pressable3 : null]}>
@@ -220,6 +270,13 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
       </View>
       {galleryUrls.length ? <Text style={styles.text5}>{t('mobile.account.tapPhotoToRemove')}</Text> : null}
 
+      <Text style={styles.text2}>{t('property.detail.video')}</Text>
+      <View style={styles.view3}>
+        <ActionButton small tone="brandOutline" icon={Video} label={videoUrl ? t('property.form.videoSet') : t('property.form.uploadVideo')} disabled={uploading} onPress={addVideo} />
+        {videoUrl ? <ActionButton small tone="outline" label={t('shop.remove')} disabled={uploading} onPress={() => setVideoUrl('')} /> : null}
+      </View>
+      <Text style={styles.text5}>{t('property.form.videoNote')}</Text>
+
       <View style={styles.view5}>
         <ActionButton label={editing ? t('property.form.saveChanges') : t('property.form.saveDraft')} tone="outline" busy={saving === 'save'} disabled={Boolean(saving) || uploading} onPress={() => submit(false)} />
         {canPublish ? <ActionButton label={t('property.form.saveAndPublish')} busy={saving === 'publish'} disabled={Boolean(saving) || uploading} onPress={() => submit(true)} /> : null}
@@ -227,6 +284,30 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
       </View>
     </View>
   )
+}
+
+/**
+ * Create or update a listing, replace its gallery (an ordered whole), and
+ * publish it when asked. Shows the result as a toast; throws if the save fails.
+ */
+export async function saveListingWithGallery({ editingListing, payload, galleryUrls, publish = false, t }) {
+  const saved = editingListing
+    ? await updatePropertyListing(editingListing.id, payload)
+    : await createPropertyListing(payload)
+  await updatePropertyListingImages(saved.id, galleryUrls)
+  let text = editingListing ? t('property.msg.updated') : t('property.msg.draftSaved')
+  let tone = 'success'
+  if (publish) {
+    try {
+      await updatePropertyListingStatus(saved.id, 'LISTED')
+      text = t('property.msg.published')
+    } catch {
+      text = t('property.msg.publishFailed')
+      tone = 'warning'
+    }
+  }
+  toast.show(text, tone)
+  return saved
 }
 
 export default function PropertySellSection({ projects = [], defaultCountry = 'India' }) {
@@ -238,25 +319,9 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
   const listings = asList(mine.data, 'listings', 'items')
 
   const saveListing = async (payload, galleryUrls, { publish = false } = {}) => {
-    const saved = editingListing
-      ? await updatePropertyListing(editingListing.id, payload)
-      : await createPropertyListing(payload)
-    // The gallery is replaced as a whole, ordered list.
-    await updatePropertyListingImages(saved.id, galleryUrls)
-    let text = editingListing ? t('property.msg.updated') : t('property.msg.draftSaved')
-    let tone = 'success'
-    if (publish) {
-      try {
-        await updatePropertyListingStatus(saved.id, 'LISTED')
-        text = t('property.msg.published')
-      } catch {
-        text = t('property.msg.publishFailed')
-        tone = 'warning'
-      }
-    }
+    await saveListingWithGallery({ editingListing, payload, galleryUrls, publish, t })
     setFormOpen(false)
     setEditingListing(null)
-    toast.show(text, tone)
     await mine.reload()
   }
 
@@ -322,7 +387,7 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
             <View key={listing.id} style={styles.view6}>
               <View style={styles.view7}>
                 {listing.cover_image_url ? (
-                  <Image source={{ uri: imageUrl(listing.cover_image_url) }} style={{ width: 72, height: 60, borderRadius: 10 }} contentFit="cover" />
+                  <Image source={imageSource(listing.cover_image_url)} style={{ width: 72, height: 60, borderRadius: 10 }} contentFit="cover" />
                 ) : null}
                 <View style={styles.view8}>
                   <Text style={styles.text6} numberOfLines={1}>{listing.title}</Text>

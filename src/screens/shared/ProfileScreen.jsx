@@ -249,6 +249,12 @@ export default function ProfileScreen({ navigation }) {
             </>
           )}
         </Panel>
+        {/* Language and Dark Mode (no longer in the header), near the top as in
+            every role's profile. */}
+        <Panel title={t('mobile.account.preferences')}>
+          <PreferenceRows />
+        </Panel>
+
         <Panel title="Settings">
             <Pressable onPress={() => navigation.navigate('Messages')} style={styles.pressable5}>
               <MessageCircle size={16} color={COLORS.brand[700]} />
@@ -261,7 +267,6 @@ export default function ProfileScreen({ navigation }) {
               {COMING_SOON.technician ? <SoonTag /> : null}
             </Pressable>
           )}
-          <PreferenceRows />
           <Pressable onPress={() => Linking.openURL('mailto:support@crewnbuild.com')} style={styles.pressable5}>
             <LifeBuoy size={16} color={COLORS.brand[700]} />
             <Text style={styles.text8}>Help & feedback</Text>

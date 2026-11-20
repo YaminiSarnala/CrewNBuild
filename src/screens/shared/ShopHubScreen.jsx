@@ -15,7 +15,7 @@ import {
   sendBuyRequest, selectCart, selectCartCount, clearCartMessage,
 } from '../../store/cartSlice'
 import { COLORS } from '../../theme/tokens'
-import PropertyMarketSection from './PropertyMarketSection'
+import PropertyBuySellHub from '../../components/property/PropertyBuySellHub'
 import { formatMoney, projectCountry } from '../../utils/countryConfig'
 import { useProfileGate } from '../../hooks/useProfileGate'
 import { createStyles } from '../../theme/createStyles'
@@ -187,7 +187,9 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
           </PanelState>
         </Panel>
       )}
-      {activeTab === 'property' && <PropertyMarketSection />}
+      {activeTab === 'property' && (
+        <PropertyBuySellHub projects={projectList} defaultCountry={user?.country_of_residence || 'India'} />
+      )}
       {activeTab === 'cart' && (
         <Panel title={`Cart · ${money(cart.total)}`}>
           <PanelState loading={cart.status === 'loading' && !cart.items.length} error={cart.errorMessage} empty={!cart.items.length} emptyText="Your cart is empty. Browse suppliers to add materials.">

@@ -20,7 +20,7 @@ import { toast } from '../../components/Toast'
 import { fetchContractorProfile } from '../../api/profiles'
 import { completeUserProfile, updateBusinessLogo, updateProfileImage } from '../../api/auth'
 import { uploadLocalFile } from '../../api/upload'
-import { imageUrl } from '../../api/client'
+import { imageSource } from '../../api/client'
 import { mergeUser } from '../../store/authSlice'
 import {
   PORTFOLIO_MAX_IMAGES, PORTFOLIO_MAX_PROJECTS, apiErrorText, normalizePortfolioProjects, profileListString,
@@ -33,6 +33,8 @@ import { createStyles } from '../../theme/createStyles'
 import EmailSection from '../../components/EmailSection'
 import PhoneChangeSection from '../../components/PhoneChangeSection'
 import { PincodeAreaHint } from '../../components/form'
+import PreferenceRows from '../../components/PreferenceRows'
+import ProfilePhotoSheet from '../../components/ProfilePhotoSheet'
 import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
 import { userCountry } from '../../utils/countryConfig'
 import { builderFieldErrors, digitsOf, fieldErrorsFrom, isIndia } from '../../utils/profileValidation'
@@ -104,6 +106,7 @@ async function pickImage(aspect, t) {
 }
 
 export default function BuilderProfileSettingsScreen({ navigation }) {
+  const [photoOpen, setPhotoOpen] = useState(false)
   const { t } = useLanguage()
   const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
@@ -194,7 +197,7 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
       pan: form.pan.trim().toUpperCase(),
       company_name: form.company_name.trim() || current.company_name || user?.name || '',
       company_logo_url: current.company_logo_url || '',
-      profile_image_url: current.profile_image_url || user?.profile_image_url || '',
+      profile_image_url: user?.profile_image_url || current.profile_image_url || '',
       license_number: form.license_number.trim(),
       experience_years: Number(form.experience_years || 0),
       about: form.about.trim(),
@@ -286,7 +289,8 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
   const openDeleteAccount = () => navigation.navigate('DeleteAccount')
 
 
-  const photoUrl = profile?.profile_image_url || user?.profile_image_url
+  // The account photo is the user's (the photo sheet updates it there first).
+  const photoUrl = user?.profile_image_url || profile?.profile_image_url
   const logoUrl = profile?.company_logo_url
 
   return (
@@ -298,10 +302,10 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
               ['photo', t('ps.eng.profilePhoto'), photoUrl],
               ['logo', t('ps.con.companyLogo'), logoUrl],
             ].map(([kind, label, url]) => (
-              <Pressable key={kind} onPress={() => changePhoto(kind)} disabled={Boolean(uploading) || !profile} style={styles.pressable4}>
+              <Pressable key={kind} onPress={() => (kind === 'photo' ? setPhotoOpen(true) : changePhoto(kind))} disabled={Boolean(uploading) || (kind === 'logo' && !profile)} style={styles.pressable4}>
                 <View style={[styles.view4, uploading === kind ? styles.pressable5 : null]}>
                   {url ? (
-                    <Image source={{ uri: imageUrl(url) }} style={{ width: 80, height: 80 }} contentFit="cover" />
+                    <Image source={imageSource(url)} style={{ width: 80, height: 80 }} contentFit="cover" />
                   ) : (
                     <View style={styles.view5}>
                       {kind === 'logo' ? <Building2 size={26} color={COLORS.brand[700]} /> : <Text style={styles.text5}>{(user?.name || 'B').slice(0, 1).toUpperCase()}</Text>}
@@ -316,7 +320,11 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
             ))}
           </View>
         </PanelState>
+        {/* Language and Dark Mode (no longer in the header), as in every role's profile. */}
+        <PreferenceRows style={{ marginTop: 14 }} />
       </Panel>
+
+      <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
 
       <Panel title={t('cps.personalInformation')}>
         <LabeledInput label={`${t('ps.name')} *`} value={form.name} onChangeText={(value) => update('name', value)} maxLength={120} error={errors.name} />
@@ -403,7 +411,7 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
             <View style={styles.view2}>
               {(item.images || []).map((url) => (
                 <Pressable key={url} onLongPress={() => removeProjectImage(index, url)} onPress={() => removeProjectImage(index, url)} style={styles.pressable6}>
-                  <Image source={{ uri: imageUrl(url) }} style={{ width: 64, height: 64 }} contentFit="cover" />
+                  <Image source={imageSource(url)} style={{ width: 64, height: 64 }} contentFit="cover" />
                 </Pressable>
               ))}
               {(item.images || []).length < PORTFOLIO_MAX_IMAGES ? (

@@ -192,7 +192,7 @@ import { fetchOwnerProjects } from '../../api/projects'
 import { createStyles } from '../../theme/createStyles'
 
 export default function OwnerShopScreen({ navigation, route }) {
-  // Materials marketplace and property buy & sell are not live yet.
+  // Shown only while neither the materials marketplace nor property buy & sell is live.
   if (COMING_SOON.marketplace && COMING_SOON.property) {
     return (
       <DashboardShell onOpenNotifications={() => navigation.navigate('Notifications')}>
@@ -204,7 +204,7 @@ export default function OwnerShopScreen({ navigation, route }) {
     <ShopHubScreen
       navigation={navigation}
       route={route}
-      showProperty
+      showProperty={!COMING_SOON.property}
       loadProjects={fetchOwnerProjects}
       pickCheckoutProject={(projects) =>
         projects.find((p) => p.construction_type === 'SELF_CONSTRUCTION') || projects[0] || null}
