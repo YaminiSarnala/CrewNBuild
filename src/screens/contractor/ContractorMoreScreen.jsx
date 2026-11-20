@@ -62,14 +62,7 @@ function BuySellSection({ navigation }) {
   const user = useSelector((state) => state.auth.user)
   // Buy & Sell opens on Sell for a Builder, as on the web.
   const [tab, setTab] = useState('sell')
-    // Edit from the Buy tab: switch to Sell and open that listing's Edit form.
-  const [editRequest, setEditRequest] = useState(null)
-  const manageListing = (listing) => {
-    setEditRequest({ id: listing.id, at: Date.now() })
-    setTab('sell')
-  }
-  // Changing tab by hand never reopens an Edit form from earlier.
-  const chooseTab = (id) => { setEditRequest(null); setTab(id) }
+  
   const projects = useAsyncData(() => fetchOwnerProjects().catch(() => []), [])
   const projectList = Array.isArray(projects.data) ? projects.data : []
   const buySellTabs = [
@@ -83,15 +76,14 @@ function BuySellSection({ navigation }) {
       <SegmentTabs
         tabs={buySellTabs}
         active={tab}
-        onChange={chooseTab}
+            onChange={setTab}
       />
     </Section>
   )
   if (tab === 'materials') {
     // The existing mobile materials hub, unchanged.
     return (
-      <ShellBackBar extra={<SegmentTabs tabs={buySellTabs} active={tab} onChange={chooseTab} />}>
-                <ShopHubScreen
+      <ShellBackBar extra={<SegmentTabs tabs={buySellTabs} active={tab} onChange={setTab} />}>                <ShopHubScreen
           navigation={navigation}
           loadProjects={fetchOwnerProjects}
           pickCheckoutProject={(list) => list[0] || null}
@@ -107,8 +99,8 @@ function BuySellSection({ navigation }) {
     >
       {tabs}
       {tab === 'sell'
-              ? <PropertySellSection projects={projectList} defaultCountry={user?.country_of_residence || 'India'} editRequest={editRequest} />
-        : <PropertyMarketSection onManage={manageListing} />}
+                  ? <PropertySellSection projects={projectList} defaultCountry={user?.country_of_residence || 'India'} />
+        : <PropertyMarketSection />}
     </DashboardShell>
   )
 }
