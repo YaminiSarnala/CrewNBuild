@@ -8,7 +8,7 @@
 // the skill level, worker capacity and notes change. The backend checks the
 // same rules and its own message is shown when it refuses.
 import { useState } from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { Check, Save } from 'lucide-react-native'
 import { ActionButton, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
 import { FieldLabel, TextField } from '../../components/form'
@@ -80,6 +80,18 @@ export default function SupplierLabourServiceScreen({ navigation, route }) {
 
   return (
     <StackScreenShell title={title} onBack={() => navigation.goBack()}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+    >
+
       <Section>
         <View style={styles.card}>
           <FieldLabel>{t('labor.field.trade')}</FieldLabel>
@@ -142,6 +154,8 @@ export default function SupplierLabourServiceScreen({ navigation, route }) {
           </View>
         </View>
       </Section>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </StackScreenShell>
   )
 }

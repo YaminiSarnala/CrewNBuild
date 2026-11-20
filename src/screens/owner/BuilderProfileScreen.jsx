@@ -3,7 +3,7 @@
 // details, business identifiers and document files stay locked until a request
 // between the two is accepted (`can_view_contact` / `can_view_documents`).
 import { useEffect, useState } from 'react'
-import { View, Text, ScrollView, Pressable, Linking, KeyboardAvoidingView } from 'react-native'
+import { View, Text, ScrollView, Pressable, KeyboardAvoidingView } from 'react-native'
 import { Image } from 'expo-image'
 import {
   BadgeCheck, Building2, BriefcaseBusiness, Download, FileText, Globe, HardHat, House as Home, Lock, Mail, MapPin,
@@ -15,6 +15,7 @@ import { ContentWrap } from '../../components/Responsive'
 import { PanelState, InsetArea } from '../../components/DashboardShell'
 import { FormNotice, TextField } from '../../components/form'
 import { toast } from '../../components/Toast'
+import { useStoredFiles } from '../../components/StoredFile'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
 import { fetchContractorProfile } from '../../api/profiles'
@@ -93,6 +94,7 @@ export default function BuilderProfileScreen({ navigation, route }) {
   // Full-screen pages draw under the Android navigation buttons; keep the end clear of them.
   const insets = useSafeAreaInsets()
   const { t, td } = useLanguage()
+  const files = useStoredFiles()
   const { gutter } = useResponsive()
   const contractorId = route?.params?.contractorId
   const [profile, setProfile] = useState(null)
@@ -324,7 +326,7 @@ export default function BuilderProfileScreen({ navigation, route }) {
                   <Pressable
                     key={documentName}
                     disabled={!href}
-                    onPress={() => href && Linking.openURL(imageUrl(href))}
+                    onPress={() => href && files.open(href)}
                     style={styles.pressable}
                   >
                     <View style={[styles.view15, { gap: 6 }]}>
@@ -499,6 +501,7 @@ export default function BuilderProfileScreen({ navigation, route }) {
           </ContentWrap>
         </ScrollView>
       </KeyboardAvoidingView>
+      {files.viewer}
     </View>
   )
 }

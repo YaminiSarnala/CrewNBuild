@@ -39,6 +39,7 @@ import { formatTime } from '../../utils/formatters'
 import { COLORS } from '../../theme/tokens'
 import { ink, soft } from '../../theme/tint'
 import { createStyles } from '../../theme/createStyles'
+import { useStoredFiles } from '../../components/StoredFile'
 
 const LIST_POLL_MS = 15000
 const PING_MS = 25000
@@ -301,6 +302,7 @@ function CardMessage({ message, mine, t, td, onReplace }) {
 }
 
 function Bubble({ message, mine, t, td, editing, onStartEdit, onEditChange, onCancelEdit, onSaveEdit, onReplace }) {
+  const files = useStoredFiles()
   if (parseCardBody(message.body) || parseChatEvent(message.body)) {
     return <CardMessage message={message} mine={mine} t={t} td={td} onReplace={onReplace} />
   }
@@ -310,16 +312,17 @@ function Bubble({ message, mine, t, td, editing, onStartEdit, onEditChange, onCa
   return (
     <View style={[styles.view3, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
       {message.attachment_url && type === 'IMAGE' ? (
-        <Pressable onPress={() => Linking.openURL(imageUrl(message.attachment_url))}>
+        <Pressable onPress={() => files.open(message.attachment_url, { gallery: [message.attachment_url] })}>
           <Image source={imageSource(message.attachment_url)} style={{ width: 220, height: 160, borderRadius: 12, marginBottom: 6 }} contentFit="cover" />
         </Pressable>
       ) : null}
       {message.attachment_url && type !== 'IMAGE' ? (
-        <Pressable onPress={() => Linking.openURL(imageUrl(message.attachment_url))} style={[styles.pressable2, mine ? styles.attachMine : null, { gap: 6 }]}>
+        <Pressable onPress={() => files.open(message.attachment_url)} style={[styles.pressable2, mine ? styles.attachMine : null, { gap: 6 }]}>
           <FileText size={14} color={mine ? '#ffffff' : COLORS.graphite} />
           <Text style={[styles.text7, mine ? styles.text8 : styles.text9, { fontSize: 12.5 }]}>{t('dash.msg.openAttachment')}</Text>
         </Pressable>
       ) : null}
+      {files.viewer}
       {isEditing ? (
         <View style={{ gap: 6, minWidth: 200 }}>
           <TextInput value={editing.body} onChangeText={onEditChange} autoFocus multiline style={styles.editInput} />

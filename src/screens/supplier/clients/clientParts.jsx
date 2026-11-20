@@ -8,7 +8,7 @@
 // Contact details are shown only when the server says the relationship
 // allows it (can_view_contact); otherwise they read as locked.
 import { useState } from 'react'
-import { View, Text, Pressable, ScrollView, Modal, Linking } from 'react-native'
+import { View, Text, Pressable, ScrollView, Modal } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image'
 import { FileText, Globe, Lock, Mail, MapPin, Phone, Send, Star } from 'lucide-react-native'
@@ -27,6 +27,7 @@ import { COLORS } from '../../../theme/tokens'
 import { createStyles } from '../../../theme/createStyles'
 import SheetHeader from '../SheetHeader'
 import { ToastHost, toast } from '../../../components/Toast'
+import { useStoredFiles } from '../../../components/StoredFile'
 
 export const REQUEST_STATUS_KEYS = {
   pending: 'ui.status.pending',
@@ -221,15 +222,20 @@ function Chips({ items, empty }) {
 }
 
 function Gallery({ images, empty }) {
+  // Opens in the app: the photos need the sign-in token, which a browser lacks.
+  const files = useStoredFiles()
   if (!images.length) return <Text style={styles.muted}>{empty}</Text>
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-      {images.map((image, index) => (
-        <Pressable key={`${image}-${index}`} onPress={() => Linking.openURL(imageUrl(image))}>
-          <Image source={imageSource(image)} style={styles.galleryImage} contentFit="cover" />
-        </Pressable>
-      ))}
-    </ScrollView>
+    <>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {images.map((image, index) => (
+          <Pressable key={`${image}-${index}`} onPress={() => files.open(image, { gallery: images })}>
+            <Image source={imageSource(image)} style={styles.galleryImage} contentFit="cover" />
+          </Pressable>
+        ))}
+      </ScrollView>
+      {files.viewer}
+    </>
   )
 }
 
@@ -358,6 +364,7 @@ function documentFileUrl(entry) {
 }
 
 export function RequestProfileSheet({ details, onClose }) {
+  const files = useStoredFiles()
   const { t, td } = useLanguage()
   if (!details) return null
   const canViewContact = Boolean(details.can_view_contact)
@@ -439,7 +446,7 @@ export function RequestProfileSheet({ details, onClose }) {
       </Block>
       <Block title={t('dash.msg.certificates')}>
         {documents.length ? documents.map((entry, index) => (
-          <Pressable key={`${entry}-${index}`} onPress={() => Linking.openURL(imageUrl(documentFileUrl(entry)))} style={styles.docRow}>
+          <Pressable key={`${entry}-${index}`} onPress={() => files.open(documentFileUrl(entry))} style={styles.docRow}>
             <FileText size={15} color={COLORS.brand[700]} />
             <Text style={styles.docText}>{t('dash.msg.openDocument', { n: index + 1 })}</Text>
           </Pressable>
@@ -448,6 +455,7 @@ export function RequestProfileSheet({ details, onClose }) {
       <Block title={t('dash.msg.workGallery')}>
         <Gallery images={gallery} empty={t('dash.msg.noGallery')} />
       </Block>
+      {files.viewer}
       {isSupplier ? (
         <Block title={t('dash.msg.supplierProducts')}>
           {products.length ? products.map((product, index) => (
