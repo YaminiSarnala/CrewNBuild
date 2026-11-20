@@ -25,6 +25,7 @@ import SheetHeader from './SheetHeader'
 import { money, useSupplierCountry } from './products/productParts'
 import { StatusPill, lineTotal, statusLabel } from './orders/orderParts'
 import { Avatar } from './clients/clientParts'
+import { ToastHost } from '../../components/Toast'
 
 const PROJECT_STATUS_DOT = { active: '#10b981', pending: '#fbbf24', completed: '#0ea5e9' }
 const PROJECT_STATUS_KEYS = { active: 'ui.status.active', pending: 'ui.status.pending', completed: 'ui.status.completed' }
@@ -265,6 +266,7 @@ function ProjectSheet({ project, metrics, fmt, requesterLabel, onClose }) {
           </View>
         </ScrollView>
       </View>
+      <ToastHost />
     </Modal>
   )
 }

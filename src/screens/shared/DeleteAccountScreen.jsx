@@ -9,11 +9,12 @@
 // it again. POST /account/delete then deletes the account at once and ends every
 // session, so the app signs out.
 import { useEffect, useState } from 'react'
-import { View, Text, Pressable, Alert } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { Check, Trash2 } from 'lucide-react-native'
 import { StackScreenShell, Section } from '../../components/builder/BuilderUi'
 import { SelectField, TextField, FormNotice } from '../../components/form'
+import { toast, ToastMessage } from '../../components/Toast'
 import EmailSection from '../../components/EmailSection'
 import DeletionPolicy from '../../components/accountDeletion/DeletionPolicy'
 import { FALLBACK_ROLES } from '../../components/accountDeletion/policyText'
@@ -44,6 +45,9 @@ export default function DeleteAccountScreen({ navigation }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleting, setDeleting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  // Set by a press on Delete while the form is incomplete: every field still
+  // missing is then highlighted, not only the ones already typed in.
+  const [attempted, setAttempted] = useState(false)
   // Verifying the address below updates the account in the store; the form is
   // then fetched again, so the status shown is the server's.
   const sessionEmail = useSelector((state) => state.auth.user?.email || '')
@@ -82,8 +86,38 @@ export default function DeleteAccountScreen({ navigation }) {
   const canDelete = Boolean(formData) && emailVerified && !emailError && !phoneError && Boolean(form.role) && !roleError
     && Boolean(form.reasonCode) && !detailsMissing && form.agree && confirmTyped && !deleting
 
+  // Each field's message, as shown under it (empty = fine).
+  const fieldErrors = {
+    role: roleError || (attempted && !form.role ? t('account.deleteRoleChoose') : ''),
+    email: emailError && (form.email || attempted) ? emailError : '',
+    phone: phoneError && (form.phone || attempted) ? phoneError : '',
+    reasonCode: attempted && !form.reasonCode ? t('account.deleteReasonChoose') : '',
+    reasonDetails: detailsMissing ? t('account.deleteReasonDetailsRequired') : '',
+    agree: attempted && !form.agree ? 'Tick this box to confirm.' : '',
+    confirmText: (form.confirmText || attempted) && !confirmTyped ? t('account.deleteConfirmMismatch') : '',
+  }
+
   async function submit() {
-    if (!canDelete) return
+    if (deleting || !formData) return
+    if (!canDelete) {
+      setAttempted(true)
+      if (!emailVerified) {
+        toast.error(t('account.deleteVerifyEmail'))
+        return
+      }
+      // Recomputed with every missing field counted (the press marks them all).
+      const failing = [
+        roleError || (!form.role ? t('account.deleteRoleChoose') : ''),
+        emailError,
+        phoneError,
+        !form.reasonCode ? t('account.deleteReasonChoose') : '',
+        detailsMissing ? t('account.deleteReasonDetailsRequired') : '',
+        !form.agree ? 'Tick this box to confirm.' : '',
+        !confirmTyped ? t('account.deleteConfirmMismatch') : '',
+      ].filter(Boolean)
+      toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
+      return
+    }
     setDeleting(true)
     setErrorMessage('')
     try {
@@ -98,8 +132,9 @@ export default function DeleteAccountScreen({ navigation }) {
         confirmation_text: form.confirmText,
       })
       // The server has ended every session; this clears the app's copy.
-      Alert.alert(t('account.deleteDone'), t('account.deleteDoneSub'), [{ text: t('account.deleteClose') }])
-      dispatch(logoutUser())
+      await dispatch(logoutUser())
+      // Shown once the sign-in screen has replaced this one, so it is not lost with it.
+      setTimeout(() => toast.success(t('account.deleteDoneSub'), { title: t('account.deleteDone') }), 300)
     } catch (error) {
       // The server rolls back on failure: the account and the session are as they were.
       const detail = error?.response?.data?.detail
@@ -143,7 +178,7 @@ export default function DeleteAccountScreen({ navigation }) {
               options={roles.map((role) => ({ value: role.value, label: role.label }))}
               onChange={update('role')}
               placeholder={t('account.deleteRoleChoose')}
-              error={roleError}
+              error={fieldErrors.role}
             />
             {account.email ? (
               <TextField
@@ -154,7 +189,7 @@ export default function DeleteAccountScreen({ navigation }) {
                 autoCapitalize="none"
                 autoComplete="email"
                 maxLength={255}
-                error={emailError && form.email ? emailError : ''}
+                error={fieldErrors.email}
               />
             ) : (
               <TextField label={t('account.deleteEmail')} value={t('account.deleteNoEmail')} editable={false} />
@@ -166,7 +201,7 @@ export default function DeleteAccountScreen({ navigation }) {
               keyboardType="phone-pad"
               autoComplete="tel"
               maxLength={30}
-              error={phoneError && form.phone ? phoneError : ''}
+              error={fieldErrors.phone}
             />
 
             <SelectField
@@ -175,6 +210,7 @@ export default function DeleteAccountScreen({ navigation }) {
               options={reasonOptions}
               onChange={update('reasonCode')}
               placeholder={t('account.deleteReasonChoose')}
+              error={fieldErrors.reasonCode}
             />
             <TextField
               label={t('account.deleteReasonDetails')}
@@ -182,7 +218,7 @@ export default function DeleteAccountScreen({ navigation }) {
               onChangeText={update('reasonDetails')}
               multiline
               maxLength={1000}
-              error={detailsMissing ? t('account.deleteReasonDetailsRequired') : ''}
+              error={fieldErrors.reasonDetails}
             />
 
             <DeletionPolicy />
@@ -191,13 +227,14 @@ export default function DeleteAccountScreen({ navigation }) {
               onPress={() => update('agree')(!form.agree)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: form.agree }}
-              style={styles.agree}
+              style={[styles.agree, fieldErrors.agree ? styles.agreeInvalid : null]}
             >
               <View style={[styles.box, form.agree ? styles.boxOn : null]}>
                 {form.agree ? <Check size={13} color="#ffffff" /> : null}
               </View>
               <Text style={styles.agreeText}>{t('account.deleteAgree')}</Text>
             </Pressable>
+            {fieldErrors.agree ? <Text accessibilityRole="alert" style={styles.fieldError}>{fieldErrors.agree}</Text> : null}
 
             <TextField
               label={t('account.deleteConfirmLabel')}
@@ -207,10 +244,10 @@ export default function DeleteAccountScreen({ navigation }) {
               autoCorrect={false}
               autoComplete="off"
               maxLength={50}
-              error={form.confirmText && !confirmTyped ? t('account.deleteConfirmMismatch') : ''}
+              error={fieldErrors.confirmText}
             />
 
-            <FormNotice tone="error" message={errorMessage} />
+            <ToastMessage tone="error" text={errorMessage} />
 
             <View style={styles.actions}>
               <Pressable onPress={() => navigation.goBack()} disabled={deleting} style={[styles.cancel, deleting ? styles.dim : null]}>
@@ -218,9 +255,10 @@ export default function DeleteAccountScreen({ navigation }) {
               </Pressable>
               <Pressable
                 onPress={submit}
-                disabled={!canDelete}
+                // Pressable while incomplete, so a press can point at what is missing.
+                disabled={deleting}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: !canDelete }}
+                accessibilityState={{ disabled: deleting }}
                 style={[styles.danger, !canDelete ? styles.dim : null]}
               >
                 <Trash2 size={14} color="#ffffff" />
@@ -251,6 +289,8 @@ const styles = createStyles((c) => ({
     alignItems: 'center', justifyContent: 'center', backgroundColor: c.card,
   },
   boxOn: { borderColor: '#e11d48', backgroundColor: '#e11d48' },
+  agreeInvalid: { borderColor: '#dc2626', marginBottom: 4 },
+  fieldError: { marginBottom: 14, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
   agreeText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontWeight: '600', color: c.amberTextStrong },
   actions: { marginTop: 6, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   cancel: { height: 40, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card },

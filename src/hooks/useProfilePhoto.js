@@ -8,13 +8,14 @@
 // Android 13+ requests READ_MEDIA_IMAGES, which this app does not declare, so
 // the request was always refused and the upload never started.
 import { useState } from 'react'
-import { Alert, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { useDispatch } from 'react-redux'
 import * as ImagePicker from 'expo-image-picker'
 import { updateProfileImage } from '../api/auth'
 import { uploadLocalFile } from '../api/upload'
 import { mergeUser } from '../store/authSlice'
 import { useLanguage } from '../i18n/LanguageContext'
+import { toast } from '../components/Toast'
 
 // The server takes JPG, PNG and WebP only, and checks the bytes match the type.
 const MIME_BY_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
@@ -50,7 +51,7 @@ export function useProfilePhoto() {
       // declared in app.json).
       const permission = await ImagePicker.requestCameraPermissionsAsync()
       if (!permission.granted) {
-        Alert.alert(t('photo.cameraDenied'), t('photo.cameraDeniedBody'))
+        toast.error(t('photo.cameraDeniedBody'), { title: t('photo.cameraDenied') })
         return false
       }
       result = await ImagePicker.launchCameraAsync({ ...options, cameraType: ImagePicker.CameraType.front })
@@ -68,7 +69,7 @@ export function useProfilePhoto() {
       return true
     } catch (error) {
       const detail = error?.response?.data?.detail
-      Alert.alert(t('photo.failed'), (typeof detail === 'string' && td(detail)) || t('photo.failedBody'))
+      toast.error((typeof detail === 'string' && td(detail)) || t('photo.failedBody'), { title: t('photo.failed') })
       return false
     } finally {
       setBusy(false)

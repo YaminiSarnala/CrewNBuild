@@ -20,6 +20,7 @@ import {
 import { formatMoney } from '../../utils/countryConfig'
 import { ActionButton, SelectChip, SheetModal } from '../../components/builder/BuilderUi'
 import { DateField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { EmptyCard } from './engineerParts'
 import {
   ChoiceRow, EquipmentImage, EquipmentPrices, EquipmentRequestFacts, EquipmentUsageHistory, Field, Input, Loading,
@@ -31,6 +32,13 @@ import { createStyles } from '../../theme/createStyles'
 const isEquipmentSupplier = (supplier) => supplier?.supplier_category === EQUIPMENT_SUPPLIER_CATEGORY
 const digits = (value) => value.replace(/[^\d]/g, '')
 
+// Every failing field is highlighted at once; the toast sums it up.
+function reportErrors(errors, t) {
+  const list = Object.values(errors).filter(Boolean)
+  if (list.length) toast.error(list.length === 1 ? list[0] : t('cp.val.completeFields'))
+  return list.length > 0
+}
+
 // ---------------------------------------------------------- request forms
 
 function RentSheet({ projectId, supplierId, item, money, onClose, onSent }) {
@@ -40,8 +48,12 @@ function RentSheet({ projectId, supplierId, item, money, onClose, onSent }) {
   const [form, setForm] = useState({ quantity: '1', rate_unit: units[0]?.unit || '', start_date: today, end_date: today, notes: '' })
   const [periodFree, setPeriodFree] = useState({ loading: false, value: item.available_to_rent })
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const set = (field) => (value) => setForm((current) => ({ ...current, [field]: value }))
+  const [errors, setErrors] = useState({})
+  const set = (field) => (value) => {
+    setForm((current) => ({ ...current, [field]: value }))
+    // A date change can settle the other date's complaint too.
+    setErrors((current) => (field === 'start_date' || field === 'end_date' ? { ...current, start_date: '', end_date: '' } : { ...current, [field]: '' }))
+  }
   const unit = units.find((rate) => rate.unit === form.rate_unit)
 
   // Availability for exactly the chosen period, from the backend.
@@ -60,12 +72,15 @@ function RentSheet({ projectId, supplierId, item, money, onClose, onSent }) {
   }, [projectId, supplierId, item.id, form.start_date, form.end_date])
 
   const submit = async () => {
-    setError('')
     const quantity = Number(form.quantity)
-    if (!Number.isInteger(quantity) || quantity < 1) { setError(t('equipment.error.quantityOne')); return }
-    if (!form.rate_unit) { setError(t('equipment.error.rateUnit')); return }
-    if (!form.start_date || !form.end_date) { setError(t('equipment.error.rentalDates')); return }
-    if (form.end_date < form.start_date) { setError(t('labor.error.endBeforeStart')); return }
+    const problems = {}
+    if (!Number.isInteger(quantity) || quantity < 1) problems.quantity = t('equipment.error.quantityOne')
+    if (!form.rate_unit) problems.rate_unit = t('equipment.error.rateUnit')
+    if (!form.start_date) problems.start_date = t('equipment.error.rentalDates')
+    if (!form.end_date) problems.end_date = t('equipment.error.rentalDates')
+    else if (form.start_date && form.end_date < form.start_date) problems.end_date = t('labor.error.endBeforeStart')
+    setErrors(problems)
+    if (reportErrors(problems, t)) return
     setBusy(true)
     try {
       await createEquipmentRequest(projectId, {
@@ -75,7 +90,7 @@ function RentSheet({ projectId, supplierId, item, money, onClose, onSent }) {
       onSent({ tone: 'success', text: t('equipment.msg.rentalSent', { count: quantity, name: item.name }) })
     } catch (failure) {
       // e.g. the units were taken meanwhile: shown as the backend says it.
-      setError(supplyErrorMessage(failure, t('equipment.error.rentalSend')))
+      toast.error(supplyErrorMessage(failure, t('equipment.error.rentalSend')))
       setBusy(false)
     }
   }
@@ -100,22 +115,21 @@ function RentSheet({ projectId, supplierId, item, money, onClose, onSent }) {
       )}
     >
       <Field label={t('equipment.field.equipment')}><Input value={item.name} editable={false} /></Field>
-      <Field label={t('equipment.field.quantity')}>
-        <Input value={form.quantity} onChangeText={(value) => set('quantity')(digits(value))} keyboardType="number-pad" />
+      <Field label={t('equipment.field.quantity')} error={errors.quantity}>
+        <Input value={form.quantity} onChangeText={(value) => set('quantity')(digits(value))} keyboardType="number-pad" invalid={Boolean(errors.quantity)} />
       </Field>
-      <Field label={t('equipment.field.rateUnit')}>
+      <Field label={t('equipment.field.rateUnit')} error={errors.rate_unit}>
         {/* Only units this item has a rate for. */}
-        <ChoiceRow options={units.map((rate) => ({ value: rate.unit, label: t(rate.labelKey) }))} value={form.rate_unit} onChange={set('rate_unit')} />
+        <ChoiceRow options={units.map((rate) => ({ value: rate.unit, label: t(rate.labelKey) }))} value={form.rate_unit} onChange={set('rate_unit')} invalid={Boolean(errors.rate_unit)} />
         {unit ? <Text style={styles.hint}>{`${t('equipment.engineer.currentRate')} ${money(item[unit.field])} / ${t(unit.perKey)}`}</Text> : null}
       </Field>
       <View style={styles.pair}>
-        <DateField label={t('labor.field.startDate')} value={form.start_date} min={today} onChange={set('start_date')} containerStyle={{ flex: 1 }} />
-        <DateField label={t('labor.field.endDate')} value={form.end_date} min={form.start_date || today} onChange={set('end_date')} containerStyle={{ flex: 1 }} />
+        <DateField label={t('labor.field.startDate')} value={form.start_date} min={today} onChange={set('start_date')} error={errors.start_date} containerStyle={{ flex: 1 }} />
+        <DateField label={t('labor.field.endDate')} value={form.end_date} min={form.start_date || today} onChange={set('end_date')} error={errors.end_date} containerStyle={{ flex: 1 }} />
       </View>
       <Text style={styles.availability}>{availability}</Text>
       <Field label={t('labor.field.notes')}><Input multiline value={form.notes} onChangeText={set('notes')} /></Field>
       <Text style={styles.small}>{t('equipment.engineer.rateFixed')}</Text>
-      <SupplyNotice notice={error ? { tone: 'error', text: error } : null} />
     </SheetModal>
   )
 }
@@ -124,19 +138,21 @@ function BuySheet({ projectId, item, money, onClose, onSent }) {
   const { t } = useLanguage()
   const [form, setForm] = useState({ quantity: '1', notes: '' })
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const set = (field) => (value) => setForm((current) => ({ ...current, [field]: value }))
+  const [errors, setErrors] = useState({})
+  const set = (field) => (value) => { setForm((current) => ({ ...current, [field]: value })); setErrors((current) => ({ ...current, [field]: '' })) }
   const quantity = Number(form.quantity)
 
   const submit = async () => {
-    setError('')
-    if (!Number.isInteger(quantity) || quantity < 1) { setError(t('equipment.error.quantityOne')); return }
+    const problems = {}
+    if (!Number.isInteger(quantity) || quantity < 1) problems.quantity = t('equipment.error.quantityOne')
+    setErrors(problems)
+    if (reportErrors(problems, t)) return
     setBusy(true)
     try {
       await createEquipmentRequest(projectId, { equipment_item_id: item.id, request_kind: 'BUY', quantity, notes: form.notes || null })
       onSent({ tone: 'success', text: t('equipment.msg.purchaseSent', { count: quantity, name: item.name }) })
     } catch (failure) {
-      setError(supplyErrorMessage(failure, t('equipment.error.purchaseSend')))
+      toast.error(supplyErrorMessage(failure, t('equipment.error.purchaseSend')))
       setBusy(false)
     }
   }
@@ -164,12 +180,11 @@ function BuySheet({ projectId, item, money, onClose, onSent }) {
           <Text style={styles.factValue}>{money(item.sale_price)}</Text>
         </View>
       </View>
-      <Field label={t('equipment.field.quantity')}>
-        <Input value={form.quantity} onChangeText={(value) => set('quantity')(digits(value))} keyboardType="number-pad" />
+      <Field label={t('equipment.field.quantity')} error={errors.quantity}>
+        <Input value={form.quantity} onChangeText={(value) => set('quantity')(digits(value))} keyboardType="number-pad" invalid={Boolean(errors.quantity)} />
         {Number.isInteger(quantity) && quantity > 0 ? <Text style={styles.hint}>{`${t('equipment.engineer.totalAtPrice')} ${money(quantity * Number(item.sale_price || 0))}`}</Text> : null}
       </Field>
       <Field label={t('labor.field.notes')}><Input multiline value={form.notes} onChangeText={set('notes')} /></Field>
-      <SupplyNotice notice={error ? { tone: 'error', text: error } : null} />
     </SheetModal>
   )
 }
@@ -185,21 +200,23 @@ function RentalUsage({ request, refreshKey, onSaved }) {
   const editable = request.status === 'ACCEPTED' && !startsLater
   const [form, setForm] = useState({ usage_date: lastAllowed, hours_used: '', notes: '' })
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState(null)
-  const set = (field) => (value) => setForm((current) => ({ ...current, [field]: value }))
+  const [errors, setErrors] = useState({})
+  const set = (field) => (value) => { setForm((current) => ({ ...current, [field]: value })); setErrors((current) => ({ ...current, [field]: '' })) }
 
   const save = async () => {
-    setNotice(null)
     const hours = Number(form.hours_used)
-    if (form.hours_used === '' || Number.isNaN(hours) || hours < 0) { setNotice({ tone: 'error', text: t('equipment.error.hours') }); return }
+    const problems = {}
+    if (form.hours_used === '' || Number.isNaN(hours) || hours < 0) problems.hours_used = t('equipment.error.hours')
+    setErrors(problems)
+    if (reportErrors(problems, t)) return
     setBusy(true)
     try {
       await saveEquipmentUsage(request.id, form.usage_date, { hours_used: hours, notes: form.notes || null })
-      setNotice({ tone: 'success', text: t('equipment.msg.usageSaved', { date: formatSupplyDate(form.usage_date) }) })
+      toast.success(t('equipment.msg.usageSaved', { date: formatSupplyDate(form.usage_date) }))
       setForm((current) => ({ ...current, hours_used: '', notes: '' }))
       onSaved()
     } catch (failure) {
-      setNotice({ tone: 'error', text: supplyErrorMessage(failure, t('equipment.error.usageSave')) })
+      toast.error(supplyErrorMessage(failure, t('equipment.error.usageSave')))
     } finally {
       setBusy(false)
     }
@@ -211,12 +228,11 @@ function RentalUsage({ request, refreshKey, onSaved }) {
         <View style={styles.formBox}>
           <Text style={styles.formTitle}>{t('equipment.usage.record')}</Text>
           <DateField label={t('equipment.field.usageDate')} value={form.usage_date} min={start} max={lastAllowed} onChange={set('usage_date')} containerStyle={{ marginTop: 8, marginBottom: 6 }} />
-          <Field label={t('equipment.field.hoursUsed')}>
-            <Input value={form.hours_used} onChangeText={(value) => set('hours_used')(value.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" />
+          <Field label={t('equipment.field.hoursUsed')} error={errors.hours_used}>
+            <Input value={form.hours_used} onChangeText={(value) => set('hours_used')(value.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" invalid={Boolean(errors.hours_used)} />
           </Field>
           <Field label={t('labor.field.notes')}><Input value={form.notes} onChangeText={set('notes')} /></Field>
           <Text style={styles.small}>{t('equipment.usage.replaceHint')}</Text>
-          <SupplyNotice notice={notice} />
           <View style={[styles.footer, { marginTop: 8 }]}>
             <ActionButton small icon={CalendarDays} label={t('equipment.usage.record')} onPress={save} busy={busy} disabled={busy} />
           </View>
@@ -234,7 +250,7 @@ function RentalUsage({ request, refreshKey, onSaved }) {
 
 // ---------------------------------------------------------------- requests
 
-function RequestCard({ request, money, refreshKey, onChanged, setNotice }) {
+function RequestCard({ request, money, refreshKey, onChanged }) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -243,13 +259,12 @@ function RequestCard({ request, money, refreshKey, onChanged, setNotice }) {
   const cancel = async () => {
     if (!(await confirmAsync(t(rent ? 'equipment.confirm.cancelRental' : 'equipment.confirm.cancelPurchase'), t('labor.action.cancelRequest'), t('labor.action.cancel')))) return
     setBusy(true)
-    setNotice(null)
     try {
       await cancelEquipmentRequest(request.id)
-      setNotice({ tone: 'success', text: t('equipment.msg.cancelled') })
+      toast.success(t('equipment.msg.cancelled'))
       onChanged()
     } catch (failure) {
-      setNotice({ tone: 'error', text: supplyErrorMessage(failure, t('equipment.error.cancel')) })
+      toast.error(supplyErrorMessage(failure, t('equipment.error.cancel')))
     } finally {
       setBusy(false)
     }
@@ -316,7 +331,6 @@ export default function EngineerEquipmentPanel({ projects = [], activeProjectId 
   const [openSupplierId, setOpenSupplierId] = useState(openSupplierOnLoad)
   const loadedProjectId = useRef(projectId)
   const [dialog, setDialog] = useState(null) // { kind: 'RENT'|'BUY', item, supplierId }
-  const [notice, setNotice] = useState(null)
   const [tab, setTab] = useState('active')
   const [refreshKey, setRefreshKey] = useState(0)
   const seq = useRef(0)
@@ -366,7 +380,7 @@ export default function EngineerEquipmentPanel({ projects = [], activeProjectId 
     { id: 'history', label: t('labor.tab.history'), list: groups.history },
   ]
   const shown = tabs.find((item) => item.id === tab) || tabs[0]
-  const sent = (result) => { setDialog(null); setNotice(result); setTab('pending'); load() }
+  const sent = (result) => { setDialog(null); toast.show(result?.text, result?.tone); setTab('pending'); load() }
 
   if (!projects.length) {
     return <EmptyCard icon={Construction} title={t('labor.engineer.noProjectsTitle')} body={t('equipment.engineer.noProjectsMessage')} />
@@ -429,10 +443,10 @@ export default function EngineerEquipmentPanel({ projects = [], activeProjectId 
                     {item.specifications ? <Text style={styles.small} numberOfLines={2}>{item.specifications}</Text> : null}
                     <View style={styles.itemActions}>
                       {allowsRent(item) ? (
-                        <ActionButton small icon={Truck} label={allowsBuy(item) ? t('equipment.mode.rent') : t('equipment.engineer.requestRental')} onPress={() => { setNotice(null); setDialog({ kind: 'RENT', item, supplierId: supplier.user_id }) }} style={{ flex: 1 }} />
+                        <ActionButton small icon={Truck} label={allowsBuy(item) ? t('equipment.mode.rent') : t('equipment.engineer.requestRental')} onPress={() => { setDialog({ kind: 'RENT', item, supplierId: supplier.user_id }) }} style={{ flex: 1 }} />
                       ) : null}
                       {allowsBuy(item) ? (
-                        <ActionButton small tone="outline" icon={ShoppingCart} label={allowsRent(item) ? t('equipment.mode.buy') : t('equipment.engineer.requestPurchase')} disabled={item.available_to_buy < 1} onPress={() => { setNotice(null); setDialog({ kind: 'BUY', item, supplierId: supplier.user_id }) }} style={{ flex: 1 }} />
+                        <ActionButton small tone="outline" icon={ShoppingCart} label={allowsRent(item) ? t('equipment.mode.buy') : t('equipment.engineer.requestPurchase')} disabled={item.available_to_buy < 1} onPress={() => { setDialog({ kind: 'BUY', item, supplierId: supplier.user_id }) }} style={{ flex: 1 }} />
                       ) : null}
                     </View>
                   </View>
@@ -445,10 +459,9 @@ export default function EngineerEquipmentPanel({ projects = [], activeProjectId 
             <EmptyCard icon={Construction} title={t('equipment.engineer.noSupplierTitle')} body={t('equipment.engineer.noSupplierMessage')} />
           )}
 
-          <SupplyNotice notice={notice} />
           <RequestTabs tabs={tabs} active={shown.id} onChange={setTab} />
           {shown.list.length
-            ? shown.list.map((request) => <RequestCard key={request.id} request={request} money={money} refreshKey={refreshKey} onChanged={load} setNotice={setNotice} />)
+            ? shown.list.map((request) => <RequestCard key={request.id} request={request} money={money} refreshKey={refreshKey} onChanged={load} />)
             : <EmptyCard icon={Construction} title={t(`equipment.engineer.empty.${shown.id}.title`)} body={t(`equipment.engineer.empty.${shown.id}.message`)} />}
         </View>
       )}

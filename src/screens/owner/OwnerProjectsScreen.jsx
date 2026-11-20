@@ -15,7 +15,7 @@ import { HardHat, MapPin, Pencil, Plus, RotateCw, Trash2 } from 'lucide-react-na
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { useNotifications } from '../../notifications/NotificationsContext'
-import { FormNotice } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
 import { deleteOwnerProject, fetchOwnerProjects } from '../../api/projects'
@@ -195,7 +195,6 @@ export default function OwnerProjectsScreen({ navigation, route }) {
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
-  const [deleteMessage, setDeleteMessage] = useState({ text: '', tone: 'success' })
 
   const load = useCallback(async () => {
     try {
@@ -244,15 +243,14 @@ export default function OwnerProjectsScreen({ navigation, route }) {
   }
 
   const deleteProject = async (project) => {
-    setDeleteMessage({ text: '', tone: 'success' })
     setDeletingId(project.id)
     try {
       await deleteOwnerProject(project.id)
       await load()
-      setDeleteMessage({ text: t('dash.msg.projectDeleted'), tone: 'success' })
+      toast.success(t('dash.msg.projectDeleted'))
     } catch (deleteError) {
       // The server refuses a project that has started or has a live award, and says why.
-      setDeleteMessage({ text: apiDetail(deleteError, t('dash.err.deleteProject')), tone: 'error' })
+      toast.error(apiDetail(deleteError, t('dash.err.deleteProject')))
     } finally {
       setDeletingId(null)
     }
@@ -274,8 +272,6 @@ export default function OwnerProjectsScreen({ navigation, route }) {
           <Text style={[styles.text3, { fontSize: 12.5 }]}>{t('ui.createProject')}</Text>
         </Pressable>
       </View>
-
-      <FormNotice message={deleteMessage.text} tone={deleteMessage.tone} style={{ marginBottom: 12 }} />
 
       <PanelState
         loading={loading}

@@ -12,7 +12,7 @@ import PianoLoader from '../../components/PianoLoader'
 import { useFocusEffect } from '@react-navigation/native'
 import { Construction, Pencil, Plus, Power, Search, X } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
-import { Notice } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { deactivateEquipmentItem, equipmentErrorMessage, updateEquipmentItem } from '../../api/equipment'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -35,7 +35,7 @@ export default function SupplierInventoryScreen({ navigation }) {
   const { t } = useLanguage()
   const country = useSupplierCountry()
   const { width, maxContentWidth, gutter, isTablet } = useResponsive()
-  const { items, itemsStatus, reload, notice, setNotice } = useEquipment()
+  const { items, itemsStatus, reload } = useEquipment()
   const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -59,20 +59,18 @@ export default function SupplierInventoryScreen({ navigation }) {
   const cardWidth = Math.floor((inner - GAP * (columns - 1)) / columns)
 
   const openForm = (item) => {
-    setNotice(null)
     navigation.navigate('SupplierEquipmentItem', item ? { itemId: item.id } : {})
   }
 
   const toggleActive = async (item) => {
     setBusyId(item.id)
-    setNotice(null)
     try {
       if (item.is_active) await deactivateEquipmentItem(item.id)
       else await updateEquipmentItem(item.id, { is_active: true })
-      setNotice({ tone: 'success', text: t(item.is_active ? 'labor.msg.deactivated' : 'labor.msg.activated', { name: item.name }) })
+      toast.success(t(item.is_active ? 'labor.msg.deactivated' : 'labor.msg.activated', { name: item.name }))
       await reload()
     } catch (failure) {
-      setNotice({ tone: 'error', text: equipmentErrorMessage(failure, t('equipment.error.update')) })
+      toast.error(equipmentErrorMessage(failure, t('equipment.error.update')))
     } finally {
       setBusyId(null)
     }
@@ -110,12 +108,6 @@ export default function SupplierInventoryScreen({ navigation }) {
               </Pressable>
             ) : null}
           </View>
-        ) : null}
-
-        {notice?.text ? (
-          <Pressable onPress={() => setNotice(null)} style={{ marginTop: 10 }}>
-            <Notice tone={notice.tone} text={notice.text} />
-          </Pressable>
         ) : null}
 
         <View style={{ marginTop: 14 }}>

@@ -18,9 +18,10 @@ import {
 import { allocationSummary, availableCount, offeredServices, workersRequestError } from '../../utils/laborRequestRules'
 import { ActionButton, SelectChip, SheetModal } from '../../components/builder/BuilderUi'
 import { DateField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { EmptyCard } from './engineerParts'
 import {
-  ChoiceRow, Fact, Field, Input, LaborRecordsList, Loading, RequestTabs, SupplyNotice, SupplyStatusBadge,
+  ChoiceRow, Fact, Field, FieldErrorText, Input, LaborRecordsList, Loading, RequestTabs, SupplyNotice, SupplyStatusBadge,
   confirmAsync, formatSupplyDate,
 } from './supplyParts'
 import { COLORS } from '../../theme/tokens'
@@ -31,6 +32,13 @@ const isLaborSupplier = (supplier) => supplier?.supplier_category === LABOR_SUPP
 const digits = (value) => value.replace(/[^\d]/g, '')
 const decimal = (value) => value.replace(/[^\d.]/g, '')
 
+// Every failing field is highlighted at once; the toast sums it up.
+function reportErrors(errors, t) {
+  const list = Object.values(errors).filter(Boolean)
+  if (list.length) toast.error(list.length === 1 ? list[0] : t('cp.val.completeFields'))
+  return list.length > 0
+}
+
 // ------------------------------------------------------------ request form
 
 function RequestLaborSheet({ projectId, supplier, services, trades, tradesError = '', onClose, onSent, onStale }) {
@@ -40,8 +48,12 @@ function RequestLaborSheet({ projectId, supplier, services, trades, tradesError 
   const today = localIsoDate()
   const [form, setForm] = useState({ trade: offered[0]?.trade || '', workers_required: '', start_date: today, end_date: '', work_description: '', notes: '' })
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const set = (field) => (value) => setForm((current) => ({ ...current, [field]: value }))
+  const [errors, setErrors] = useState({})
+  const set = (field) => (value) => {
+    setForm((current) => ({ ...current, [field]: value }))
+    // A date change can settle the other date's complaint too.
+    setErrors((current) => (field === 'start_date' || field === 'end_date' ? { ...current, start_date: '', end_date: '' } : { ...current, [field]: '' }))
+  }
   useEffect(() => {
     if (offered.length && !offered.some((service) => service.trade === form.trade)) {
       setForm((current) => ({ ...current, trade: offered[0].trade }))
@@ -54,13 +66,15 @@ function RequestLaborSheet({ projectId, supplier, services, trades, tradesError 
   const noneAvailable = Boolean(selected) && available < 1
 
   const submit = async () => {
-    setError('')
     const workers = Number(form.workers_required)
-    if (!form.trade) { setError(t('labor.error.chooseTrade')); return }
+    const problems = {}
+    if (!form.trade) problems.trade = t('labor.error.chooseTrade')
     const invalid = workersRequestError(form.workers_required, selected)
-    if (invalid) { setError(t(invalid.key, invalid.params)); return }
-    if (!form.start_date) { setError(t('labor.error.startDate')); return }
-    if (form.end_date && form.end_date < form.start_date) { setError(t('labor.error.endBeforeStart')); return }
+    if (invalid) problems.workers_required = t(invalid.key, invalid.params)
+    if (!form.start_date) problems.start_date = t('labor.error.startDate')
+    else if (form.end_date && form.end_date < form.start_date) problems.end_date = t('labor.error.endBeforeStart')
+    setErrors(problems)
+    if (reportErrors(problems, t)) return
     // The request has one free-text field; notes travel inside it, labelled.
     const description = [form.work_description.trim(), form.notes.trim() ? `${t('labor.field.notes')}: ${form.notes.trim()}` : ''].filter(Boolean).join('\n\n')
     setBusy(true)
@@ -75,7 +89,7 @@ function RequestLaborSheet({ projectId, supplier, services, trades, tradesError 
       })
       onSent({ tone: 'success', text: t('labor.msg.requestSent', { name: supplierName }) })
     } catch (failure) {
-      setError(supplyErrorMessage(failure, t('labor.error.requestSend')))
+      toast.error(supplyErrorMessage(failure, t('labor.error.requestSend')))
       setBusy(false)
       // Availability moved since this screen loaded: show the current figure.
       if (failure?.response?.status === 409) onStale?.()
@@ -99,19 +113,19 @@ function RequestLaborSheet({ projectId, supplier, services, trades, tradesError 
         {/* Fixed to the Builder's assignment; there is nothing to choose. */}
         <Input value={supplierName} editable={false} />
       </Field>
-      <Field label={t('labor.field.trade')}>
-        <ChoiceRow options={offered.map((service) => ({ value: service.trade, label: service.trade }))} value={form.trade} onChange={set('trade')} />
+      <Field label={t('labor.field.trade')} error={errors.trade}>
+        <ChoiceRow options={offered.map((service) => ({ value: service.trade, label: service.trade }))} value={form.trade} onChange={set('trade')} invalid={Boolean(errors.trade)} />
         {selected ? (noneAvailable
           ? <Text style={styles.warn}>{t('labor.engineer.noneAvailable', { trade: selected.trade })}</Text>
           : <Text style={styles.ok}>{t('labor.engineer.availableWorkers', { count: available })}</Text>) : null}
       </Field>
       <Field label={t('labor.field.workersRequired')}>
-        <Input value={form.workers_required} onChangeText={(value) => set('workers_required')(digits(value))} keyboardType="number-pad" editable={!noneAvailable} invalid={Boolean(workersError)} />
-        {workersError && !noneAvailable ? <Text style={styles.error}>{t(workersError.key, workersError.params)}</Text> : null}
+        <Input value={form.workers_required} onChangeText={(value) => set('workers_required')(digits(value))} keyboardType="number-pad" editable={!noneAvailable} invalid={Boolean(workersError || errors.workers_required)} />
+        {workersError && !noneAvailable ? <Text style={styles.error}>{t(workersError.key, workersError.params)}</Text> : <FieldErrorText message={errors.workers_required} />}
       </Field>
       <View style={styles.pair}>
-        <DateField label={t('labor.field.startDate')} value={form.start_date} min={today} onChange={set('start_date')} containerStyle={{ flex: 1 }} />
-        <DateField label={t('labor.field.endDate')} value={form.end_date} min={form.start_date || today} onChange={set('end_date')} containerStyle={{ flex: 1 }} />
+        <DateField label={t('labor.field.startDate')} value={form.start_date} min={today} onChange={set('start_date')} error={errors.start_date} containerStyle={{ flex: 1 }} />
+        <DateField label={t('labor.field.endDate')} value={form.end_date} min={form.start_date || today} onChange={set('end_date')} error={errors.end_date} containerStyle={{ flex: 1 }} />
       </View>
       <Field label={t('labor.field.workDescription')}>
         <Input value={form.work_description} onChangeText={set('work_description')} placeholder={t('labor.field.activityPh')} />
@@ -120,7 +134,6 @@ function RequestLaborSheet({ projectId, supplier, services, trades, tradesError 
         <Input multiline value={form.notes} onChangeText={set('notes')} />
       </Field>
       {tradesError ? <Text style={styles.amberBox}>{tradesError}</Text> : null}
-      <SupplyNotice notice={error ? { tone: 'error', text: error } : null} />
     </SheetModal>
   )
 }
@@ -140,7 +153,9 @@ function DailyAttendance({ request, refreshKey, onSaved }) {
   const [workDate, setWorkDate] = useState(lastAllowed)
   const [form, setForm] = useState(EMPTY_COUNTS)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState(null)
+  // Per-field problems, plus one message for the counts that together exceed the allocation.
+  const [errors, setErrors] = useState({})
+  const [groupError, setGroupError] = useState('')
 
   useEffect(() => {
     let current = true
@@ -163,25 +178,36 @@ function DailyAttendance({ request, refreshKey, onSaved }) {
       activity: savedForDate.activity || '',
       notes: savedForDate.notes || '',
     } : EMPTY_COUNTS)
+    setErrors({})
+    setGroupError('')
   }, [workDate, savedForDate?.id, savedForDate?.updated_at]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const set = (field) => (value) => setForm((current) => ({ ...current, [field]: value }))
+  const COUNTED = ['present_count', 'absent_count', 'half_day_count']
+  const set = (field) => (value) => {
+    setForm((current) => ({ ...current, [field]: value }))
+    setErrors((current) => ({ ...current, [field]: '' }))
+    if (COUNTED.includes(field)) setGroupError('')
+  }
   const allocated = Number(request.workers_allocated || 0)
 
   const save = async () => {
-    setNotice(null)
-    const counts = ['present_count', 'absent_count', 'half_day_count', 'overtime_workers'].map((field) => Number(form[field] || 0))
+    const countFields = ['present_count', 'absent_count', 'half_day_count', 'overtime_workers']
+    const counts = countFields.map((field) => Number(form[field] || 0))
     const [present, absent, halfDay, overtimeWorkers] = counts
     const overtimeHours = Number(form.overtime_hours || 0)
-    if (counts.some((value) => !Number.isInteger(value) || value < 0) || Number.isNaN(overtimeHours) || overtimeHours < 0) {
-      setNotice({ tone: 'error', text: t('labor.error.counts') }); return
-    }
-    if (present + absent + halfDay > allocated) {
-      setNotice({ tone: 'error', text: t('labor.error.countsExceed', { total: present + absent + halfDay, allocated }) }); return
-    }
-    if (overtimeWorkers > present + halfDay) {
-      setNotice({ tone: 'error', text: t('labor.error.overtimeExceed') }); return
-    }
+    const problems = {}
+    countFields.forEach((field, index) => {
+      if (!Number.isInteger(counts[index]) || counts[index] < 0) problems[field] = t('labor.error.counts')
+    })
+    if (Number.isNaN(overtimeHours) || overtimeHours < 0) problems.overtime_hours = t('labor.error.counts')
+    const countsValid = !Object.keys(problems).length
+    const exceeded = countsValid && present + absent + halfDay > allocated
+      ? t('labor.error.countsExceed', { total: present + absent + halfDay, allocated })
+      : ''
+    if (countsValid && overtimeWorkers > present + halfDay) problems.overtime_workers = t('labor.error.overtimeExceed')
+    setErrors(problems)
+    setGroupError(exceeded)
+    if (reportErrors({ ...problems, group: exceeded }, t)) return
     setBusy(true)
     try {
       await saveLaborDailyRecord(request.id, workDate, {
@@ -189,18 +215,18 @@ function DailyAttendance({ request, refreshKey, onSaved }) {
         overtime_workers: overtimeWorkers, overtime_hours: overtimeHours,
         activity: form.activity || null, notes: form.notes || null,
       })
-      setNotice({ tone: 'success', text: t('labor.msg.attendanceSaved', { date: formatSupplyDate(workDate) }) })
+      toast.success(t('labor.msg.attendanceSaved', { date: formatSupplyDate(workDate) }))
       onSaved()
     } catch (failure) {
-      setNotice({ tone: 'error', text: supplyErrorMessage(failure, t('labor.error.attendanceSave')) })
+      toast.error(supplyErrorMessage(failure, t('labor.error.attendanceSave')))
     } finally {
       setBusy(false)
     }
   }
 
   const numberField = (field, label, isDecimal = false) => (
-    <Field label={label} style={styles.third}>
-      <Input value={form[field]} onChangeText={(value) => set(field)(isDecimal ? decimal(value) : digits(value))} keyboardType={isDecimal ? 'decimal-pad' : 'number-pad'} selectTextOnFocus />
+    <Field label={label} style={styles.third} error={errors[field]}>
+      <Input value={form[field]} onChangeText={(value) => set(field)(isDecimal ? decimal(value) : digits(value))} keyboardType={isDecimal ? 'decimal-pad' : 'number-pad'} selectTextOnFocus invalid={Boolean(errors[field] || (groupError && COUNTED.includes(field)))} />
     </Field>
   )
 
@@ -220,13 +246,13 @@ function DailyAttendance({ request, refreshKey, onSaved }) {
             {numberField('overtime_workers', t('labor.field.otWorkers'))}
             {numberField('overtime_hours', t('labor.field.otHours'), true)}
           </View>
+          {groupError ? <View style={{ marginTop: -6, marginBottom: 8 }}><FieldErrorText message={groupError} /></View> : null}
           <Field label={t('labor.field.activity')}>
             <Input value={form.activity} onChangeText={set('activity')} maxLength={255} placeholder={t('labor.field.activityPh')} />
           </Field>
           <Field label={t('labor.field.notes')}>
             <Input value={form.notes} onChangeText={set('notes')} />
           </Field>
-          <SupplyNotice notice={notice} />
           <View style={styles.footer}>
             <ActionButton small icon={CheckCircle2} label={savedForDate ? t('labor.attendance.update') : t('labor.attendance.save')} onPress={save} busy={busy} disabled={busy} />
           </View>
@@ -256,7 +282,7 @@ function DailyAttendance({ request, refreshKey, onSaved }) {
 
 // ------------------------------------------------------------- requests
 
-function RequestCard({ request, refreshKey, onChanged, setNotice }) {
+function RequestCard({ request, refreshKey, onChanged }) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -268,14 +294,13 @@ function RequestCard({ request, refreshKey, onChanged, setNotice }) {
     const okLabel = action === 'complete' ? t('labor.action.completeAssignment') : t('labor.action.cancelRequest')
     if (!(await confirmAsync(question, okLabel, t('labor.action.cancel')))) return
     setBusy(true)
-    setNotice(null)
     try {
       if (action === 'cancel') await cancelLaborRequest(request.id)
       else await completeLaborRequest(request.id)
-      setNotice({ tone: 'success', text: action === 'cancel' ? t('labor.msg.cancelled') : t('labor.msg.completed') })
+      toast.success(action === 'cancel' ? t('labor.msg.cancelled') : t('labor.msg.completed'))
       onChanged()
     } catch (failure) {
-      setNotice({ tone: 'error', text: supplyErrorMessage(failure, t('labor.error.requestUpdate')) })
+      toast.error(supplyErrorMessage(failure, t('labor.error.requestUpdate')))
     } finally {
       setBusy(false)
     }
@@ -350,7 +375,6 @@ export default function EngineerLaborPanel({ projects = [], activeProjectId = nu
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [requesting, setRequesting] = useState(null)
-  const [notice, setNotice] = useState(null)
   const [tab, setTab] = useState('active')
   const [refreshKey, setRefreshKey] = useState(0)
   const seq = useRef(0)
@@ -455,17 +479,16 @@ export default function EngineerLaborPanel({ projects = [], activeProjectId = nu
                 ) : (
                   <Text style={styles.greyBox}>{t('labor.engineer.noTrades')}</Text>
                 )}
-                <ActionButton icon={Send} label={t('labor.engineer.requestLabor')} disabled={!services.length} onPress={() => { setNotice(null); setRequesting(supplier) }} style={{ marginTop: 10 }} />
+                <ActionButton icon={Send} label={t('labor.engineer.requestLabor')} disabled={!services.length} onPress={() => setRequesting(supplier)} style={{ marginTop: 10 }} />
               </View>
             )
           }) : (
             <EmptyCard icon={HardHat} title={t('labor.engineer.noSupplierTitle')} body={t('labor.engineer.noSupplierMessage')} />
           )}
 
-          <SupplyNotice notice={notice} />
           <RequestTabs tabs={tabs} active={shown.id} onChange={setTab} />
           {shown.list.length
-            ? shown.list.map((request) => <RequestCard key={request.id} request={request} refreshKey={refreshKey} onChanged={load} setNotice={setNotice} />)
+            ? shown.list.map((request) => <RequestCard key={request.id} request={request} refreshKey={refreshKey} onChanged={load} />)
             : <EmptyCard icon={HardHat} title={t(`labor.engineer.empty.${shown.id}.title`)} body={t(`labor.engineer.empty.${shown.id}.message`)} />}
         </View>
       )}
@@ -479,7 +502,7 @@ export default function EngineerLaborPanel({ projects = [], activeProjectId = nu
           tradesError={tradesError}
           onClose={() => setRequesting(null)}
           onStale={load}
-          onSent={(result) => { setRequesting(null); setNotice(result); setTab('pending'); load() }}
+          onSent={(result) => { setRequesting(null); toast.show(result?.text, result?.tone); setTab('pending'); load() }}
         />
       ) : null}
     </View>

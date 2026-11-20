@@ -14,7 +14,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { MapPin, Users } from 'lucide-react-native'
 import DashboardShell, { useAsyncData } from '../../components/DashboardShell'
-import { Notice, Section, SegmentTabs } from '../../components/builder/BuilderUi'
+import { Section, SegmentTabs } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import RequestsPanel from '../../components/RequestsPanel'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
@@ -70,9 +71,8 @@ export default function EngineerJobsScreen({ navigation, route }) {
   const closeLocation = () => { locationPromptDismissed = true; setLocationOpen(false) }
   const [refreshing, setRefreshing] = useState(false)
   const [appliedKeys, setAppliedKeys] = useState([])
-  const [joinMessage, setJoinMessage] = useState('')
-  const [joinError, setJoinError] = useState('')
-  const [sectionMessage, setSectionMessage] = useState('')
+  // Results show as a bottom toast; a missing invite code highlights its box.
+  const [codeError, setCodeError] = useState('')
   const [selectedContractor, setSelectedContractor] = useState(null)
   const [contractorProfile, setContractorProfile] = useState(null)
   const [selectedOpportunity, setSelectedOpportunity] = useState(null)
@@ -120,66 +120,64 @@ export default function EngineerJobsScreen({ navigation, route }) {
   }
 
   async function joinTeam(code) {
-    setJoinMessage('')
-    setJoinError('')
-    if (!code) { setJoinError(t('dash.engineer.msg.enterCode')); return }
+    setCodeError('')
+    if (!code) {
+      setCodeError(t('dash.engineer.msg.enterCode'))
+      toast.error(t('dash.engineer.msg.enterCode'))
+      return
+    }
     try {
       const result = await joinEngineerTeam(code)
-      setJoinMessage(t('dash.msg.joinedTeam', { company: td(result.company_name || result.contractor_name) }))
+      toast.success(t('dash.msg.joinedTeam', { company: td(result.company_name || result.contractor_name) }))
       reloadAll()
     } catch (error) {
-      setJoinError(apiErrorText(error, t('dash.engineer.msg.unableJoin')))
+      toast.error(apiErrorText(error, t('dash.engineer.msg.unableJoin')))
     }
   }
 
   async function sendJoinRequest(contractorId) {
     if (requireCompleteProfile(() => sendJoinRequest(contractorId))) return
-    setSectionMessage('')
     try {
       await requestEngineerJoin(contractorId)
-      setSectionMessage(t('dash.engineer.msg.joinRequestSent'))
+      toast.success(t('dash.engineer.msg.joinRequestSent'))
       reloadAll()
     } catch (error) {
-      setSectionMessage(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
+      toast.error(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
     }
   }
 
   async function respondToBuilderRequest(relationshipId, action) {
     // Joining a builder's team needs a complete profile; declining does not.
     if (action === 'ACCEPT' && requireCompleteProfile(() => respondToBuilderRequest(relationshipId, action))) return
-    setJoinMessage('')
-    setJoinError('')
     try {
       await respondEngineerJoinRequest(relationshipId, action)
-      setJoinMessage(action === 'ACCEPT' ? t('dash.msg.engineerRequestAccepted') : t('dash.msg.engineerRequestRejected'))
+      toast.success(action === 'ACCEPT' ? t('dash.msg.engineerRequestAccepted') : t('dash.msg.engineerRequestRejected'))
       reloadAll()
     } catch (error) {
-      setJoinError(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
+      toast.error(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
     }
   }
 
   async function respondToProjectRequest(requestId, accept) {
     if (accept && requireCompleteProfile(() => respondToProjectRequest(requestId, accept))) return
-    setSectionMessage('')
     try {
       if (accept) await acceptProjectRequest(requestId)
       else await rejectProjectRequest(requestId)
       reloadAll()
     } catch (error) {
-      setSectionMessage(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
+      toast.error(apiErrorText(error, t('dash.engineer.msg.unableJoinRequest')))
     }
   }
 
   async function applyOpportunity(opportunity) {
     if (requireCompleteProfile(() => applyOpportunity(opportunity))) return
-    setSectionMessage('')
     try {
       const result = await applyEngineerOpportunity(opportunity.project_id)
       setAppliedKeys(await saveApplied(opportunity.project_id))
-      setSectionMessage(t('dash.msg.applicationSent', { name: td(result.receiver_name) || t('dash.theBuilder') }))
       setSelectedOpportunity(null)
+      toast.success(t('dash.msg.applicationSent', { name: td(result.receiver_name) || t('dash.theBuilder') }))
     } catch (error) {
-      setSectionMessage(apiErrorText(error, t('dash.engineer.msg.unableApply')))
+      toast.error(apiErrorText(error, t('dash.engineer.msg.unableApply')))
       if (String(error?.response?.status) === '409') setAppliedKeys(await saveApplied(opportunity.project_id))
     }
   }
@@ -223,15 +221,14 @@ export default function EngineerJobsScreen({ navigation, route }) {
             onJoin={joinTeam}
             onRefresh={reloadAll}
             onRespondToBuilder={respondToBuilderRequest}
-            joinMessage={joinMessage}
-            joinError={joinError}
+            codeError={codeError}
+            onCodeChange={() => setCodeError('')}
           />
         ) : null}
 
         {tab === 'requests' ? (
           incomingRequestList.length ? (
             <View>
-              <Notice tone="info" text={sectionMessage} />
               <RequestsPanel
                 requestList={incomingRequestList}
                 onAccept={(requestId) => respondToProjectRequest(requestId, true)}
@@ -249,7 +246,6 @@ export default function EngineerJobsScreen({ navigation, route }) {
             teamStatusByContractor={teamStatusByContractor}
             onViewContractor={viewContractorProfile}
             onRequestJoin={(contractor) => sendJoinRequest(contractor.user_id || contractor.id)}
-            message={sectionMessage}
           />
         ) : null}
 
@@ -259,7 +255,6 @@ export default function EngineerJobsScreen({ navigation, route }) {
             appliedKeys={appliedKeys}
             onApply={applyOpportunity}
             onView={setSelectedOpportunity}
-            message={sectionMessage}
           />
         ) : null}
       </Section>
@@ -270,14 +265,12 @@ export default function EngineerJobsScreen({ navigation, route }) {
         onClose={() => { setSelectedContractor(null); setContractorProfile(null) }}
         onRequestJoin={(contractorId) => sendJoinRequest(contractorId)}
         requestState={selectedContractor ? teamStatusByContractor(selectedContractor.user_id || selectedContractor.id) : 'none'}
-        message={sectionMessage}
       />
       <OpportunitySheet
         opportunity={selectedOpportunity}
         applied={selectedOpportunity ? appliedKeys.includes(String(selectedOpportunity.project_id)) : false}
         onApply={applyOpportunity}
         onClose={() => setSelectedOpportunity(null)}
-        message={sectionMessage}
       />
             <LocationSheet
         visible={locationOpen}

@@ -8,12 +8,13 @@
 //   An older listing the supplier typed in themselves keeps its full form.
 import { useEffect, useState } from 'react'
 import { View, Text } from 'react-native'
-import { useDispatch, useSelector } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { Save } from 'lucide-react-native'
 import { ActionButton, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { BudgetInWords, SelectField, TextField } from '../../components/form'
 import { fetchCatalogProduct } from '../../api/catalog'
-import { selectSupplierProducts, setStoreNotice } from '../../store/supplierCatalogSlice'
+import { selectSupplierProducts } from '../../store/supplierCatalogSlice'
 import { StockBadge } from '../owner/marketplace/shopParts'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { SUPPLIER_CATEGORY_KEYS, optionLabel } from '../../i18n/optionKeys'
@@ -72,7 +73,6 @@ function Tile({ label, value }) {
 }
 
 export default function SupplierEditListingScreen({ navigation, route }) {
-  const dispatch = useDispatch()
   const { t, td } = useLanguage()
   const country = useSupplierCountry()
   const listingId = route.params?.listingId
@@ -80,7 +80,8 @@ export default function SupplierEditListingScreen({ navigation, route }) {
   const { update } = useSupplierListings()
   const [draft, setDraft] = useState(() => (product ? draftFromProduct(product) : null))
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
+  // Per-field problems from the last Save press; editing a field clears its own.
+  const [errors, setErrors] = useState({})
 
   const isCatalog = Boolean(product?.master_product_id)
   const [catalog, setCatalog] = useState({ status: isCatalog ? 'loading' : 'none', product: null })
@@ -102,7 +103,10 @@ export default function SupplierEditListingScreen({ navigation, route }) {
     )
   }
 
-  const setField = (field) => (value) => setDraft((current) => ({ ...current, [field]: value }))
+  const setField = (field) => (value) => {
+    setDraft((current) => ({ ...current, [field]: value }))
+    setErrors((current) => (current[field] ? { ...current, [field]: '' } : current))
+  }
   const master = catalog.product
   const masterVariant = master?.variants?.find((variant) => variant.id === product.master_variant_id) || null
   const unitRecord = masterVariant?.unit || master?.unit || null
@@ -124,19 +128,27 @@ export default function SupplierEditListingScreen({ navigation, route }) {
       ].filter(([, value]) => value)
     : []
 
+  // Highlights every field that is wrong and sums it up in a toast.
+  function showProblems(problems) {
+    setErrors(problems)
+    const failing = Object.values(problems).filter(Boolean)
+    if (!failing.length) return false
+    toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
+    return true
+  }
+
   async function saveChanges() {
     if (saving) return
     let updates
+    const problems = {}
     if (isCatalog) {
-      const values = ['price', 'quantity', 'low_stock_threshold'].map((field) => Number(draft[field] || 0))
-      if (values.some((value) => !Number.isFinite(value) || value < 0)) {
-        setSaveError(t('dash.supplier.msg.unableUpdate'))
-        return
-      }
-      if (!validDiscount(draft.discount_percentage)) {
-        setSaveError('Discount must be a number from 0 to 100.')
-        return
-      }
+      const fields = ['price', 'quantity', 'low_stock_threshold']
+      const values = fields.map((field) => Number(draft[field] || 0))
+      values.forEach((value, index) => {
+        if (!Number.isFinite(value) || value < 0) problems[fields[index]] = 'Enter a number, 0 or more.'
+      })
+      if (!validDiscount(draft.discount_percentage)) problems.discount_percentage = 'Discount must be a number from 0 to 100.'
+      if (showProblems(problems)) return
       // Only what the supplier owns: the server refuses a catalog field.
       updates = {
         price: values[0],
@@ -146,10 +158,8 @@ export default function SupplierEditListingScreen({ navigation, route }) {
         discount_percentage: Number(draft.discount_percentage || 0),
       }
     } else {
-      if (!draft.name.trim()) {
-        setSaveError(`${t('dash.supplier.msg.pleaseEnter')}: ${t('sup.field.productName')}`)
-        return
-      }
+      if (!draft.name.trim()) problems.name = `${t('dash.supplier.msg.pleaseEnter')}: ${t('sup.field.productName')}`
+      if (showProblems(problems)) return
       updates = {
         name: draft.name.trim(),
         brand: draft.brand.trim(),
@@ -168,14 +178,13 @@ export default function SupplierEditListingScreen({ navigation, route }) {
       }
     }
     setSaving(true)
-    setSaveError('')
     const result = await update(product.id, updates)
     setSaving(false)
     if (result.error) {
-      setSaveError(result.error)
+      toast.error(result.error)
       return
     }
-    dispatch(setStoreNotice({ tone: 'success', text: result.message }))
+    toast.success(result.message)
     navigation.goBack()
   }
 
@@ -222,17 +231,18 @@ export default function SupplierEditListingScreen({ navigation, route }) {
         <View style={styles.form}>
           {isCatalog ? (
             <>
-              <NumberField label={t('dash.supplier.sellingPrice')} value={draft.price} onChangeText={setField('price')} prefix={currencySymbol(country)} />
+              <NumberField label={t('dash.supplier.sellingPrice')} value={draft.price} onChangeText={setField('price')} prefix={currencySymbol(country)} error={errors.price} />
               <BudgetInWords value={draft.price} country={country} />
               <View style={styles.twoCol}>
                 <View style={{ flex: 1 }}>
-                  <NumberField label={unitLabel ? `${t('dash.supplier.stock')} (${unitLabel})` : t('dash.supplier.stock')} value={draft.quantity} onChangeText={setField('quantity')} />
+                  <NumberField label={unitLabel ? `${t('dash.supplier.stock')} (${unitLabel})` : t('dash.supplier.stock')} value={draft.quantity} onChangeText={setField('quantity')} error={errors.quantity} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <NumberField
                     label={unitLabel ? `${t('dash.supplier.lowStockThreshold')} (${unitLabel})` : t('dash.supplier.lowStockThreshold')}
                     value={draft.low_stock_threshold}
                     onChangeText={setField('low_stock_threshold')}
+                    error={errors.low_stock_threshold}
                   />
                 </View>
               </View>
@@ -248,7 +258,7 @@ export default function SupplierEditListingScreen({ navigation, route }) {
             </>
           ) : (
             <>
-              <TextField label={t('sup.field.productName')} value={draft.name} onChangeText={setField('name')} />
+              <TextField label={t('sup.field.productName')} value={draft.name} onChangeText={setField('name')} error={errors.name} />
               <TextField label={t('dash.supplier.brand')} value={draft.brand} onChangeText={setField('brand')} />
               <SelectField
                 label={t('dash.supplier.category')}
@@ -265,14 +275,14 @@ export default function SupplierEditListingScreen({ navigation, route }) {
                 placeholder={t('dash.supplier.selectUnit')}
                 options={UNIT_OPTIONS.map((option) => ({ value: option, label: optionLabel(t, UNIT_LABEL_KEYS, option) }))}
               />
-              <NumberField label={t('dash.supplier.price')} value={draft.price} onChangeText={setField('price')} prefix={currencySymbol(country)} />
+              <NumberField label={t('dash.supplier.price')} value={draft.price} onChangeText={setField('price')} prefix={currencySymbol(country)} error={errors.price} />
               <BudgetInWords value={draft.price} country={country} />
               <View style={styles.twoCol}>
                 <View style={{ flex: 1 }}>
-                  <NumberField label={t('dash.supplier.stock')} value={draft.quantity} onChangeText={setField('quantity')} />
+                  <NumberField label={t('dash.supplier.stock')} value={draft.quantity} onChangeText={setField('quantity')} error={errors.quantity} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <NumberField label={t('dash.supplier.lowStockThreshold')} value={draft.low_stock_threshold} onChangeText={setField('low_stock_threshold')} />
+                  <NumberField label={t('dash.supplier.lowStockThreshold')} value={draft.low_stock_threshold} onChangeText={setField('low_stock_threshold')} error={errors.low_stock_threshold} />
                 </View>
               </View>
               <PublishSwitch value={draft.is_published} onChange={setField('is_published')} label={t('dash.supplier.published')} />
@@ -283,7 +293,6 @@ export default function SupplierEditListingScreen({ navigation, route }) {
               <TextField label={t('dash.supplier.features')} value={draft.features} onChangeText={setField('features')} placeholder={t('dash.supplier.featuresHint')} multiline />
             </>
           )}
-          {saveError ? <Notice tone="error" text={saveError} /> : null}
           <View style={styles.buttons}>
             <ActionButton label={t('dash.common.cancel')} tone="outline" onPress={() => navigation.goBack()} disabled={saving} style={{ flex: 1 }} />
             <ActionButton

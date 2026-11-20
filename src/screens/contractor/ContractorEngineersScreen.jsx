@@ -40,6 +40,7 @@ import { fetchOwnerProjects } from '../../api/projects'
 import { fetchSupplierProfile } from '../../api/profiles'
 import {
   ActionButton, InfoRow, LabeledInput, Notice, SearchBox, Section, SegmentTabs, SheetModal, Badge, SelectChip, ViewToggle,} from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { SITE_ENGINEER_CATEGORY, apiErrorText, asList, projectStatusText, takenProjectIdsFor } from '../../utils/builderHelpers'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -115,7 +116,6 @@ export default function ContractorEngineersScreen({ navigation }) {
   const [tab, setTab] = useState('team')
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
-  const [message, setMessage] = useState(null)
 
   const team = useAsyncData(fetchEngineerTeam, [])
   const projects = useAsyncData(fetchOwnerProjects, [])
@@ -193,12 +193,6 @@ export default function ContractorEngineersScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProject?.id, user?.country_of_residence, user?.pincode])
 
-  useEffect(() => {
-    if (!message) return undefined
-    const timer = setTimeout(() => setMessage(null), 5000)
-    return () => clearTimeout(timer)
-  }, [message])
-
   const reloadAll = async () => {
     await Promise.all([team.reload(), projects.reload(), suppliers.reload()])
   }
@@ -230,10 +224,10 @@ export default function ContractorEngineersScreen({ navigation }) {
     setBusy(true)
     try {
       await respondEngineerJoinRequest(relationshipId, action)
-      setMessage({ tone: 'success', text: action === 'ACCEPT' ? t('dash.msg.engineerAdded') : t('dash.msg.joinRequestRejected') })
+      toast.success(action === 'ACCEPT' ? t('dash.msg.engineerAdded') : t('dash.msg.joinRequestRejected'))
       await team.reload()
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, t('dash.err.updateJoinRequest')) })
+      toast.error(apiErrorText(error, t('dash.err.updateJoinRequest')))
     } finally {
       setBusy(false)
     }
@@ -246,11 +240,11 @@ export default function ContractorEngineersScreen({ navigation }) {
     try {
       await sendContractorEngineerRequest(id, activeProject?.id || null)
       setSentIds((current) => new Set(current).add(id))
-      setMessage({ tone: 'success', text: t('dash.msg.engineerRequestSent') })
+      toast.success(t('dash.msg.engineerRequestSent'))
       team.reload()
     } catch (error) {
       const detail = apiErrorText(error, t('dash.err.sendRequest'))
-      setMessage({ tone: 'error', text: detail })
+      toast.error(detail)
       if (/already/i.test(detail)) setSentIds((current) => new Set(current).add(id))
     } finally {
       setSendingId(null)
@@ -266,10 +260,10 @@ export default function ContractorEngineersScreen({ navigation }) {
         onPress: async () => {
           try {
             await revokeEngineerInvitation(invitation.id)
-            setMessage({ tone: 'success', text: t('dash.msg.invitationRevoked') })
+            toast.success(t('dash.msg.invitationRevoked'))
             await team.reload()
           } catch (error) {
-            setMessage({ tone: 'error', text: apiErrorText(error, t('ui.contractor.errRevokeInvitation')) })
+            toast.error(apiErrorText(error, t('ui.contractor.errRevokeInvitation')))
           }
         },
       },
@@ -285,11 +279,11 @@ export default function ContractorEngineersScreen({ navigation }) {
     setBusy(true)
     try {
       await assignEngineerToProject(project.id, assignTarget.user_id || assignTarget.id)
-      setMessage({ tone: 'success', text: t('ui.contractor.projectAssignedTo', { project: projectTitle(project, t), name: assignTarget.name || t('ce.engineerFallback') }) })
+      toast.success(t('ui.contractor.projectAssignedTo', { project: projectTitle(project, t), name: assignTarget.name || t('ce.engineerFallback') }))
       setAssignTarget(null)
       await reloadAll()
     } catch (error) {
-      Alert.alert(t('dash.err.assignEngineer'), apiErrorText(error, t('mobile.partners.tryAgain')))
+      toast.error(apiErrorText(error, t('mobile.partners.tryAgain')), { title: t('dash.err.assignEngineer') })
     } finally {
       setBusy(false)
     }
@@ -300,11 +294,11 @@ export default function ContractorEngineersScreen({ navigation }) {
     setBusy(true)
     try {
       await unassignEngineerFromProject(project.id, unassignTarget.user_id || unassignTarget.id)
-      setMessage({ tone: 'success', text: t('ui.contractor.unassignedFrom', { name: unassignTarget.name || t('ce.engineerFallback'), project: projectTitle(project, t) }) })
+      toast.success(t('ui.contractor.unassignedFrom', { name: unassignTarget.name || t('ce.engineerFallback'), project: projectTitle(project, t) }))
       setUnassignTarget(null)
       await reloadAll()
     } catch (error) {
-      Alert.alert(t('dash.err.unassignEngineer'), apiErrorText(error, t('mobile.partners.tryAgain')))
+      toast.error(apiErrorText(error, t('mobile.partners.tryAgain')), { title: t('dash.err.unassignEngineer') })
     } finally {
       setBusy(false)
     }
@@ -313,17 +307,17 @@ export default function ContractorEngineersScreen({ navigation }) {
   async function assignSupplier(project, engineerId) {
     if (!supplierAssignTarget) return
     if (!engineerId) {
-      Alert.alert(t('mobile.partners.chooseEngineerTitle'), t('mobile.partners.chooseEngineerBody'))
+      toast.warning(t('mobile.partners.chooseEngineerBody'), { title: t('mobile.partners.chooseEngineerTitle') })
       return
     }
     setBusy(true)
     try {
       await assignSupplierToProject(project.id, supplierAssignTarget.user_id || supplierAssignTarget.id, engineerId)
-      setMessage({ tone: 'success', text: t('ui.contractor.supplierAssignedTo', { supplier: supplierAssignTarget.store_name || supplierAssignTarget.name || t('role.supplier'), project: projectTitle(project, t) }) })
+      toast.success(t('ui.contractor.supplierAssignedTo', { supplier: supplierAssignTarget.store_name || supplierAssignTarget.name || t('role.supplier'), project: projectTitle(project, t) }))
       setSupplierAssignTarget(null)
       await reloadAll()
     } catch (error) {
-      Alert.alert(t('ui.contractor.errAssignSupplier'), apiErrorText(error, t('mobile.partners.tryAgain')))
+      toast.error(apiErrorText(error, t('mobile.partners.tryAgain')), { title: t('ui.contractor.errAssignSupplier') })
     } finally {
       setBusy(false)
     }
@@ -336,11 +330,11 @@ export default function ContractorEngineersScreen({ navigation }) {
     setBusy(true)
     try {
       await unassignSupplierFromProject(projectId, supplierUnassignTarget.user_id || supplierUnassignTarget.id, assignment.engineer_id)
-      setMessage({ tone: 'success', text: t('ui.contractor.unassignedFrom', { name: supplierUnassignTarget.store_name || supplierUnassignTarget.name || t('role.supplier'), project: assignment.project_title || assignment.title || t('se.project') }) })
+      toast.success(t('ui.contractor.unassignedFrom', { name: supplierUnassignTarget.store_name || supplierUnassignTarget.name || t('role.supplier'), project: assignment.project_title || assignment.title || t('se.project') }))
       setSupplierUnassignTarget(null)
       await reloadAll()
     } catch (error) {
-      Alert.alert(t('ui.contractor.errUnassignSupplier'), apiErrorText(error, t('mobile.partners.tryAgain')))
+      toast.error(apiErrorText(error, t('mobile.partners.tryAgain')), { title: t('ui.contractor.errUnassignSupplier') })
     } finally {
       setBusy(false)
     }
@@ -469,8 +463,6 @@ export default function ContractorEngineersScreen({ navigation }) {
         </Section>
 
         <Section>
-          <Notice tone={message?.tone} text={message?.text} />
-
           {tab === 'team' ? (
             <PanelState loading={team.loading} error={team.error} empty={!teamShown.length} emptyText={active.length ? t('ce.filter.noMatch') : t('ce.noActiveEngineers')}>
                             {teamShown.map((engineer) => {
@@ -833,22 +825,22 @@ function InviteSheet({ visible, onClose, builderName, onInvited }) {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
   const [result, setResult] = useState(null)
   useEffect(() => {
-    if (visible) { setPhone(''); setEmail(''); setError(''); setResult(null) }
+    if (visible) { setPhone(''); setEmail(''); setPhoneError(''); setResult(null) }
   }, [visible])
 
   async function generate() {
-    if (!phone.trim()) { setError(t('mobile.partners.phoneRequired')); return }
+    if (!phone.trim()) { setPhoneError(t('mobile.partners.phoneRequired')); toast.error(t('mobile.partners.phoneRequired')); return }
     setBusy(true)
-    setError('')
+    setPhoneError('')
     try {
       const response = await inviteEngineer({ phone: phone.trim(), email: email.trim() })
       setResult(response)
       onInvited?.()
     } catch (failure) {
-      setError(apiErrorText(failure, t('dash.err.generateInvitation')))
+      toast.error(apiErrorText(failure, t('dash.err.generateInvitation')))
     } finally {
       setBusy(false)
     }
@@ -877,9 +869,8 @@ function InviteSheet({ visible, onClose, builderName, onInvited }) {
         </View>
       ) : (
         <>
-          <LabeledInput label={`${t('ps.phone')} *`} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <LabeledInput label={`${t('ps.phone')} *`} value={phone} onChangeText={(value) => { setPhone(value); if (phoneError) setPhoneError('') }} keyboardType="phone-pad" error={phoneError} />
           <LabeledInput label={`${t('ps.email')} (${t('ps.optional')})`} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          {error ? <Notice tone="error" text={error} /> : null}
         </>
       )}
     </SheetModal>

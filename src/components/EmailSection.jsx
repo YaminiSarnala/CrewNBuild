@@ -40,7 +40,7 @@ const BADGES = {
   none: { key: 'emailVerify.status.none', bg: '#f8fafc', border: '#e2e8f0', fg: '#475569' },
 }
 
-export default function EmailSection({ style }) {
+export default function EmailSection({ style, invalid = false }) {
   const { t, td } = useLanguage()
   const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
@@ -132,7 +132,7 @@ export default function EmailSection({ style }) {
         autoCorrect={false}
         textContentType="emailAddress"
         editable={!busy}
-        style={[styles.input, problem && stage === 'enter' ? styles.inputError : null]}
+        style={[styles.input, (problem || invalid) && stage === 'enter' ? styles.inputError : null]}
       />
 
       {stage === 'enter' && !nothingToVerify ? (

@@ -44,11 +44,18 @@ export function FieldLabel({ children }) {
   return <Text style={styles.label}>{children}</Text>
 }
 
-export function Field({ label, children, style }) {
+/** A field's validation message, in red right under it. */
+export function FieldErrorText({ message }) {
+  if (!message) return null
+  return <Text accessibilityRole="alert" style={styles.fieldError}>{message}</Text>
+}
+
+export function Field({ label, children, style, error }) {
   return (
     <View style={[styles.field, style]}>
       {label ? <FieldLabel>{label}</FieldLabel> : null}
       {children}
+      <FieldErrorText message={error} />
     </View>
   )
 }
@@ -69,13 +76,13 @@ export function Input({ value, onChangeText, editable = true, multiline = false,
 }
 
 /** A pressable chip row standing in for a <select>. */
-export function ChoiceRow({ options, value, onChange }) {
+export function ChoiceRow({ options, value, onChange, invalid = false }) {
   return (
     <View style={styles.choices}>
       {options.map((option) => {
         const on = option.value === value
         return (
-          <Pressable key={option.value} onPress={() => onChange(option.value)} accessibilityRole="radio" accessibilityState={{ checked: on }} style={[styles.choice, on ? styles.choiceOn : null]}>
+          <Pressable key={option.value} onPress={() => onChange(option.value)} accessibilityRole="radio" accessibilityState={{ checked: on }} style={[styles.choice, on ? styles.choiceOn : null, invalid && !on ? styles.choiceInvalid : null]}>
             <Text style={[styles.choiceText, on ? styles.choiceTextOn : null]}>{option.label}</Text>
           </Pressable>
         )
@@ -233,7 +240,9 @@ const styles = createStyles((c) => ({
   input: { height: 42, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 12, fontSize: 14, fontWeight: '600', color: c.text },
   textArea: { minHeight: 64, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, fontWeight: '600', color: c.text },
   inputDisabled: { backgroundColor: c.subtle, color: c.textSoft },
-  inputInvalid: { borderColor: '#fb7185' },
+  inputInvalid: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 4, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
+  choiceInvalid: { borderColor: '#dc2626' },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   choice: { borderRadius: 10, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 11, paddingVertical: 8 },
   choiceOn: { borderColor: '#2e7d55', backgroundColor: c.brandSoft },

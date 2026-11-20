@@ -45,11 +45,11 @@ export default function QuantityField({ value, unit, onChange, disabled = false,
 const styles = createStyles((c) => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   box: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden', borderRadius: 10, borderWidth: 1, borderColor: c.border, backgroundColor: c.card },
-  boxInvalid: { borderColor: '#fda4af' },
+  boxInvalid: { borderColor: '#dc2626' },
   step: { height: '100%', alignItems: 'center', justifyContent: 'center' },
   plus: { backgroundColor: c.brandSoft },
   dim: { opacity: 0.4 },
   input: { height: '100%', borderLeftWidth: 1, borderRightWidth: 1, borderColor: c.borderSoft, textAlign: 'center', fontWeight: '800', color: c.text, paddingVertical: 0 },
   unit: { fontSize: 12, fontWeight: '700', color: c.textMuted },
-  error: { marginTop: 4, maxWidth: 190, fontSize: 11, fontWeight: '700', color: ink('#be123c') },
+  error: { marginTop: 4, maxWidth: 190, fontSize: 11.5, fontWeight: '700', color: '#dc2626' },
 }))

@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { ArrowRight, Check } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Field, ErrorBanner, RoleCard } from '../../components/Field'
+import { toast } from '../../components/Toast'
 import { PrimaryButton } from '../../components/ui'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { signupWithProfile, clearAuthError } from '../../store/authSlice'
@@ -53,15 +54,29 @@ export default function SignupScreen({ navigation }) {
   const phoneFirst = phoneConfig.signup
   const [phoneToken, setPhoneToken] = useState(null)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
-  const [signupAlert, setSignupAlert] = useState('')
+  // Each field's problem, shown under (and highlighting) that field.
+  const [errors, setErrors] = useState({})
   // One account per tap: set before the request leaves, cleared only if it fails.
   const submitting = useRef(false)
 
   const loading = status === 'loading'
   const set = (key) => (value) => {
     if (errorMessage) dispatch(clearAuthError())
-    setSignupAlert('')
+    setErrors((current) => (current[key] ? { ...current, [key]: '' } : current))
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // Shows every failing field at once, with a short summary as a toast.
+  function reportErrors(nextErrors) {
+    setErrors(nextErrors)
+    const failing = Object.values(nextErrors).filter(Boolean)
+    if (failing.length) toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
+    return failing.length > 0
+  }
+
+  const onVerifiedChange = (token) => {
+    setPhoneToken(token)
+    if (token) setErrors((current) => (current.phone ? { ...current, phone: '' } : current))
   }
 
   // Mirrors the web behaviour: auto-fill the area name once 6 digits are typed.
@@ -81,14 +96,14 @@ export default function SignupScreen({ navigation }) {
 
   const complete =
     form.name.trim() && form.email.trim() && form.phone.trim() && form.password
-  const phoneFirstReady = form.name.trim().length >= 2 && Boolean(form.role) && Boolean(phoneToken) && acceptedTerms
 
   async function submitPhoneFirst() {
     if (submitting.current || loading) return
-    if (form.name.trim().length < 2) return setSignupAlert(t('validation.name'))
-    if (!phoneToken) return setSignupAlert(t('signup.phone.verifyFirst'))
-    if (!acceptedTerms) return setSignupAlert(t('validation.terms'))
-    setSignupAlert('')
+    const nextErrors = {}
+    if (form.name.trim().length < 2) nextErrors.name = t('validation.name')
+    if (!phoneToken) nextErrors.phone = t('signup.phone.verifyFirst')
+    if (!acceptedTerms) nextErrors.terms = t('validation.terms')
+    if (reportErrors(nextErrors)) return
     submitting.current = true
     // The verified number and its token, nothing else to identify the account:
     // the API checks the token belongs to exactly this number.
@@ -100,7 +115,16 @@ export default function SignupScreen({ navigation }) {
 
   function submit() {
     if (phoneFirst) return submitPhoneFirst()
-    if (!complete) return
+    if (!complete) {
+      const nextErrors = {}
+      if (!form.name.trim()) nextErrors.name = t('validation.name')
+      if (!form.email.trim()) nextErrors.email = t('validation.email')
+      if (!form.phone.trim()) nextErrors.phone = t('validation.phone')
+      if (!form.password) nextErrors.password = t('validation.password')
+      reportErrors(nextErrors)
+      return
+    }
+    setErrors({})
     dispatch(
       signupWithProfile({
         ...form,
@@ -162,30 +186,34 @@ export default function SignupScreen({ navigation }) {
               <ActivityIndicator color="#1a5038" style={styles.loader} />
             ) : phoneFirst ? (
               <View style={styles.view4}>
-                <Field label={t('signup.fullName')} value={form.name} onChangeText={set('name')} placeholder={t('signup.namePlaceholder')} autoComplete="name" />
-                <PhoneVerification
-                  phone={form.phone}
-                  onPhoneChange={set('phone')}
-                  onVerifiedChange={setPhoneToken}
-                  label={t('signup.mobileNumber')}
-                />
+                <Field label={t('signup.fullName')} value={form.name} onChangeText={set('name')} placeholder={t('signup.namePlaceholder')} autoComplete="name" error={errors.name} />
+                <View style={errors.phone ? styles.invalidBlock : null}>
+                  <PhoneVerification
+                    phone={form.phone}
+                    onPhoneChange={set('phone')}
+                    onVerifiedChange={onVerifiedChange}
+                    label={t('signup.mobileNumber')}
+                  />
+                </View>
+                {errors.phone ? <Text accessibilityRole="alert" style={styles.fieldError}>{errors.phone}</Text> : null}
                 <Pressable
-                  onPress={() => { setAcceptedTerms((value) => !value); setSignupAlert('') }}
+                  onPress={() => { setAcceptedTerms((value) => !value); setErrors((current) => ({ ...current, terms: '' })) }}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: acceptedTerms }}
-                  style={styles.terms}
+                  style={[styles.terms, errors.terms ? styles.termsInvalid : null]}
                 >
-                  <View style={[styles.checkbox, acceptedTerms && styles.checkboxOn]}>
+                  <View style={[styles.checkbox, acceptedTerms && styles.checkboxOn, errors.terms && !acceptedTerms ? styles.checkboxInvalid : null]}>
                     {acceptedTerms ? <Check size={13} color="#ffffff" strokeWidth={3} /> : null}
                   </View>
                   <Text style={styles.termsText}>{t('signup.terms')}</Text>
                 </Pressable>
-                <ErrorBanner message={signupAlert} />
+                {errors.terms ? <Text accessibilityRole="alert" style={[styles.fieldError, { marginTop: -8 }]}>{errors.terms}</Text> : null}
                 <PrimaryButton
                   label={loading ? t('signup.loading') : t('signup.createAccount')}
                   onPress={submit}
                   loading={loading}
-                  disabled={!phoneFirstReady}
+                  // Pressable while incomplete, so a press can point at what is missing.
+                  disabled={loading}
                   icon={<ArrowRight size={16} color="#ffffff" />}
                   full
                 />
@@ -193,12 +221,13 @@ export default function SignupScreen({ navigation }) {
             ) : (
               <>
               <View style={styles.view4}>
-                <Field label="Full name" value={form.name} onChangeText={set('name')} placeholder="Your name" />
+                <Field label="Full name" value={form.name} onChangeText={set('name')} placeholder="Your name" error={errors.name} />
                 <Field
                   label="Email"
                   value={form.email}
                   onChangeText={set('email')}
                   placeholder="you@example.com"
+                  error={errors.email}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -207,6 +236,7 @@ export default function SignupScreen({ navigation }) {
                   value={form.phone}
                   onChangeText={set('phone')}
                   placeholder="10-digit mobile number"
+                  error={errors.phone}
                   keyboardType="phone-pad"
                 />
                 <Field
@@ -214,6 +244,7 @@ export default function SignupScreen({ navigation }) {
                   value={form.password}
                   onChangeText={set('password')}
                   placeholder="10+ chars, upper, lower, number, symbol"
+                  error={errors.password}
                   secure
                   autoCapitalize="none"
                 />
@@ -237,7 +268,7 @@ export default function SignupScreen({ navigation }) {
                 label={t('site.nav.signup')}
                 onPress={submit}
                 loading={loading}
-                disabled={!complete}
+                disabled={loading}
                 icon={<ArrowRight size={16} color="#ffffff" />}
                 full
               />
@@ -270,6 +301,10 @@ const styles = createStyles((c) => ({
   terms: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
   checkbox: { width: 20, height: 20, marginTop: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 6, borderWidth: 1.5, borderColor: c.borderStrong, backgroundColor: c.card },
   checkboxOn: { borderColor: '#1a5038', backgroundColor: '#1a5038' },
+  checkboxInvalid: { borderColor: '#dc2626' },
+  termsInvalid: { borderRadius: 10, borderWidth: 1, borderColor: '#dc2626', padding: 8 },
+  invalidBlock: { borderRadius: 14, borderWidth: 1, borderColor: '#dc2626', padding: 8 },
+  fieldError: { marginTop: 4, marginBottom: 12, fontSize: 11.5, lineHeight: 16, fontFamily: 'Inter_500Medium', color: '#dc2626' },
   termsText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontFamily: 'Inter_500Medium', color: c.textMuted },
   text5: { marginTop: -7, marginBottom: 10.5, fontFamily: 'Inter_400Regular', color: c.brandText },
   pressable2: { marginTop: 17.5, alignItems: 'center' },

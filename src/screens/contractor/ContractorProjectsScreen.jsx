@@ -38,6 +38,7 @@ import { fetchCostToolSummary } from '../../api/costTool'
 import { COLORS } from '../../theme/tokens'
 import SiteDayRecords from '../../components/builder/SiteDayRecords'
 import { Section, SegmentTabs, Badge, ActionButton, Notice } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import {
   PROJECT_CATEGORY_TABS, SITE_ENGINEER_CATEGORY, SUPPLIER_CATEGORY_ORDER, apiErrorText, asList, buildingTypeText,
   completionPercent, completionText, formatDisplayDate, groupProjectsByCategory, money, progressLabel,
@@ -193,7 +194,6 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
   const [teamSection, setTeamSection] = useState('siteEngineer')
   const [selectedEngineerId, setSelectedEngineerId] = useState(null)
   const [engineerBusy, setEngineerBusy] = useState(false)
-  const [engineerMessage, setEngineerMessage] = useState(null)
   // Only Site Engineers may hold a project's Site Engineer slot; the server checks the same.
   const siteEngineers = asList(team.data?.active).filter(
     (member) => String(member.specialization || member.category || '').trim() === SITE_ENGINEER_CATEGORY,
@@ -202,15 +202,14 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
   async function assignSiteEngineer() {
     if (!selectedEngineerId) return
     setEngineerBusy(true)
-    setEngineerMessage(null)
     try {
       await assignEngineerToProject(project.id, selectedEngineerId)
       setSelectedEngineerId(null)
-      setEngineerMessage({ tone: 'success', text: t('dash.msg.engineerAssigned') })
+      toast.success(t('dash.msg.engineerAssigned'))
       await Promise.all([engineer.reload(), team.reload()])
       onTeamChanged?.()
     } catch (error) {
-      setEngineerMessage({ tone: 'error', text: apiErrorText(error, t('dash.err.assignEngineer'), t) })
+      toast.error(apiErrorText(error, t('dash.err.assignEngineer'), t))
     } finally {
       setEngineerBusy(false)
     }
@@ -224,14 +223,13 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
         style: 'destructive',
         onPress: async () => {
           setEngineerBusy(true)
-          setEngineerMessage(null)
           try {
             await unassignEngineerFromProject(project.id, current.user_id || current.id)
-            setEngineerMessage({ tone: 'success', text: t('dash.msg.engineerRemoved') })
+            toast.success(t('dash.msg.engineerRemoved'))
             await Promise.all([engineer.reload(), team.reload()])
             onTeamChanged?.()
           } catch (error) {
-            setEngineerMessage({ tone: 'error', text: apiErrorText(error, t('dash.err.unassignEngineer'), t) })
+            toast.error(apiErrorText(error, t('dash.err.unassignEngineer'), t))
           } finally {
             setEngineerBusy(false)
           }
@@ -243,6 +241,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
     String(project.completion_percentage ?? 0)
   )
   const [savingProgress, setSavingProgress] = useState(false)
+  const [progressError, setProgressError] = useState('')
     // Project specialist team
   const [specialistRows, setSpecialistRows] = useState([])
   const [specialistsLoading, setSpecialistsLoading] = useState(false)
@@ -300,9 +299,9 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
       await loadSpecialistTeam()
       const result = await fetchProjectSpecialistCandidates(project.id, category)
       setSpecialistCandidates(Array.isArray(result) ? result : [])
-      setSpecialistMessage(t('specialist.requestSent'))
+      toast.success(t('specialist.requestSent'))
     } catch (error) {
-      setSpecialistMessage(
+      toast.error(
         error?.response?.data?.detail || t('specialist.requestFailed')
       )
     } finally {
@@ -315,7 +314,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
   async function changeSupplier(supplier, assign) {
     const engineerId = (engineer.data?.engineer || {}).user_id
     if (assign && !engineerId) {
-      Alert.alert(t('mobile.projects.assignEngineerFirst'), t('team.supplierNeedsEngineer'))
+      toast.warning(t('team.supplierNeedsEngineer'), { title: t('mobile.projects.assignEngineerFirst') })
       return
     }
     const supplierId = supplier.user_id || supplier.id
@@ -325,7 +324,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
       else await unassignSupplierFromProject(project.id, supplierId, supplier.engineer_id || engineerId)
       await suppliers.reload()
     } catch (error) {
-      Alert.alert(t('mobile.projects.couldNotUpdate'), error?.response?.data?.detail || t('mobile.projects.tryAgain'))
+      toast.error(error?.response?.data?.detail || t('mobile.projects.tryAgain'), { title: t('mobile.projects.couldNotUpdate') })
     } finally {
       setSupplierBusyId(null)
     }
@@ -340,20 +339,22 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
       value < 0 ||
       value > 100
     ) {
-      Alert.alert(t('mobile.projects.invalidProgress'), t('mobile.projects.percentRange'))
+      setProgressError(t('mobile.projects.percentRange'))
+      toast.error(t('mobile.projects.percentRange'), { title: t('mobile.projects.invalidProgress') })
       return
     }
 
+    setProgressError('')
     setSavingProgress(true)
     try {
       await updateProjectProgress(project.id, value)
       setProgressValue(String(value))
       await onProgressSaved?.(value)
-      Alert.alert(t('mobile.projects.progressUpdated'), t('mobile.projects.progressSavedBody'))
+      toast.success(t('mobile.projects.progressSavedBody'), { title: t('mobile.projects.progressUpdated') })
     } catch (error) {
-      Alert.alert(
-        t('mobile.projects.progressFailed'),
-        error?.response?.data?.detail || error?.message || t('mobile.projects.tryAgain')
+      toast.error(
+        error?.response?.data?.detail || error?.message || t('mobile.projects.tryAgain'),
+        { title: t('mobile.projects.progressFailed') }
       )
     } finally {
       setSavingProgress(false)
@@ -433,12 +434,12 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
             <View style={styles.view12}>
               <TextInput
                 value={progressValue}
-                onChangeText={setProgressValue}
+                onChangeText={(value) => { setProgressValue(value); if (progressError) setProgressError('') }}
                 keyboardType="numeric"
                 editable={!savingProgress}
                 maxLength={3}
                 accessibilityLabel={t('se.projectCompletion')}
-                style={styles.textInput}
+                style={[styles.textInput, progressError ? styles.inputError : null]}
                 placeholder="0–100"
               />
               <Pressable
@@ -451,6 +452,7 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
                 </Text>
               </Pressable>
             </View>
+            {progressError ? <Text style={styles.fieldError}>{progressError}</Text> : null}
           </Panel>
           </>
         )}
@@ -478,7 +480,6 @@ function ProjectDetail({ project, onBack, onProgressSaved, onTeamChanged, naviga
 
             {teamSection === 'siteEngineer' && (
             <Panel title={t('dash.contractor.siteEngineer')} action={assignedEngineer ? <Badge label={t('team.assigned')} bg="#ecfdf5" fg="#047857" /> : <Badge label={t('team.notAssigned')} bg="#fff1f2" fg="#e11d48" />}>
-              <Notice tone={engineerMessage?.tone} text={engineerMessage?.text} />
               <PanelState loading={engineer.loading} error={engineer.error} empty={false}>
                 {assignedEngineer ? (
                   <View style={styles.view18}>
@@ -1071,6 +1072,8 @@ const styles = createStyles((c) => ({
   text17: { marginTop: 1.75, fontSize: 12, lineHeight: 17.5, fontWeight: '600', color: c.text },
   text18: { marginBottom: 7, fontSize: 12, lineHeight: 16, fontWeight: '600', color: c.textMuted },
   view12: { flexDirection: 'row', alignItems: 'center', gap: 10.5 },
+  inputError: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 6, fontSize: 11.5, lineHeight: 15, fontWeight: '600', color: '#dc2626' },
   textInput: { height: 42, flex: 1, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 16, lineHeight: 24, fontWeight: '700', color: c.text },
   pressable6: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10.5 },
   pressable7: { backgroundColor: '#94a3b8' },

@@ -1,10 +1,11 @@
 // Port of the web owner's Builders section: nearby contractors by pincode,
 // with the same OWNER_TO_CONTRACTOR request payload the web sends.
 import { useState } from 'react'
-import { View, Text, Pressable, Alert } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useSelector } from 'react-redux'
 import { HardHat, Send, MapPin } from 'lucide-react-native'
 import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
+import { toast } from '../../components/Toast'
 import { fetchNearbyContractors, fetchOwnerProjects } from '../../api/projects'
 import { sendProjectRequest } from '../../api/requests'
 import { COLORS } from '../../theme/tokens'
@@ -41,7 +42,7 @@ export default function OwnerBuildersScreen({ navigation }) {
       })
       setSentIds((prev) => new Set(prev).add(id))
     } catch (error) {
-      Alert.alert('Could not send', error?.response?.data?.detail || 'Unable to send builder request.')
+      toast.error(error?.response?.data?.detail || 'Unable to send builder request.', { title: 'Could not send' })
     } finally {
       setSendingId(null)
     }

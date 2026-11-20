@@ -10,7 +10,7 @@ import { View, Text, Pressable, TextInput } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { Check, ChevronRight, PackageCheck, Search, X } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
-import { Notice } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { fetchSupplierMaterialRequests, respondMaterialRequest } from '../../api/materialRequests'
 import { useProfileGate } from '../../hooks/useProfileGate'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
@@ -33,7 +33,6 @@ export default function SupplierOrdersScreen() {
   const [rows, setRows] = useState([])
   const [status, setStatus] = useState('loading')
   const [refreshing, setRefreshing] = useState(false)
-  const [message, setMessage] = useState(null)
   const [query, setQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
   const [openCode, setOpenCode] = useState(null)
@@ -63,15 +62,12 @@ export default function SupplierOrdersScreen() {
     setBusyId(id)
     try {
       await respondMaterialRequest(id, action)
-      setMessage({
-        tone: 'success',
-        text: action === 'FULFILL' ? t('dash.supplier.material.fulfilled') : action === 'ACCEPT' ? t('dash.supplier.material.accepted') : t('dash.supplier.material.rejected'),
-      })
+      toast.success(action === 'FULFILL' ? t('dash.supplier.material.fulfilled') : action === 'ACCEPT' ? t('dash.supplier.material.accepted') : t('dash.supplier.material.rejected'))
       await load()
       setOpenCode(null)
       if (action === 'FULFILL') reloadProducts()
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, t('dash.supplier.material.unable'), t) })
+      toast.error(apiErrorText(error, t('dash.supplier.material.unable'), t))
     } finally {
       setBusyId(null)
     }
@@ -147,9 +143,6 @@ export default function SupplierOrdersScreen() {
             <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search"><X size={15} color={COLORS.slate[500]} /></Pressable>
           ) : null}
         </View>
-        {message && !open ? (
-          <Pressable onPress={() => setMessage(null)}><Notice tone={message.tone} text={message.text} /></Pressable>
-        ) : null}
         <CountTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
         {status === 'loading' ? (
@@ -162,7 +155,7 @@ export default function SupplierOrdersScreen() {
         ) : visible.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('dash.supplier.material.none')}</Text></View>
         ) : visible.map((order) => (
-          <Pressable key={order.code} onPress={() => { setMessage(null); setOpenCode(order.code) }} style={styles.card} accessibilityRole="button" accessibilityLabel={t('shop.orderDetails')}>
+          <Pressable key={order.code} onPress={() => setOpenCode(order.code)} style={styles.card} accessibilityRole="button" accessibilityLabel={t('shop.orderDetails')}>
             <View style={styles.cardTop}>
               <BuyerAvatar order={order} />
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -194,9 +187,7 @@ export default function SupplierOrdersScreen() {
         ))}
       </View>
 
-      <OrderSheet order={open} counterpartyLabel={t('shop.orderedBy')} money={fmt} onClose={() => setOpenCode(null)} lineExtra={lineActions}>
-        {message ? <View style={{ marginTop: 12 }}><Notice tone={message.tone} text={message.text} /></View> : null}
-      </OrderSheet>
+      <OrderSheet order={open} counterpartyLabel={t('shop.orderedBy')} money={fmt} onClose={() => setOpenCode(null)} lineExtra={lineActions} />
     </DashboardShell>
   )
 }

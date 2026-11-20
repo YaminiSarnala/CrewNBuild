@@ -32,6 +32,7 @@ import { mergeUser } from '../../store/authSlice'
 import {
   ActionButton, InfoRow, Notice, Section, SegmentTabs, SheetModal,
 } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import {
   apiErrorText, asList, buildingTypeText, clientRequestState, findClientRequest, money,
 } from '../../utils/builderHelpers'
@@ -103,11 +104,9 @@ export default function ContractorLeadsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('houseowners')
   const [refreshing, setRefreshing] = useState(false)
   const [sentKeys, setSentKeys] = useState({})
-  const [message, setMessage] = useState(null)
   const [sendTarget, setSendTarget] = useState(null) // { client, requestType }
   const [sendAmount, setSendAmount] = useState('')
   const [sendBusy, setSendBusy] = useState(false)
-  const [sendError, setSendError] = useState('')
   const [sendDone, setSendDone] = useState(false)
   const [profileTarget, setProfileTarget] = useState(null)
   const [supplierProfileNote, setSupplierProfileNote] = useState('')
@@ -158,12 +157,6 @@ export default function ContractorLeadsScreen({ navigation }) {
 
   const openSupplierClients = supplierClients.filter((supplier) => requestState(supplier, 'CONTRACTOR_TO_SUPPLIER') !== 'accepted')
 
-  useEffect(() => {
-    if (!message) return undefined
-    const timer = setTimeout(() => setMessage(null), 5000)
-    return () => clearTimeout(timer)
-  }, [message])
-
   const onRefresh = async () => {
     setRefreshing(true)
     try {
@@ -176,7 +169,6 @@ export default function ContractorLeadsScreen({ navigation }) {
   function openSend(client, requestType) {
     setSendTarget({ client, requestType })
     setSendAmount('')
-    setSendError('')
     setSendDone(false)
   }
 
@@ -185,11 +177,11 @@ export default function ContractorLeadsScreen({ navigation }) {
     const { client, requestType } = sendTarget
     const receiverId = receiverOf(client, requestType)
     if (!receiverId) {
-      setSendError(t('mobile.partners.missingRecipient'))
+      toast.error(t('mobile.partners.missingRecipient'))
       return
     }
     setSendBusy(true)
-    setSendError('')
+    toast.hide()
     const key = keyOf(client, requestType)
     try {
       const details = { receiver_id: receiverId, project_id: client.project_id || null, request_type: requestType }
@@ -198,11 +190,11 @@ export default function ContractorLeadsScreen({ navigation }) {
       await sendProjectRequest(details)
       setSentKeys((current) => ({ ...current, [key]: true }))
       setSendDone(true)
-      setMessage({ tone: 'success', text: t('dash.contractor.requestSentBody', { name: client.store_name || client.owner_name || client.title || t('dash.clientFallback') }) })
+      toast.success(t('dash.contractor.requestSentBody', { name: client.store_name || client.owner_name || client.title || t('dash.clientFallback') }))
       requests.reload()
     } catch (error) {
       const detail = apiErrorText(error, t('dash.err.sendRequest'))
-      setSendError(detail)
+      toast.error(detail)
       if (detail === 'Request already sent') {
         setSentKeys((current) => ({ ...current, [key]: true }))
         requests.reload()
@@ -267,7 +259,6 @@ export default function ContractorLeadsScreen({ navigation }) {
         </Section>
 
         <Section>
-          <Notice tone={message?.tone} text={message?.text} />
           {activeTab === 'houseowners' ? (
             <PanelState loading={leads.loading} error={leads.error} empty={!openOwnerClients.length} emptyText={`${t('dash.contractor.noClientsTitle')}\n${t('dash.contractor.noClientsSub')}`}>
                            {openOwnerClients.map((project, index) => {
@@ -422,7 +413,6 @@ export default function ContractorLeadsScreen({ navigation }) {
                   <Text style={styles.text28}>{t('mobile.partners.quoteLaterHint')}</Text>
                 </>
               ) : null}
-              {sendError ? <View style={styles.view11}><Notice tone="error" text={sendError} /></View> : null}
             </>
           )
         ) : null}
@@ -462,7 +452,7 @@ export default function ContractorLeadsScreen({ navigation }) {
           dispatch(mergeUser(updatedUser?.user || updatedUser || {}))
           setLocationOpen(false)
           setActiveTab('houseowners')
-          setMessage({ tone: 'success', text: t('mobile.partners.locationSaved') })
+          toast.success(t('mobile.partners.locationSaved'))
         }}
       />
     </>
@@ -540,6 +530,9 @@ const styles = createStyles((c) => ({
   text35: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.text },
   actionButton2: { marginTop: 7 },
   text36: { marginBottom: 7, marginTop: 14, fontSize: 12, lineHeight: 16, fontWeight: '800', color: c.text },
+  inputError: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 5, fontSize: 11.5, lineHeight: 15, fontWeight: '600', color: '#dc2626' },
+  branchError: { borderRadius: 12, borderWidth: 1, borderColor: '#dc2626', padding: 3 },
   textInput2: { height: 38.5, flex: 1, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 15, fontWeight: '700', color: c.text },
   text37: { marginBottom: 5.25, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
 }))
@@ -641,7 +634,12 @@ export function LocationSheet({ visible, currentPincode, onClose, onSaved }) {
   const [areaDetails, setAreaDetails] = useState(null)
   const [selectedArea, setSelectedArea] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+  // Messages under the field at fault: the pincode, or the branch choice.
+  const [errors, setErrors] = useState({})
+  const fail = (field, text) => {
+    setErrors({ [field]: text })
+    toast.error(text)
+  }
 
   useEffect(() => {
     if (visible) {
@@ -649,38 +647,39 @@ export function LocationSheet({ visible, currentPincode, onClose, onSaved }) {
       setAreas([])
       setAreaDetails(null)
       setSelectedArea('')
-      setError('')
+      setErrors({})
     }
   }, [visible, currentPincode])
 
   async function lookup() {
     const value = pincode.trim()
-    if (!/^\d{6}$/.test(value)) { setError(t('location.invalid')); return }
+    if (!/^\d{6}$/.test(value)) { fail('pincode', t('location.invalid')); return }
     setBusy(true)
-    setError('')
+    setErrors({})
     try {
       const data = await lookupPincodeArea(value)
       const branches = Array.isArray(data?.post_offices) ? data.post_offices : []
       setAreaDetails(data)
       setAreas(branches)
       setSelectedArea(branches.length === 1 ? branches[0].name : '')
-      if (!branches.length) setError(t('location.notFound'))
+      if (!branches.length) fail('pincode', t('location.notFound'))
     } catch (failure) {
-      setError(apiErrorText(failure, t('location.unknown')))
+      toast.error(apiErrorText(failure, t('location.unknown')))
     } finally {
       setBusy(false)
     }
   }
 
   async function save() {
-    if (!areaDetails || !selectedArea) { setError(t('location.prompt.selectBranch')); return }
+    if (!areaDetails) { fail('pincode', t('location.prompt.selectBranch')); return }
+    if (!selectedArea) { fail('branch', t('location.prompt.selectBranch')); return }
     setBusy(true)
-    setError('')
+    setErrors({})
     try {
       const updatedUser = await updateUserLocation(String(areaDetails.pincode || pincode).trim(), selectedArea)
       onSaved(updatedUser)
     } catch (failure) {
-      setError(apiErrorText(failure, t('location.prompt.saveFailed')))
+      toast.error(apiErrorText(failure, t('location.prompt.saveFailed')))
     } finally {
       setBusy(false)
     }
@@ -697,22 +696,25 @@ export function LocationSheet({ visible, currentPincode, onClose, onSaved }) {
       <View style={styles.view19}>
         <TextInput
           value={pincode}
-          onChangeText={(value) => { setPincode(value.replace(/\D/g, '')); setAreas([]); setAreaDetails(null); setSelectedArea('') }}
+          onChangeText={(value) => { setPincode(value.replace(/\D/g, '')); setAreas([]); setAreaDetails(null); setSelectedArea(''); setErrors({}) }}
           keyboardType="number-pad"
           maxLength={6}
           placeholder={t('ui.shared.sixDigitPincode')}
           placeholderTextColor={COLORS.slate[400]}
-          style={styles.textInput2}
+          style={[styles.textInput2, errors.pincode ? styles.inputError : null]}
         />
         <ActionButton label={t('ce.find')} busy={busy && !areas.length} onPress={lookup} />
       </View>
+      {errors.pincode ? <Text style={styles.fieldError}>{errors.pincode}</Text> : null}
       {areas.length ? (
         <View style={styles.view11}>
           <Text style={styles.text37}>{t('location.selectBranch')}</Text>
-          <SegmentTabs dense tabs={areas.map((area) => ({ id: area.name, label: area.name }))} active={selectedArea} onChange={setSelectedArea} />
+          <View style={errors.branch ? styles.branchError : null}>
+            <SegmentTabs dense tabs={areas.map((area) => ({ id: area.name, label: area.name }))} active={selectedArea} onChange={(name) => { setSelectedArea(name); setErrors({}) }} />
+          </View>
+          {errors.branch ? <Text style={styles.fieldError}>{errors.branch}</Text> : null}
         </View>
       ) : null}
-      {error ? <View style={styles.view11}><Notice tone="error" text={error} /></View> : null}
     </SheetModal>
   )
 }

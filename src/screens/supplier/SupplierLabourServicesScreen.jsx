@@ -10,7 +10,7 @@ import { View, Text, Pressable } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { Pencil, Plus, Power, Wrench } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
-import { Notice } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import PianoLoader from '../../components/PianoLoader'
 import { labourErrorMessage, updateLabourService } from '../../api/labour'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -26,7 +26,7 @@ const GAP = 12
 export default function SupplierLabourServicesScreen({ navigation }) {
   const { t } = useLanguage()
   const { width, maxContentWidth, gutter, isTablet } = useResponsive()
-  const { services, trades, servicesStatus, reload, notice, setNotice } = useLabour()
+  const { services, trades, servicesStatus, reload } = useLabour()
   const [busyId, setBusyId] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -46,19 +46,17 @@ export default function SupplierLabourServicesScreen({ navigation }) {
   const cardWidth = Math.floor((inner - GAP * (columns - 1)) / columns)
 
   const openForm = (service) => {
-    setNotice(null)
     navigation.navigate('SupplierLabourService', service ? { serviceId: service.id } : {})
   }
 
   const toggleActive = async (service) => {
     setBusyId(service.id)
-    setNotice(null)
     try {
       await updateLabourService(service.id, { is_active: !service.is_active })
-      setNotice({ tone: 'success', text: t(service.is_active ? 'labor.msg.deactivated' : 'labor.msg.activated', { name: service.trade }) })
+      toast.success(t(service.is_active ? 'labor.msg.deactivated' : 'labor.msg.activated', { name: service.trade }))
       await reload()
     } catch (failure) {
-      setNotice({ tone: 'error', text: labourErrorMessage(failure, t('labor.error.serviceUpdate')) })
+      toast.error(labourErrorMessage(failure, t('labor.error.serviceUpdate')))
     } finally {
       setBusyId(null)
     }
@@ -83,12 +81,6 @@ export default function SupplierLabourServicesScreen({ navigation }) {
             <Text style={styles.addText} numberOfLines={1}>{t('labor.action.addService')}</Text>
           </Pressable>
         </View>
-
-        {notice?.text ? (
-          <Pressable onPress={() => setNotice(null)} style={{ marginTop: 10 }}>
-            <Notice tone={notice.tone} text={notice.text} />
-          </Pressable>
-        ) : null}
 
         <View style={{ marginTop: 14 }}>
           {servicesStatus === 'idle' ? (

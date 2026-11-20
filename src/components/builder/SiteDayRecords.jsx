@@ -29,6 +29,7 @@ import { formatMoney } from '../../utils/countryConfig'
 import { formatDisplayDate, todayCalendarDate, apiErrorText } from '../../utils/builderHelpers'
 import { formatPlanDate, hasFeature, lockedReason, subscriptionErrorMessage } from '../../utils/subscriptionFormat'
 import { ActionButton, LabeledInput, LockedFeature, Notice, SegmentTabs, Badge } from './BuilderUi'
+import { toast } from '../Toast'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
@@ -108,7 +109,8 @@ export function BuilderCostAdjustments({ registerId, country, onViewPlans }) {
   const [field, setField] = useState('labour_cost')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
-  const [message, setMessage] = useState(null)
+  // Messages under the amount and the reason when they are not valid.
+  const [errors, setErrors] = useState({})
   const [locked, setLocked] = useState(null)
   const [busy, setBusy] = useState(false)
   const money = (value) => formatMoney(value, country)
@@ -123,25 +125,27 @@ export function BuilderCostAdjustments({ registerId, country, onViewPlans }) {
   const entitled = hasFeature(status, 'bill_adjustments')
 
   const submit = async () => {
-    if (amount === '' || !Number.isFinite(Number(amount)) || Number(amount) < 0) {
-      setMessage({ tone: 'error', text: t('mobile.projects.adjust.errAmount') })
+    const found = {}
+    if (amount === '' || !Number.isFinite(Number(amount)) || Number(amount) < 0) found.amount = t('mobile.projects.adjust.errAmount')
+    if (reason.trim().length < 3) found.reason = t('mobile.projects.adjust.errReason')
+    if (Object.keys(found).length) {
+      setErrors(found)
+      const messages = Object.values(found)
+      toast.error(messages.length === 1 ? messages[0] : t('cp.val.completeFields'))
       return
     }
-    if (reason.trim().length < 3) {
-      setMessage({ tone: 'error', text: t('mobile.projects.adjust.errReason') })
-      return
-    }
+    setErrors({})
     setBusy(true)
-    setMessage(null)
+    toast.hide()
     try {
       setRecord(await saveCostAdjustment(registerId, { fieldName: field, adjustedValue: amount, reason: reason.trim() }))
       setAmount('')
       setReason('')
-      setMessage({ tone: 'success', text: t('subscription.adjust.saved') })
+      toast.success(t('subscription.adjust.saved'))
     } catch (error) {
       const refused = lockedReason(error)
       if (refused) setLocked(refused)
-      else setMessage({ tone: 'error', text: subscriptionErrorMessage(error, t('mobile.projects.adjust.saveFailed')) })
+      else toast.error(subscriptionErrorMessage(error, t('mobile.projects.adjust.saveFailed')))
     } finally {
       setBusy(false)
     }
@@ -178,13 +182,12 @@ export function BuilderCostAdjustments({ registerId, country, onViewPlans }) {
             <Text style={styles.text7}>{t('subscription.adjust.field')}</Text>
             <SegmentTabs dense tabs={COST_FIELDS.map(([id, labelKey]) => ({ id, label: t(labelKey) }))} active={field} onChange={setField} />
             <View style={styles.view6}>
-              <LabeledInput label={t('subscription.adjust.newAmount')} value={amount} onChangeText={(value) => setAmount(value.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" />
-              <LabeledInput label={t('subscription.adjust.reason')} value={reason} onChangeText={setReason} multiline maxLength={500} />
+              <LabeledInput label={t('subscription.adjust.newAmount')} value={amount} onChangeText={(value) => { setAmount(value.replace(/[^\d.]/g, '')); setErrors((current) => (current.amount ? { ...current, amount: '' } : current)) }} keyboardType="decimal-pad" error={errors.amount} />
+              <LabeledInput label={t('subscription.adjust.reason')} value={reason} onChangeText={(value) => { setReason(value); setErrors((current) => (current.reason ? { ...current, reason: '' } : current)) }} multiline maxLength={500} error={errors.reason} />
             </View>
             <ActionButton label={t('subscription.adjust.save')} busy={busy} onPress={submit} />
           </View>
         ) : null}
-        {message ? <View style={styles.view6}><Notice tone={message.tone} text={message.text} /></View> : null}
         {(record.adjustments || []).length ? (
           <View style={styles.view6}>
             <Text style={styles.text8}>{t('subscription.adjust.history')}</Text>

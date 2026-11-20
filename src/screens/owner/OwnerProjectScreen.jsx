@@ -23,7 +23,8 @@ import ScreenHeader from '../../components/ScreenHeader'
 import { Panel, PanelState, InsetArea } from '../../components/DashboardShell'
 import { ContentWrap } from '../../components/Responsive'
 import StatusPill from '../../components/StatusPill'
-import { BudgetInWords, DateField, FormNotice, SelectField, TextField } from '../../components/form'
+import { BudgetInWords, DateField, SelectField, TextField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
 import { fetchOwnerProjects, updateProjectRequirement } from '../../api/projects'
@@ -116,25 +117,42 @@ function OverviewEditForm({ project, onSaved, onCancel, focusLandArea = false })
   }, [focusLandArea])
   const [draft, setDraft] = useState(() => overviewDraftFrom(project))
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
+  // Each field's problem, shown under (and highlighting) that field.
+  const [errors, setErrors] = useState({})
   const projectCountry = project.project_country || 'India'
-  const update = (field, value) => setDraft((current) => ({ ...current, [field]: value }))
+  const update = (field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }))
+    // The dates are checked together: editing one clears both.
+    const keys = field === 'start_date' || field === 'end_date' ? ['start_date', 'end_date'] : [field]
+    setErrors((current) => {
+      if (!keys.some((key) => current[key])) return current
+      const next = { ...current }
+      keys.forEach((key) => { next[key] = '' })
+      return next
+    })
+  }
 
   const save = async () => {
-    if (!draft.title.trim() || !draft.description.trim() || !draft.address.trim()) {
-      setMessage(t('cp.val.completeFields'))
-      return
-    }
+    const nextErrors = {}
+    if (!draft.title.trim()) nextErrors.title = t('cp.val.projectTitle')
+    if (!draft.description.trim()) nextErrors.description = t('cp.val.projectDescription')
+    if (!draft.address.trim()) nextErrors.address = t('cp.val.address')
     // A project with no dates may stay that way; once either date is entered
     // (or the project already has them) both are needed, end not before start.
     const datesTouched = Boolean(draft.start_date || draft.end_date || project.start_date || project.end_date)
     const scheduleProblem = datesTouched ? projectScheduleProblem(draft.start_date, draft.end_date) : ''
-    if (scheduleProblem) {
-      setMessage(t(scheduleProblem))
+    if (scheduleProblem === 'dash.owner.projectForm.datesRequired') {
+      if (!draft.start_date) nextErrors.start_date = t(scheduleProblem)
+      if (!draft.end_date) nextErrors.end_date = t(scheduleProblem)
+    } else if (scheduleProblem) nextErrors.end_date = t(scheduleProblem)
+    setErrors(nextErrors)
+    const failing = Object.keys(nextErrors)
+    if (failing.length) {
+      const onlyDates = failing.every((key) => key === 'start_date' || key === 'end_date')
+      toast.error(onlyDates && scheduleProblem ? t(scheduleProblem) : t('cp.val.completeFields'))
       return
     }
     setSaving(true)
-    setMessage('')
     try {
       // The endpoint replaces the whole requirement (and resets an omitted
       // budget, land area or floors), so every field goes back: edited ones as
@@ -156,7 +174,7 @@ function OverviewEditForm({ project, onSaved, onCancel, focusLandArea = false })
       })
       await onSaved()
     } catch (error) {
-      setMessage(apiDetail(error, t('ui.owner.updateRequirementFailed')))
+      toast.error(apiDetail(error, t('ui.owner.updateRequirementFailed')))
     } finally {
       setSaving(false)
     }
@@ -172,9 +190,9 @@ function OverviewEditForm({ project, onSaved, onCancel, focusLandArea = false })
 
   return (
     <View style={styles.view}>
-      <TextField label={t('dash.common.projectName')} value={draft.title} onChangeText={(value) => update('title', value)} />
-      <TextField label={t('dash.common.description')} value={draft.description} onChangeText={(value) => update('description', value)} multiline />
-      <TextField label={t('dash.common.address')} value={draft.address} onChangeText={(value) => update('address', value)} />
+      <TextField label={t('dash.common.projectName')} value={draft.title} onChangeText={(value) => update('title', value)} error={errors.title} />
+      <TextField label={t('dash.common.description')} value={draft.description} onChangeText={(value) => update('description', value)} multiline error={errors.description} />
+      <TextField label={t('dash.common.address')} value={draft.address} onChangeText={(value) => update('address', value)} error={errors.address} />
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <SelectField
           containerStyle={{ flex: 1 }}
@@ -217,6 +235,7 @@ function OverviewEditForm({ project, onSaved, onCancel, focusLandArea = false })
           value={draft.start_date}
           max={draft.end_date || undefined}
           onChange={(value) => update('start_date', value)}
+          error={errors.start_date}
         />
         <DateField
           containerStyle={{ flex: 1 }}
@@ -224,9 +243,9 @@ function OverviewEditForm({ project, onSaved, onCancel, focusLandArea = false })
           value={draft.end_date}
           min={draft.start_date || undefined}
           onChange={(value) => update('end_date', value)}
+          error={errors.end_date}
         />
       </View>
-      <FormNotice message={message} tone="error" style={{ marginBottom: 10 }} />
       <View style={[styles.view2, { gap: 8 }]}>
         <Pressable onPress={onCancel} style={[styles.pressable, { gap: 6 }]}>
           <X size={14} color={COLORS.slate[500]} />
@@ -252,11 +271,9 @@ function OverviewSection({ project, ownerName, onSaved, startEditing = false, on
   const { isTablet } = useResponsive()
   const [editing, setEditing] = useState(startEditing)
   const [focusLandArea, setFocusLandArea] = useState(startEditing)
-  const [savedMessage, setSavedMessage] = useState('')
   // A later Edit from the Projects list, while this page is already open.
   useEffect(() => {
     if (!startEditing) return
-    setSavedMessage('')
     setEditing(true)
     setFocusLandArea(true)
     onEditStarted?.()
@@ -316,7 +333,6 @@ function OverviewSection({ project, ownerName, onSaved, startEditing = false, on
 
   return (
     <View style={styles.view3}>
-      <FormNotice message={!editing ? savedMessage : ''} tone="success" style={{ marginBottom: 12 }} />
       {editing ? (
         <OverviewEditForm
           project={project}
@@ -325,7 +341,7 @@ function OverviewSection({ project, ownerName, onSaved, startEditing = false, on
           onSaved={async () => {
             await onSaved()
             setEditing(false)
-            setSavedMessage(t('dash.owner.estimates.editSaved'))
+            toast.success(t('dash.owner.estimates.editSaved'))
           }}
         />
       ) : null}
@@ -354,7 +370,6 @@ function OverviewSection({ project, ownerName, onSaved, startEditing = false, on
         {!editing ? (
           <Pressable
             onPress={() => {
-              setSavedMessage('')
               setFocusLandArea(false)
               setEditing(true)
             }}
@@ -479,11 +494,9 @@ function EscrowSection({ project }) {
 function SiteActivitySection({ project, user }) {
   const { t } = useLanguage()
   const [sending, setSending] = useState(false)
-  const [message, setMessage] = useState('')
   const requestUpdate = async () => {
-    setMessage('')
     if (!project.contractor_id) {
-      setMessage(t('dash.err.noBuilderAssigned'))
+      toast.error(t('dash.err.noBuilderAssigned'))
       return
     }
     setSending(true)
@@ -493,14 +506,14 @@ function SiteActivitySection({ project, user }) {
         body: `${user?.name || 'Homeowner'} requested a site update for ${project.title || 'this project'}. Please share the latest progress, photos, and current work status.`,
         message_type: 'TEXT',
       })
-      setMessage(t('dash.msg.updateRequestSent'))
+      toast.success(t('dash.msg.updateRequestSent'))
     } catch (error) {
-      setMessage(apiDetail(error, t('dash.err.requestProjectUpdate')))
+      toast.error(apiDetail(error, t('dash.err.requestProjectUpdate')))
     } finally {
       setSending(false)
     }
   }
-  return <SitePhotoCalendar project={project} onRequestUpdate={requestUpdate} requestingUpdate={sending} updateMessage={message} />
+  return <SitePhotoCalendar project={project} onRequestUpdate={requestUpdate} requestingUpdate={sending} />
 }
 
 // Port of the web OwnerSupplierHub for a self-construction project: Suppliers
@@ -555,7 +568,12 @@ export default function OwnerProjectScreen({ navigation, route }) {
   const [tab, setTab] = useState(route?.params?.tab || null)
   // The Projects card's Edit: open the Overview with its Edit form already open.
   const [editRequested, setEditRequested] = useState(Boolean(route?.params?.edit))
-  const [createdNotice, setCreatedNotice] = useState(Boolean(route?.params?.created))
+  // Opened right after Create Project: say so once, at the bottom.
+  const justCreated = Boolean(route?.params?.created)
+  useEffect(() => {
+    if (justCreated) toast.success(t('dash.owner.projectForm.created'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justCreated])
   const tabsRef = useRef(null)
   // A request opened from elsewhere (a notification) starts expanded.
   const [linkedRequestId] = useState(route?.params?.requestId || null)
@@ -674,11 +692,6 @@ export default function OwnerProjectScreen({ navigation, route }) {
         >
           <ContentWrap>
           <InsetArea>
-            {createdNotice ? (
-              <Pressable onPress={() => setCreatedNotice(false)}>
-                <FormNotice message={t('dash.owner.projectForm.created')} tone="success" style={{ marginBottom: 12 }} />
-              </Pressable>
-            ) : null}
             {!project ? (
               <PanelState loading={loading} error={error}>{null}</PanelState>
             ) : (

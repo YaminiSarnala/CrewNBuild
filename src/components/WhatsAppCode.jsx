@@ -6,7 +6,7 @@
 // server without the route, or one where it is off, keeps e-mail and password,
 // exactly as the web does.
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, TextInput, Pressable } from 'react-native'
+import { AppState, View, Text, TextInput, Pressable } from 'react-native'
 import PianoLoader from './PianoLoader'
 import { ArrowLeft, ClipboardPaste, ShieldCheck } from 'lucide-react-native'
 import { useLanguage } from '../i18n/LanguageContext'
@@ -117,7 +117,8 @@ export function PhoneNumberField({ label, value, onChangeText, editable = true, 
 }
 
 // Six boxes over one hidden input, so typing, deleting and the keyboard's
-// one-time-code suggestion (iOS) / SMS autofill all just work.
+// one-time-code suggestion (iOS) / SMS autofill all just work. A code copied
+// in WhatsApp fills in by itself when the visitor returns to the app.
 export function OtpBoxes({ code, onChange, invalid, disabled, label, note }) {
   const { t } = useLanguage()
   const input = useRef(null)
@@ -131,6 +132,58 @@ export function OtpBoxes({ code, onChange, invalid, disabled, label, note }) {
   }, [pasteProblem])
 
   const fill = (digits) => onChange(Array.from({ length: OTP_LENGTH }, (_, index) => digits[index] || ''))
+
+  // Clipboard autofill: the visitor taps "Copy code" in WhatsApp (or the mail
+  // app) and comes back -- the boxes fill themselves, no Paste tap. Only read
+  // on that return to the app, never on its own, and a code already used here
+  // is not filled again.
+  const latest = useRef({ fill, value, disabled })
+  latest.current = { fill, value, disabled }
+  const usedCodes = useRef(new Set())
+  useEffect(() => {
+    if (!Clipboard) return undefined
+    let timer = null
+    const readClipboard = async (retry) => {
+      const { value: current, disabled: locked } = latest.current
+      if (locked || current.length === OTP_LENGTH) return
+      let text = ''
+      try {
+        if (await Clipboard.hasStringAsync()) text = await Clipboard.getStringAsync()
+      } catch {
+        text = ''
+      }
+      const copied = codeFromText(text)
+      if (!copied) {
+        // Android only lets the app read the clipboard once its window has
+        // focus again, which can lag a moment behind "active".
+        if (retry) timer = setTimeout(() => readClipboard(false), 600)
+        return
+      }
+      if (usedCodes.current.has(copied)) return
+      usedCodes.current.add(copied)
+      setPasteProblem(false)
+      latest.current.fill(copied)
+      input.current?.blur()
+    }
+    let previous = AppState.currentState
+    const subscription = AppState.addEventListener('change', (next) => {
+      const returned = previous !== 'active' && next === 'active'
+      previous = next
+      if (!returned) return
+      clearTimeout(timer)
+      timer = setTimeout(() => readClipboard(true), 300)
+    })
+    return () => {
+      clearTimeout(timer)
+      subscription.remove()
+    }
+  }, [])
+
+  // A code that was rejected (boxes cleared after a wrong / expired code) must
+  // not be autofilled again; remember whatever the boxes held when complete.
+  useEffect(() => {
+    if (value.length === OTP_LENGTH) usedCodes.current.add(value)
+  }, [value])
 
   async function paste() {
     let text = ''

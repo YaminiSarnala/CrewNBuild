@@ -19,6 +19,7 @@ import { Panel } from '../../components/DashboardShell'
 import {
   ActionButton, InfoRow, Notice, PremiumBadge, Section, StackScreenShell, SheetModal,
 } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import useBuilderSubscription, { announceSubscriptionChange } from '../../hooks/useBuilderSubscription'
 import {
   createSubscriptionOrder, fetchSubscriptionPlans, reportSubscriptionFailure,
@@ -62,7 +63,6 @@ export default function BuilderSubscriptionScreen({ navigation }) {
   const { status, loading, error, refresh } = subscription
   const [catalogue, setCatalogue] = useState(null)
   const [busyPlan, setBusyPlan] = useState('')
-  const [notice, setNotice] = useState(null)
   const [mockOrder, setMockOrder] = useState(null)
   const [simulating, setSimulating] = useState(false)
   // A live Razorpay order being paid in the in-app Checkout.
@@ -76,7 +76,7 @@ export default function BuilderSubscriptionScreen({ navigation }) {
     .then(setCatalogue)
     .catch((failure) => {
       setCatalogue({ plans: [] })
-      setNotice({ tone: 'error', text: subscriptionErrorMessage(failure, t('subscription.plans.loadFailed')) })
+      toast.error(subscriptionErrorMessage(failure, t('subscription.plans.loadFailed')))
     })
 
   useEffect(() => { loadCatalogue() }, [])
@@ -84,7 +84,7 @@ export default function BuilderSubscriptionScreen({ navigation }) {
   const finish = async (tone, text) => {
     setBusyPlan('')
     setMockOrder(null)
-    setNotice({ tone, text })
+    toast.show(text, tone)
     await refresh()
     announceSubscriptionChange()
   }
@@ -117,12 +117,12 @@ export default function BuilderSubscriptionScreen({ navigation }) {
 
   /** Fallback only: Checkout could not load in the app, so pay on the web page and re-read here. */
   const payOnWeb = async () => {
-    setNotice({ tone: 'info', text: t('mobile.billing.payOnWeb') })
+    toast.info(t('mobile.billing.payOnWeb'))
     try {
       await WebBrowser.openBrowserAsync(WEB_SUBSCRIPTION_URL)
     } catch {
       setBusyPlan('')
-      setNotice({ tone: 'error', text: t('subscription.panel.checkoutUnavailable') })
+      toast.error(t('subscription.panel.checkoutUnavailable'))
       return
     }
     setBusyPlan('')
@@ -131,7 +131,7 @@ export default function BuilderSubscriptionScreen({ navigation }) {
   }
 
   const purchase = async (planCode, durationCode) => {
-    setNotice(null)
+    toast.hide()
     setBusyPlan(`${planCode}:${durationCode}`)
     let order
     try {
@@ -140,7 +140,7 @@ export default function BuilderSubscriptionScreen({ navigation }) {
       order = await createSubscriptionOrder(planCode, durationCode, code)
     } catch (failure) {
       setBusyPlan('')
-      setNotice({ tone: 'error', text: subscriptionErrorMessage(failure, t('subscription.panel.failed')) })
+      toast.error(subscriptionErrorMessage(failure, t('subscription.panel.failed')))
       return
     }
     if (order.gateway_mode === 'mock') {
@@ -176,7 +176,9 @@ export default function BuilderSubscriptionScreen({ navigation }) {
       setCouponQuote(await validateSubscriptionCoupon(couponInput.trim()))
     } catch (failure) {
       setCouponQuote(null)
-      setCouponError(subscriptionErrorMessage(failure, t('subscription.coupon.invalid')))
+      const reason = subscriptionErrorMessage(failure, t('subscription.coupon.invalid'))
+      setCouponError(reason)
+      toast.error(reason)
     } finally {
       setCouponBusy(false)
     }
@@ -231,7 +233,6 @@ export default function BuilderSubscriptionScreen({ navigation }) {
             <Text style={styles.text5}>{t('subscription.panel.expiringSoon', { date: formatPlanDate(status.coverage_end) })}</Text>
           </View>
         ) : null}
-        {notice ? <View style={styles.actionButton}><Notice tone={notice.tone} text={notice.text} /></View> : null}
       </Panel>
 
       <Panel title={t('subscription.panel.choosePlan')}>
@@ -247,12 +248,12 @@ export default function BuilderSubscriptionScreen({ navigation }) {
           <View style={styles.view4}>
             <TextInput
               value={couponInput}
-              onChangeText={(value) => setCouponInput(value.toUpperCase())}
+              onChangeText={(value) => { setCouponInput(value.toUpperCase()); if (couponError) setCouponError('') }}
               placeholder={t('subscription.coupon.placeholder')}
               placeholderTextColor={COLORS.slate[400]}
               autoCapitalize="characters"
               editable={!couponQuote}
-              style={styles.textInput}
+              style={[styles.textInput, couponError ? styles.inputError : null]}
             />
             {couponQuote ? (
               <ActionButton small tone="outline" label={t('subscription.coupon.remove')} onPress={() => { setCouponQuote(null); setCouponInput(''); setCouponError('') }} />
@@ -461,6 +462,7 @@ const styles = createStyles((c) => ({
   view3: { marginTop: 14, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.borderStrong, backgroundColor: c.subtle, padding: 10.5 },
   text8: { marginBottom: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
   view4: { flexDirection: 'row', gap: 7 },
+  inputError: { borderColor: '#dc2626' },
   textInput: { height: 35, flex: 1, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, lineHeight: 20, fontWeight: '700', color: c.text },
   text9: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.emeraldText },
   text10: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.roseTextSoft },

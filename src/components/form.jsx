@@ -14,6 +14,7 @@ import { COLORS } from '../theme/tokens'
 import { formatCalendarDate, monthName, parseCalendarDate, todayCalendarDate, weekdayName } from '../utils/formatters'
 import { budgetInWords } from '../utils/amountInWords'
 import { createStyles } from '../theme/createStyles'
+import { ErrorAnchor } from './ScrollToError'
 
 const INPUT = 'tone'
 const borderFor = (invalid) => (invalid ? 'tone2' : 'tone3')
@@ -30,9 +31,12 @@ export function FieldLabel({ children }) {
 export function FieldError({ message }) {
   if (!message) return null
   return (
-    <Text accessibilityRole="alert" style={[styles.text2, { fontSize: 11 }]}>
-      {message}
-    </Text>
+    <>
+      <ErrorAnchor />
+      <Text accessibilityRole="alert" style={[styles.text2, { fontSize: 11 }]}>
+        {message}
+      </Text>
+    </>
   )
 }
 

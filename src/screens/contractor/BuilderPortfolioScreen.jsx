@@ -10,8 +10,9 @@ import { View, Text } from 'react-native'
 import { Activity, Download, FolderKanban } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
 import {
-  ActionButton, LockedFeature, Notice, PremiumBadge, Section, StackScreenShell,
+  ActionButton, LockedFeature, PremiumBadge, Section, StackScreenShell,
 } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import useBuilderSubscription from '../../hooks/useBuilderSubscription'
 import {
   fetchBuilderPortfolio, fetchPortfolioExportCsv, fetchProjectSummaryCsv, normalizeCsvError,
@@ -57,13 +58,11 @@ export default function BuilderPortfolioScreen({ navigation }) {
   const [locked, setLocked] = useState(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('')
   const [exporting, setExporting] = useState('')
   const statusKey = `${status?.status}-${status?.plan_code}`
 
   const load = useCallback(async () => {
     setLoading(true)
-    setMessage('')
     setLoadFailed(false)
     try {
       setData(await fetchBuilderPortfolio())
@@ -81,14 +80,13 @@ export default function BuilderPortfolioScreen({ navigation }) {
   const viewPlans = () => navigation.navigate('BuilderSubscription')
 
   const shareCsv = async (key, task, title) => {
-    setMessage('')
     setExporting(key)
     try {
       const csv = await task()
       await shareCsvFile(csv, title)
     } catch (error) {
       const reason = lockedReason(normalizeCsvError(error))
-      setMessage(reason ? lockedMessage(reason, t) : t('subscription.portfolio.downloadFailed'))
+      toast.error(reason ? lockedMessage(reason, t) : t('subscription.portfolio.downloadFailed'))
     } finally {
       setExporting('')
     }
@@ -113,7 +111,6 @@ export default function BuilderPortfolioScreen({ navigation }) {
         <Section><LockedFeature reason={locked} onViewPlans={viewPlans} /></Section>
       ) : (
         <>
-          <Section><Notice tone="error" text={message} /></Section>
           <Panel title={t('mobile.billing.portfolio.summary')} action={<Activity size={18} color="#1a5038" />}>
             <PanelState
               loading={loading && !data}

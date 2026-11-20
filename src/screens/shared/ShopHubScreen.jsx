@@ -3,10 +3,11 @@
 // The only role difference is where the checkout project comes from, so that
 // arrives as props.
 import { useEffect, useState } from 'react'
-import { View, Text, Pressable, TextInput, Alert } from 'react-native'
+import { View, Text, Pressable, TextInput } from 'react-native'
 import { useDispatch, useSelector } from 'react-redux'
 import { PackageSearch, ShoppingBag, ShoppingCart, Plus, Minus,Building2, Trash2 } from 'lucide-react-native'
 import DashboardShell, { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
+import { toast } from '../../components/Toast'
 import { fetchShopProducts } from '../../api/shop'
 import { fetchMyMaterialRequests } from '../../api/materialRequests'
 import {
@@ -68,7 +69,7 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
 
   function addToCart(productId) {
     if (!checkoutProjectId) {
-      Alert.alert('No project', 'You need a project linked to your account before adding materials.')
+      toast.error('You need a project linked to your account before adding materials.', { title: 'No project' })
       return
     }
     dispatch(addProductToCart({ projectId: checkoutProjectId, productId, quantity: 1 }))
@@ -78,7 +79,7 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
     if (requireCompleteProfile(() => checkout(supplierId))) return
     if (checkoutSupplierId !== null) return
     if (!checkoutProject) {
-      Alert.alert('No project', 'You need a project linked to your account before sending a buy request.')
+      toast.error('You need a project linked to your account before sending a buy request.', { title: 'No project' })
       return
     }
     setCheckoutSupplierId(supplierId)
@@ -88,25 +89,19 @@ export default function ShopHubScreen({ navigation, route, loadProjects, pickChe
         supplierId,
       }))
       if (sendBuyRequest.fulfilled.match(result)) {
-        Alert.alert(
-          'Buy request sent',
+        toast.success(
           result.payload?.request_code
             ? `Request code: ${result.payload.request_code}`
-            : 'The supplier has been notified.'
+            : 'The supplier has been notified.',
+          { title: 'Buy request sent' }
         )
         dispatch(clearCartMessage())
         await orders.reload()
       } else {
-        Alert.alert(
-          'Could not send',
-          result.payload || 'Unable to send the buy request.'
-        )
+        toast.error(result.payload || 'Unable to send the buy request.', { title: 'Could not send' })
       }
     } catch (error) {
-      Alert.alert(
-        'Could not send',
-        error?.message || 'Unable to send the buy request. Please try again.'
-      )
+      toast.error(error?.message || 'Unable to send the buy request. Please try again.', { title: 'Could not send' })
     } finally {
       setCheckoutSupplierId(null)
     }

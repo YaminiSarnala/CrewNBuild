@@ -14,6 +14,7 @@ import { formatDateTime, formatNumber } from '../../../utils/formatters'
 import { COLORS } from '../../../theme/tokens'
 import { createStyles } from '../../../theme/createStyles'
 import SheetHeader from '../SheetHeader'
+import { ToastHost } from '../../../components/Toast'
 
 // The stored status is unchanged; this only reads it back in a supplier's words.
 const STATUS_LABEL_KEYS = {
@@ -241,6 +242,7 @@ export function OrderSheet({ order, title, counterpartyLabel, money, onClose, li
           {children}
         </ScrollView>
       </View>
+      <ToastHost />
     </Modal>
   )
 }

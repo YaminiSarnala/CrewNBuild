@@ -9,7 +9,7 @@ import { View, Text, Pressable } from 'react-native'
 import { Image } from 'expo-image'
 import { HardHat, MapPin, Send, Star } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
-import { FormNotice } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useProfileGate } from '../../hooks/useProfileGate'
@@ -94,7 +94,6 @@ export default function OwnerSiteEngineerSection({ project }) {
   const [requests, setRequests] = useState([])
   const [assigned, setAssigned] = useState(null)
   const [busyId, setBusyId] = useState(null)
-  const [message, setMessage] = useState({ text: '', tone: 'info' })
   const [loading, setLoading] = useState(true)
   const projectId = project?.id || null
 
@@ -133,28 +132,26 @@ export default function OwnerSiteEngineerSection({ project }) {
   // Asking a Site Engineer is a request like asking a builder: it needs a complete profile.
   const send = async (engineer) => {
     if (requireCompleteProfile(() => send(engineer))) return
-    setMessage({ text: '', tone: 'info' })
     setBusyId(engineer.user_id)
     try {
       await sendProjectRequest({ receiver_id: engineer.user_id, project_id: projectId, request_type: OWNER_TO_ENGINEER })
-      setMessage({ text: t('dash.supplier.msg.sentTo', { name: td(engineer.name) }), tone: 'success' })
+      toast.success(t('dash.supplier.msg.sentTo', { name: td(engineer.name) }))
       await refresh()
     } catch (error) {
-      setMessage({ text: apiDetail(error, t('ui.owner.sendRequestFailed')), tone: 'error' })
+      toast.error(apiDetail(error, t('ui.owner.sendRequestFailed')))
     } finally {
       setBusyId(null)
     }
   }
 
   const assign = async (request) => {
-    setMessage({ text: '', tone: 'info' })
     setBusyId(request.id)
     try {
       await assignEngineerFromRequest(request.id)
-      setMessage({ text: t('ui.owner.siteEngineerAssigned'), tone: 'success' })
+      toast.success(t('ui.owner.siteEngineerAssigned'))
       await refresh()
     } catch (error) {
-      setMessage({ text: apiDetail(error, t('ui.owner.assignEngineerFailed')), tone: 'error' })
+      toast.error(apiDetail(error, t('ui.owner.assignEngineerFailed')))
     } finally {
       setBusyId(null)
     }
@@ -166,8 +163,6 @@ export default function OwnerSiteEngineerSection({ project }) {
 
   return (
     <View>
-      <FormNotice message={message.text} tone={message.tone} style={{ marginBottom: 12 }} />
-
       {assigned ? (
         <>
           <PersonCard

@@ -21,6 +21,7 @@ import { store } from './src/store'
 import { ThemeProvider } from './src/theme/ThemeContext'
 import { LanguageProvider } from './src/i18n/LanguageContext'
 import RootNavigator from './src/navigation/RootNavigator'
+import { ToastHost } from './src/components/Toast'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
 
@@ -53,6 +54,8 @@ export default function App() {
               {/* Every screen has the green header behind the status bar, so its icons stay light. */}
               <StatusBar style="light" />
               <RootNavigator />
+              {/* The bottom toast for screens without a shell of their own. */}
+              <ToastHost />
             </SafeAreaProvider>
           </LanguageProvider>
         </ThemeProvider>

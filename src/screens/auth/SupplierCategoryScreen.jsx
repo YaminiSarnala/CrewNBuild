@@ -13,6 +13,7 @@ import { ArrowRight, BrickWall, HardHat, Store, Tractor, CheckCircle2 } from 'lu
 import { fetchSessionUser, saveSupplierCategory } from '../../api/auth'
 import { logoutUser, mergeUser } from '../../store/authSlice'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { toast } from '../../components/Toast'
 import { optionLabel, SUPPLIER_TYPE_KEYS } from '../../i18n/optionKeys'
 import { PrimaryButton, GhostButton } from '../../components/ui'
 import { SUPPLIER_CATEGORY_CHOICES, supplierCategoryMissing } from '../supplier/supplierKinds'
@@ -47,6 +48,7 @@ export default function SupplierCategoryScreen() {
     if (submitting.current) return
     if (!category) {
       setError(t('cp.val.supplierCategory'))
+      toast.error(t('cp.val.supplierCategory'))
       return
     }
     submitting.current = true
@@ -75,7 +77,7 @@ export default function SupplierCategoryScreen() {
     }
     submitting.current = false
     setSaving(false)
-    setError(t('ps.supplierCategorySaveFailed'))
+    toast.error(t('ps.supplierCategorySaveFailed'))
   }
 
   return (
@@ -99,7 +101,7 @@ export default function SupplierCategoryScreen() {
                 disabled={saving}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
-                style={[styles.choice, selected ? styles.choiceOn : null]}
+                style={[styles.choice, selected ? styles.choiceOn : null, error ? styles.choiceInvalid : null]}
               >
                 <View style={[styles.choiceIcon, selected ? styles.choiceIconOn : null]}>
                   <Icon size={22} color="#2e7d55" />
@@ -141,5 +143,6 @@ const styles = createStyles((c) => ({
   choiceIcon: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: c.brandSoft },
   choiceIconOn: { backgroundColor: c.card },
   choiceText: { flex: 1, fontSize: 15, fontFamily: 'Manrope_800ExtraBold', color: c.text },
-  error: { marginTop: 10, fontSize: 12, fontFamily: 'Inter_700Bold', color: '#dc2626' },
+  choiceInvalid: { borderColor: '#dc2626' },
+  error: { marginTop: 10, fontSize: 11.5, fontFamily: 'Inter_700Bold', color: '#dc2626' },
 }))

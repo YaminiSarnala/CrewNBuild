@@ -18,7 +18,8 @@ import { useNavigation } from '@react-navigation/native'
 import PianoLoader from '../PianoLoader'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { CalendarClock, Lock, Play, RefreshCw, Search, ShieldCheck, Video, X } from 'lucide-react-native'
-import { DateField, FormNotice, SelectField, TextField } from '../form'
+import { DateField, SelectField, TextField } from '../form'
+import { toast } from '../Toast'
 import { useLanguage } from '../../i18n/LanguageContext'
 import {
   connectProjectCamera, endPlaybackSession, fetchProjectCameraDevices, fetchProjectCameraSetup, renewPlaybackSession,
@@ -297,6 +298,8 @@ function CameraViewer({ devices, projectTitle }) {
   const [searchStatus, setSearchStatus] = useState('idle')
   const [segments, setSegments] = useState([])
   const [searchError, setSearchError] = useState('')
+  // A bad time window highlights the date / time it is in: { date, start, end }.
+  const [windowErrors, setWindowErrors] = useState({})
   const [activeSegment, setActiveSegment] = useState(null)
 
   const cameras = useMemo(() => (devices || []).flatMap((device) => (device.channels || [])
@@ -344,16 +347,18 @@ function CameraViewer({ devices, projectTitle }) {
     if (!recCamera) return
     setActiveSegment(null)
     setSearchError('')
-    if (!validTime(recStart) || !validTime(recEnd) || !recDate) {
-      setSearchStatus('error')
-      setSearchError(t('dash.engineer.recorded.badWindow'))
-      return
-    }
+    const badWindow = t('dash.engineer.recorded.badWindow')
+    const problems = {}
+    if (!recDate) problems.date = badWindow
+    if (!validTime(recStart)) problems.start = badWindow
+    if (!validTime(recEnd)) problems.end = badWindow
     const start = `${recDate}T${recStart}:00`
     const end = `${recDate}T${recEnd}:00`
-    if (!(new Date(end).getTime() > new Date(start).getTime())) {
-      setSearchStatus('error')
-      setSearchError(t('dash.engineer.recorded.badWindow'))
+    if (!Object.keys(problems).length && !(new Date(end).getTime() > new Date(start).getTime())) problems.end = badWindow
+    setWindowErrors(problems)
+    if (Object.keys(problems).length) {
+      setSearchStatus('idle')
+      toast.error(badWindow)
       return
     }
     setSearchStatus('loading')
@@ -418,13 +423,14 @@ function CameraViewer({ devices, projectTitle }) {
             disabled={!cameras.length}
             options={cameras.map(({ channel }) => ({ value: channel.id, label: td(channel.name) }))}
           />
-          <DateField label={t('dash.engineer.recorded.date')} value={recDate} onChange={(value) => value && setRecDate(value)} />
+          <DateField label={t('dash.engineer.recorded.date')} value={recDate} onChange={(value) => { if (value) { setRecDate(value); setWindowErrors({}) } }} error={windowErrors.date} />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TextField
               containerStyle={{ flex: 1 }}
               label={t('dash.engineer.recorded.start')}
               value={recStart}
-              onChangeText={(value) => setRecStart(timeText(value))}
+              onChangeText={(value) => { setRecStart(timeText(value)); setWindowErrors((current) => ({ ...current, start: '', end: '' })) }}
+              error={windowErrors.start}
               keyboardType="number-pad"
               placeholder="HH:MM"
             />
@@ -432,7 +438,8 @@ function CameraViewer({ devices, projectTitle }) {
               containerStyle={{ flex: 1 }}
               label={t('dash.engineer.recorded.end')}
               value={recEnd}
-              onChangeText={(value) => setRecEnd(timeText(value))}
+              onChangeText={(value) => { setRecEnd(timeText(value)); setWindowErrors((current) => ({ ...current, end: '' })) }}
+              error={windowErrors.end}
               keyboardType="number-pad"
               placeholder="HH:MM"
             />
@@ -549,7 +556,7 @@ const DEVICE_TYPES = [
   { value: 'NVR', label: 'NVR' },
 ]
 
-function ConnectForm({ projectTitle, hasDevice, busy, stage, message, onSubmit }) {
+function ConnectForm({ projectTitle, hasDevice, busy, stage, onSubmit }) {
   const { t, td } = useLanguage()
   const [deviceType, setDeviceType] = useState('DVR')
   const [host, setHost] = useState('')
@@ -558,9 +565,22 @@ function ConnectForm({ projectTitle, hasDevice, busy, stage, message, onSubmit }
   const [rtspPort, setRtspPort] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  // Every required box left empty is highlighted at once; the toast sums it up.
+  const [errors, setErrors] = useState({})
+  const edit = (setter, field) => (value) => { setter(value); setErrors((current) => (current[field] ? { ...current, [field]: '' } : current)) }
 
   const submit = async () => {
-    if (!host.trim() || !port.trim() || !username.trim() || !password) return
+    const required = t('ui.shared.required')
+    const problems = {}
+    if (!host.trim()) problems.host = required
+    if (!port.trim()) problems.port = required
+    if (!username.trim()) problems.username = required
+    if (!password) problems.password = required
+    setErrors(problems)
+    if (Object.keys(problems).length) {
+      toast.error(t('cp.val.completeFields'))
+      return
+    }
     const ok = await onSubmit({ deviceType, host: host.trim(), port, rtspPort: rtspPort.trim(), username: username.trim(), password })
     // Whatever the outcome, the secret does not stay in memory afterwards.
     setPassword('')
@@ -579,14 +599,14 @@ function ConnectForm({ projectTitle, hasDevice, busy, stage, message, onSubmit }
       {hasDevice ? <Text style={[styles.text19, { fontSize: 12 }]}>{t('ui.cctv.existingRecorderNote')}</Text> : null}
       <View style={styles.view21}>
         <SelectField label={t('ui.cctv.deviceType')} value={deviceType} onChange={(value) => value && setDeviceType(value)} options={DEVICE_TYPES} disabled={busy} />
-        <TextField label={t('ui.cctv.ipAddressHost')} value={host} onChangeText={setHost} placeholder="192.168.1.100" autoCapitalize="none" autoCorrect={false} editable={!busy} />
+        <TextField label={t('ui.cctv.ipAddressHost')} value={host} onChangeText={edit(setHost, 'host')} error={errors.host} placeholder="192.168.1.100" autoCapitalize="none" autoCorrect={false} editable={!busy} />
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TextField containerStyle={{ flex: 1 }} label={t('ui.cctv.port')} value={port} onChangeText={setPort} placeholder="80" keyboardType="number-pad" editable={!busy} />
+          <TextField containerStyle={{ flex: 1 }} label={t('ui.cctv.port')} value={port} onChangeText={edit(setPort, 'port')} error={errors.port} placeholder="80" keyboardType="number-pad" editable={!busy} />
           <TextField containerStyle={{ flex: 1, marginBottom: 2 }} label={t('ui.cctv.rtspPort')} value={rtspPort} onChangeText={setRtspPort} placeholder="554" keyboardType="number-pad" editable={!busy} />
         </View>
         <Text style={[styles.text20, { fontSize: 10.5 }]}>{t('ui.cctv.rtspPortHint')}</Text>
-        <TextField label={t('ui.cctv.username')} value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} editable={!busy} />
-        <TextField label={t('login.password')} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" textContentType="password" editable={!busy} />
+        <TextField label={t('ui.cctv.username')} value={username} onChangeText={edit(setUsername, 'username')} error={errors.username} autoCapitalize="none" autoCorrect={false} editable={!busy} />
+        <TextField label={t('login.password')} value={password} onChangeText={edit(setPassword, 'password')} error={errors.password} secureTextEntry autoCapitalize="none" textContentType="password" editable={!busy} />
       </View>
       <Pressable
         onPress={submit}
@@ -598,7 +618,6 @@ function ConnectForm({ projectTitle, hasDevice, busy, stage, message, onSubmit }
           {busy ? (stage === 'discovering' ? t('ui.cctv.discoveringCameras') : t('ui.cctv.verifyingDvrNvr')) : t('ui.cctv.verifyDevice')}
         </Text>
       </Pressable>
-      <FormNotice message={message?.text} tone={message?.tone === 'error' ? 'error' : 'success'} style={{ marginTop: 10 }} />
       <View style={[styles.view22, { gap: 5 }]}>
         <Lock size={11} color={COLORS.slate[400]} />
         <Text style={[styles.text21, { fontSize: 11 }]}>{t('ui.cctv.credentialsNote')}</Text>
@@ -620,7 +639,6 @@ export default function ProjectCameraPanel({ projectId, projectTitle = '' }) {
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [stage, setStage] = useState('idle')
-  const [message, setMessage] = useState(null)
   const [devices, setDevices] = useState([])
   const alive = useRef(true)
 
@@ -658,17 +676,16 @@ export default function ProjectCameraPanel({ projectId, projectTitle = '' }) {
   const submit = async (form) => {
     setBusy(true)
     setStage('discovering')
-    setMessage(null)
     try {
       // One call: the server verifies the credentials, then discovers the cameras.
       const result = await connectProjectCamera(projectId, form)
       if (!alive.current) return true
-      setMessage({ tone: 'ok', text: t('ui.cctv.deviceVerified') })
+      toast.success(t('ui.cctv.deviceVerified'))
       setShowForm(false)
       await refresh()
       return Boolean(result?.access_granted)
     } catch (error) {
-      if (alive.current) setMessage({ tone: 'error', text: apiMessage(error, t('ui.cctv.recorderNotVerified'), t, td) })
+      if (alive.current) toast.error(apiMessage(error, t('ui.cctv.recorderNotVerified'), t, td))
       return false
     } finally {
       if (alive.current) { setBusy(false); setStage('idle') }
@@ -718,7 +735,7 @@ export default function ProjectCameraPanel({ projectId, projectTitle = '' }) {
   }
 
   if (showForm) {
-    return <ConnectForm projectTitle={title} hasDevice={Boolean(status?.has_device)} busy={busy} stage={stage} message={message} onSubmit={submit} />
+    return <ConnectForm projectTitle={title} hasDevice={Boolean(status?.has_device)} busy={busy} stage={stage} onSubmit={submit} />
   }
 
   return (
@@ -727,7 +744,7 @@ export default function ProjectCameraPanel({ projectId, projectTitle = '' }) {
       <Text style={[styles.text18, { fontSize: 18 }]}>{td(title)}</Text>
       <Text style={[styles.text26, { fontSize: 13, lineHeight: 19 }]}>{t('ui.cctv.noAccessConfigured')}</Text>
       <Pressable
-        onPress={() => { setMessage(null); setShowForm(true) }}
+        onPress={() => setShowForm(true)}
         style={[styles.pressable16, { gap: 8 }]}
       >
         <Video size={16} color="#ffffff" />

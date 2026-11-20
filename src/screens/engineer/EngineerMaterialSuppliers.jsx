@@ -18,9 +18,10 @@ import { listingSearchScore } from '../../utils/catalogSearch'
 import { formatNumber } from '../../utils/formatters'
 import { DEFAULT_SUPPLIER_OFFERING_KEYS, SUPPLIER_CATEGORY_KEYS, SUPPLIER_OFFERING_KEYS, SUPPLIER_TYPE_KEYS, optionLabel } from '../../i18n/optionKeys'
 import { SheetModal } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { PriceTag, SmartImage, StockBadge } from './materialParts'
 import { COLORS } from '../../theme/tokens'
-import { ink, line, soft } from '../../theme/tint'
+import { ink, soft } from '../../theme/tint'
 import { createStyles } from '../../theme/createStyles'
 
 // Labor and Equipment Suppliers have their own screens.
@@ -122,7 +123,6 @@ export default function EngineerMaterialSuppliers({ projects, search, onOpenSupp
   const [viewedSupplier, setViewedSupplier] = useState(null)
   const [supplierCategory, setSupplierCategory] = useState('')
   const [viewedProduct, setViewedProduct] = useState(null)
-  const [errorMessage, setErrorMessage] = useState('')
   const [categoryImages, setCategoryImages] = useState(() => new Map())
   const imagesRequested = useRef(false)
   const projectKey = projects.map((project) => project.id).join(',')
@@ -181,7 +181,6 @@ export default function EngineerMaterialSuppliers({ projects, search, onOpenSupp
     const tab = { [LABOR_SUPPLIER_CATEGORY]: 'labor', [EQUIPMENT_SUPPLIER_CATEGORY]: 'equipment' }[supplier?.supplier_category]
     if (tab && onOpenSupplierTab) { onOpenSupplierTab(tab, supplier.user_id); return }
     setSupplierCategory('')
-    setErrorMessage('')
     try {
       const profile = await fetchSupplierProfile(supplier.user_id)
       const next = { ...supplier, ...profile, products: profile.profile_products || [] }
@@ -189,7 +188,7 @@ export default function EngineerMaterialSuppliers({ projects, search, onOpenSupp
       const opened = openProductId && (profile.profile_products || []).find((item) => item.id === openProductId)
       if (opened) setViewedProduct(opened)
     } catch (error) {
-      setErrorMessage(error?.response?.data?.detail || t('dash.engineer.suppliers.unableLoad'))
+      toast.error(td(error?.response?.data?.detail || t('dash.engineer.suppliers.unableLoad')))
     }
   }
 
@@ -212,18 +211,10 @@ export default function EngineerMaterialSuppliers({ projects, search, onOpenSupp
   const shownProducts = supplierCategory ? visibleProducts.filter((product) => product.category === supplierCategory) : visibleProducts
   const browsingCategories = supplierCategory === '' && materialCategories.length > 1
 
-  const errorBox = errorMessage ? (
-    <View style={styles.error}>
-            <AlertTriangle size={15} color={ink('#be123c')} />
-      <Text style={styles.errorText}>{td(errorMessage)}</Text>
-    </View>
-  ) : null
-
   // ------------------------------------------------ one supplier's catalogue
   if (viewedSupplier) {
     return (
       <View style={styles.panel}>
-        {errorBox}
         <View style={styles.supplierHead}>
           <Pressable onPress={() => { setViewedSupplier(null); setViewedProduct(null) }} accessibilityLabel={t('dash.contractor.backToSuppliers')} style={styles.backButton}>
             <ArrowLeft size={15} color={COLORS.slate[600]} />
@@ -295,7 +286,6 @@ export default function EngineerMaterialSuppliers({ projects, search, onOpenSupp
   // ------------------------------------------------ the supplier list
   return (
     <View style={styles.panel}>
-      {errorBox}
       {!projects.length ? (
         <View style={styles.warnPill}>
                   <AlertTriangle size={13} color={ink('#134127')} />
@@ -384,8 +374,6 @@ const styles = createStyles((c) => ({
   empty: { alignItems: 'center', gap: 4, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: c.brandBorderStrong, paddingHorizontal: 16, paddingVertical: 26 },
   emptyTitle: { marginTop: 6, textAlign: 'center', fontFamily: 'Manrope_800ExtraBold', fontSize: 15, color: c.text },
   emptyHint: { textAlign: 'center', fontSize: 12.5, fontWeight: '500', color: c.textMuted },
-  error: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12, borderWidth: 1, borderColor: line('#fecdd3', '#e11d48'), backgroundColor: soft('#fff1f2', '#e11d48'), padding: 10 },
-  errorText: { flex: 1, fontSize: 12.5, fontWeight: '700', color: ink('#be123c') },
   warnPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft, paddingHorizontal: 10, paddingVertical: 5 },
   warnText: { fontSize: 11, fontWeight: '800', color: ink('#134127') },
     skeleton: { height: 64, borderRadius: 12, backgroundColor: c.subtle },

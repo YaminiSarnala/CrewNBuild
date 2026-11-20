@@ -20,6 +20,7 @@ import { activeLocale, formatDate, formatDateTime, formatNumber } from '../../..
 import { SUPPLIER_CATEGORY_KEYS, optionLabel } from '../../../i18n/optionKeys'
 import { COLORS } from '../../../theme/tokens'
 import { createStyles } from '../../../theme/createStyles'
+import { ToastHost } from '../../../components/Toast'
 
 const STATUS_TONES = {
   PENDING: { box: 'tone', text: 'tone2', color: '#b45309' },
@@ -169,6 +170,7 @@ function OrderDetailSheet({ order, country, onClose }) {
           </View>
         </ScrollView>
       </View>
+      <ToastHost />
     </Modal>
   )
 }

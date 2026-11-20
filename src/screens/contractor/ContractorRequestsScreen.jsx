@@ -30,7 +30,8 @@ import {
   fetchProjectAward,
 } from '../../api/requests'
 import {
-  Section, SegmentTabs, RequestStatusBadge, Badge, ActionButton, SearchBox, SheetModal, InfoRow, Notice, SelectChip, ViewToggle,} from '../../components/builder/BuilderUi'
+  Section, SegmentTabs, RequestStatusBadge, Badge, ActionButton, SearchBox, SheetModal, InfoRow, SelectChip, ViewToggle,} from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import AwardPanel from '../../components/builder/AwardPanel'
 import { builderFlowStatus, hasAssignmentFlow, FLOW_TONE_COLORS } from '../../utils/awardFlow'
 import {
@@ -137,7 +138,6 @@ export default function ContractorRequestsScreen({ navigation }) {
   const [view, setView] = useState('cards')
     const [refreshing, setRefreshing] = useState(false)
   const [busyId, setBusyId] = useState(null)
-  const [message, setMessage] = useState(null)
   const [quoteFor, setQuoteFor] = useState(null)
   const [quoteAmount, setQuoteAmount] = useState('')
   const [quoteError, setQuoteError] = useState('')
@@ -199,13 +199,6 @@ export default function ContractorRequestsScreen({ navigation }) {
     return rows
   }, [currentList, filter, search, sortOrder])
 
-  // The banner clears itself, as the web's request banner does.
-  useEffect(() => {
-    if (!message) return undefined
-    const timer = setTimeout(() => setMessage(null), 5000)
-    return () => clearTimeout(timer)
-  }, [message])
-
   async function refresh() {
     setRefreshing(true)
     try {
@@ -221,9 +214,9 @@ export default function ContractorRequestsScreen({ navigation }) {
     setBusyId(request.id)
     try {
       await task()
-      setMessage({ tone: 'success', text: successText })
+      toast.success(successText)
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, failureText) })
+      toast.error(apiErrorText(error, failureText))
       setBusyId(null)
       return
     }
@@ -260,6 +253,7 @@ export default function ContractorRequestsScreen({ navigation }) {
     const amount = Number(String(quoteAmount).replace(/,/g, '').trim())
     if (!amount || amount <= 0) {
       setQuoteError(t('dash.contractor.quotationHint'))
+      toast.error(t('dash.contractor.quotationHint'))
       return
     }
     const request = quoteFor
@@ -338,7 +332,6 @@ export default function ContractorRequestsScreen({ navigation }) {
         </Section>
 
         <Section>
-          <Notice tone={message?.tone} text={message?.text} />
           <PanelState
             loading={requests.loading}
             error={requests.error}
@@ -503,7 +496,7 @@ export default function ContractorRequestsScreen({ navigation }) {
           placeholder={`${t('dash.contractor.amount')} (₹)`}
           placeholderTextColor={COLORS.slate[400]}
           autoFocus
-          style={styles.textInput}
+          style={[styles.textInput, quoteError ? styles.inputError : null]}
         />
         {Number(quoteAmount) > 0 ? <Text style={styles.text14}>{money(quoteAmount)}</Text> : null}
         {quoteError ? <Text style={styles.text15}>{quoteError}</Text> : null}
@@ -597,6 +590,7 @@ const styles = createStyles((c) => ({
   view13: { marginTop: 10.5, flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   view14: { flexDirection: 'row', gap: 7 },
   text13: { marginBottom: 3.5, marginTop: 10.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
+  inputError: { borderColor: '#dc2626' },
   textInput: { height: 42, borderRadius: 12, borderWidth: 1, borderColor: '#9dc5af', backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 16, fontWeight: '800', color: c.text },
   text14: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.textSecondary },
   text15: { marginTop: 7, fontSize: 12, lineHeight: 16, fontWeight: '700', color: c.roseTextSoft },

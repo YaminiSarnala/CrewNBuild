@@ -84,7 +84,7 @@ function SiteVideo({ video }) {
   )
 }
 
-export default function SitePhotoCalendar({ project, onRequestUpdate, requestingUpdate = false, updateMessage = '' }) {
+export default function SitePhotoCalendar({ project, onRequestUpdate, requestingUpdate = false }) {
   const { t, td } = useLanguage()
   const [month, setMonth] = useState(() => new Date())
   const [workDate, setWorkDate] = useState('')
@@ -162,7 +162,6 @@ export default function SitePhotoCalendar({ project, onRequestUpdate, requesting
           ) : null}
         </View>
       </View>
-      <FormNotice message={updateMessage} />
       <FormNotice message={message} tone="error" />
 
       <View style={styles.view7}>

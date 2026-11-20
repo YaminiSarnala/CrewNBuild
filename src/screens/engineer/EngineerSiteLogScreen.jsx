@@ -28,6 +28,7 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import DashboardShell, { useAsyncData } from '../../components/DashboardShell'
 import { Notice, Section, SelectChip } from '../../components/builder/BuilderUi'
 import { BudgetInWords } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { fetchEngineerProjects } from '../../api/engineers'
 import { fetchCostToolSummary } from '../../api/costTool'
 import { deleteProjectPhoto, fetchProjectTimelineEntries, saveDailyWorkflow } from '../../api/projects'
@@ -199,7 +200,6 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
   const [usedToday, setUsedToday] = useState({})
   const [photos, setPhotos] = useState([])
   const [videos, setVideos] = useState([])
-  const [notice, setNotice] = useState(null)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState('')
@@ -229,7 +229,8 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
   const dayReady = loadedKey === viewKey
   const country = project?.project_country
   const money = (value) => formatMoney(value, country)
-  const notify = (text, tone = 'info') => setNotice(text ? { text, tone } : null)
+  // Results and the validation summary show as a bottom toast; the fields at fault are highlighted.
+  const notify = (text, tone = 'info') => { if (text) toast.show(text, tone) }
 
   useEffect(() => { if (!projectId && projectList.length) setProjectId(String(projectList[0].id)) }, [projectId, projectList])
 
@@ -277,7 +278,7 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
       setForm(nextForm)
       setUsedToday(savedUsage)
       savedSnapshot.current = { form: nextForm, usage: savedUsage }
-      setPhotos([]); setVideos([]); setNotice(null); setFieldErrors({})
+      setPhotos([]); setVideos([]); setFieldErrors({})
       setBoqOpen(Boolean(nextForm.activity_category || nextForm.boq_reference || nextForm.activity_unit || String(nextForm.planned_quantity ?? '') !== '' || String(nextForm.completed_quantity ?? '') !== ''))
       setLoadedKey(key)
       return true
@@ -468,7 +469,7 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
   const discardChanges = () => {
     const saved = savedSnapshot.current
     setForm(saved.form); setUsedToday(saved.usage)
-    setPhotos([]); setVideos([]); setFieldErrors({}); setNotice(null)
+    setPhotos([]); setVideos([]); setFieldErrors({})
     resetResources()
   }
   const showHistoryFor = (material) => {
@@ -494,7 +495,7 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
     const errors = validate()
     if (Object.keys(errors).length) {
       setFieldErrors(errors)
-      notify(errors.work_title || t('se.form.errFix'), 'error')
+      notify(errors.work_title && !errors.materials ? errors.work_title : t('se.form.errFix'), 'error')
       if (errors.work_title) workTitleRef.current?.focus()
       else if (errors.materials) { setUsageSearch(''); setUsedOnly(false) }
       return
@@ -514,7 +515,6 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
     const submittedUsage = Object.fromEntries(materials.map((item) => [item.material, Number(usedToday[item.material] ?? 0) || 0]))
     const changes = usageChanges(savedSnapshot.current.usage, submittedUsage)
     setSaving(action)
-    setNotice(null)
     try {
       await saveDailyWorkflow(projectId, payload)
       pendingTouch.current = Object.keys(changes).length ? { changes, workDate, registerId: register?.id ?? null, at: Date.now() } : null
@@ -598,7 +598,6 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
           </View>
         </View>
 
-        {!workDate ? <Notice tone={notice?.tone === 'error' ? 'error' : notice?.tone === 'success' ? 'success' : 'info'} text={notice?.text} /> : null}
         {loadError && !workDate ? (
           <View style={styles.errorRow}>
             <Notice tone="error" text={loadError} />
@@ -1111,7 +1110,6 @@ export default function EngineerSiteLogScreen({ navigation, route }) {
 
             <View style={styles.noticePad}>
               {dayReady && loadError ? <Notice tone="error" text={loadError} /> : null}
-              {notice ? <Notice tone={notice.tone === 'error' ? 'error' : notice.tone === 'success' ? 'success' : 'info'} text={notice.text} /> : null}
             </View>
 
             {editable && dayReady ? (
@@ -1247,11 +1245,11 @@ const styles = createStyles((c) => ({
   fieldLabel: { marginBottom: 4, fontSize: 12, fontWeight: '700', color: c.textSecondary },
     required: { color: ink('#e11d48') },
   optional: { fontWeight: '600', color: c.textFaint },
-  fieldError: { marginTop: 3, fontSize: 11.5, fontWeight: '700', color: ink('#e11d48') },
+  fieldError: { marginTop: 3, fontSize: 11.5, fontWeight: '700', color: '#dc2626' },
   fieldHint: { marginTop: 3, fontSize: 11.5, fontWeight: '600', color: c.textFaint },
   input: { height: 40, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10, fontSize: 14, fontWeight: '600', color: c.text },
   textArea: { minHeight: 76, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, fontWeight: '600', color: c.text },
-  inputInvalid: { borderColor: '#fb7185' },
+  inputInvalid: { borderColor: '#dc2626' },
   inputDisabled: { backgroundColor: c.subtle, color: c.textSoft },
   readValue: { fontSize: 14, fontWeight: '800', color: c.text },
   readBox: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 10 },

@@ -11,6 +11,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { useProfilePhoto } from '../hooks/useProfilePhoto'
 import { userAvatarSource } from '../utils/avatars'
 import { createStyles } from '../theme/createStyles'
+import { ToastHost } from './Toast'
 
 const BRAND = '#1a5038'
 
@@ -80,6 +81,7 @@ export default function ProfilePhotoSheet({ visible, onClose }) {
           </View>
         </View>
       ) : null}
+      <ToastHost />
     </Modal>
   )
 }

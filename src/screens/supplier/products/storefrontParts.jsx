@@ -4,11 +4,10 @@
 // Cart: a supplier sells here, never buys.
 import { useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { useDispatch } from 'react-redux'
 import { Eye, EyeOff, Pencil, Trash2 } from 'lucide-react-native'
 import { ConfirmDialog } from '../../../components/builder/BuilderUi'
+import { toast } from '../../../components/Toast'
 import { BulkPricingList, ServiceBadges, StockBadge } from '../../owner/marketplace/shopParts'
-import { setStoreNotice } from '../../../store/supplierCatalogSlice'
 import { useLanguage } from '../../../i18n/LanguageContext'
 import { COLORS } from '../../../theme/tokens'
 import { createStyles } from '../../../theme/createStyles'
@@ -22,7 +21,6 @@ import {
  * (the product page closes itself).
  */
 export function useListingActions({ onDeleted } = {}) {
-  const dispatch = useDispatch()
   const { t, td } = useLanguage()
   const { update, remove } = useSupplierListings()
   const [pending, setPending] = useState(null)
@@ -30,7 +28,8 @@ export function useListingActions({ onDeleted } = {}) {
 
   const togglePublish = async (listing) => {
     const result = await update(listing.id, { is_published: listing.is_published === false })
-    dispatch(setStoreNotice(result.error ? { tone: 'error', text: result.error } : { tone: 'success', text: result.message }))
+    if (result.error) toast.error(result.error)
+    else toast.success(result.message)
   }
 
   const confirmDelete = async () => {
@@ -39,7 +38,8 @@ export function useListingActions({ onDeleted } = {}) {
     const result = await remove(pending.id)
     setBusy(false)
     setPending(null)
-    dispatch(setStoreNotice(result.error ? { tone: 'error', text: result.error } : { tone: 'success', text: result.message }))
+    if (result.error) toast.error(result.error)
+    else toast.success(result.message)
     if (!result.error && onDeleted) onDeleted()
   }
 

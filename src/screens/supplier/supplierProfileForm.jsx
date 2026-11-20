@@ -11,7 +11,10 @@ import { View, Text, Pressable } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Check, FileText, Package } from 'lucide-react-native'
 import { Panel } from '../../components/DashboardShell'
+import EmailSection from '../../components/EmailSection'
+import { ErrorAnchor } from '../../components/ScrollToError'
 import { LabeledInput } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { PincodeAreaHint, SelectField } from '../../components/form'
 import { usePincodeAreaLookup } from '../../hooks/usePincodeAreaLookup'
 import { uploadLocalFile } from '../../api/upload'
@@ -81,7 +84,6 @@ export function useSupplierProfileForm(profile, user) {
   const [untypedDocuments, setUntypedDocuments] = useState(initial.untypedDocuments)
   const [errors, setErrors] = useState({})
   const [uploading, setUploading] = useState('')
-  const [uploadMessage, setUploadMessage] = useState(null)
   const [branch, setBranch] = useState(null)
   const country = userCountry(user)
   // The category saved on the server is chosen once and shown read-only.
@@ -135,14 +137,14 @@ export function useSupplierProfileForm(profile, user) {
     const asset = result.assets[0]
     const label = optionLabel(t, DOCUMENT_TYPE_KEYS, documentType)
     setUploading(documentType)
-    setUploadMessage({ tone: 'info', text: t('ui.profile.uploadingDocument', { document: label }) })
+    toast.info(t('ui.profile.uploadingDocument', { document: label }))
     try {
       const url = uploadedUrl(await uploadLocalFile({ uri: asset.uri, fileName: asset.name, mimeType: asset.mimeType }, asset.name || 'document.pdf'))
       if (!url) throw new Error('upload answered without a url')
       setDocuments((current) => ({ ...current, [documentType]: url }))
-      setUploadMessage({ tone: 'success', text: t('ui.profile.documentUploaded', { document: label }) })
+      toast.success(t('ui.profile.documentUploaded', { document: label }))
     } catch (error) {
-      setUploadMessage({ tone: 'error', text: apiErrorText(error, t('ps.doc.uploadFailed')) })
+      toast.error(apiErrorText(error, t('ps.doc.uploadFailed')))
     } finally {
       setUploading('')
     }
@@ -194,7 +196,7 @@ export function useSupplierProfileForm(profile, user) {
   }
 
   return {
-    form, update, locations, setLocation, supplies, toggleSupply, documents, uploadDocument, uploading, uploadMessage,
+    form, update, locations, setLocation, supplies, toggleSupply, documents, uploadDocument, uploading,
     errors, setErrors, validate, payload, reset, kind, savedCategory, country, pincodeLookup, branch, setBranch,
   }
 }
@@ -209,7 +211,9 @@ function Chip({ label, on, onPress }) {
 }
 
 /** The form's fields, in the web Complete Profile's order. */
-export function SupplierProfileFields({ state, email }) {
+// `addEmail`: with no e-mail on the account, show the add-and-verify section in
+// its place (Complete Profile; the Profile screen has its own e-mail section).
+export function SupplierProfileFields({ state, email, addEmail = false }) {
   const { t } = useLanguage()
   const { form, update, locations, setLocation, supplies, toggleSupply, documents, uploadDocument, uploading, errors, kind, savedCategory, country, pincodeLookup, branch, setBranch } = state
   const text = supplierTextKeys(kind)
@@ -221,7 +225,19 @@ export function SupplierProfileFields({ state, email }) {
     <>
       <Panel title={t(text.storeDetails)}>
         <LabeledInput label={`${t('ps.name')} *`} value={form.name} onChangeText={(value) => update('name', value)} maxLength={120} error={errors.name} />
-        {email ? <LabeledInput label={t('ps.email')} value={email} editable={false} /> : null}
+        {email ? (
+          <LabeledInput label={`${t('ps.email')} *`} value={email} editable={false} />
+        ) : addEmail ? (
+          // A phone-first account has no e-mail yet and the profile needs one
+          // (web shows the e-mail as a required field): add and verify it here.
+          <View style={styles.emailField}>
+            <Text style={styles.label}>{`${t('ps.email')} *`}</Text>
+            <View style={[styles.emailBox, errors.email ? styles.emailBoxError : null]}>
+              <EmailSection invalid={Boolean(errors.email)} />
+            </View>
+            {errors.email ? <><ErrorAnchor /><Text style={styles.emailError}>{errors.email}</Text></> : null}
+          </View>
+        ) : null}
         <LabeledInput
           label={`${t('ps.phone')} *`}
           value={form.phone}
@@ -332,6 +348,10 @@ const styles = createStyles((c) => ({
   labelNote: { fontSize: 11, fontFamily: 'Inter_500Medium', color: c.textMuted },
   sub: { marginBottom: 10, fontSize: 12, lineHeight: 17, fontFamily: 'Inter_500Medium', color: c.textMuted },
   error: { marginTop: -4, marginBottom: 6, fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#dc2626' },
+  emailField: { marginBottom: 14 },
+  emailBox: { borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  emailBoxError: { borderColor: '#dc2626', borderWidth: 1.5 },
+  emailError: { marginTop: 4, fontSize: 11.5, fontFamily: 'Inter_600SemiBold', color: '#dc2626' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 9999, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 12, paddingVertical: 8 },
   chipOn: { borderColor: '#1a5038', backgroundColor: '#1a5038' },

@@ -20,6 +20,7 @@ import { X } from 'lucide-react-native'
 import { WEB_BASE_URL } from '../../api/subscription'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
+import { ToastHost } from '../Toast'
 
 const CHECKOUT_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js'
 // The only non-web links the checkout may hand to the phone: UPI and the
@@ -126,6 +127,7 @@ export default function RazorpayCheckoutModal({ order, description, onSuccess, o
           style={{ flex: 1, backgroundColor: '#f8fafc' }}
         />
       </View>
+      <ToastHost />
     </Modal>
   )
 }

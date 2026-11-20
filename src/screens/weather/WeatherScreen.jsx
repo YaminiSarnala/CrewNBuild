@@ -22,6 +22,7 @@ import {
 } from 'lucide-react-native'
 import { Notice, SelectChip, StackScreenShell } from '../../components/builder/BuilderUi'
 import { DateField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import WeatherIcon from '../../components/weather/WeatherIcon'
 import { SkeletonBlock, SkeletonRows } from '../../components/Skeleton'
 import {
@@ -287,13 +288,13 @@ function LocationPanel({ projectId, view, onSaved }) {
   const [results, setResults] = useState(null)
   const [manual, setManual] = useState({ latitude: '', longitude: '', name: '' })
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState(null)
+  // Results show as a bottom toast; a bad coordinate highlights its box.
+  const [manualErrors, setManualErrors] = useState({})
 
-  useEffect(() => { setOpen(false); setResults(null); setNotice(null); setQuery('') }, [projectId])
+  useEffect(() => { setOpen(false); setResults(null); setManualErrors({}); setQuery('') }, [projectId])
 
   const search = async () => {
     setBusy(true)
-    setNotice(null)
     try {
       const data = await searchSiteLocation(projectId, query.trim())
       // The suggested place fills an empty box only, never over what is typed.
@@ -301,7 +302,7 @@ function LocationPanel({ projectId, view, onSaved }) {
       setResults(data?.results || [])
     } catch (error) {
       setResults([])
-      setNotice({ error: true, text: errorMessage(error, text('weather.searchFailed')) })
+      toast.error(errorMessage(error, text('weather.searchFailed')))
     } finally {
       setBusy(false)
     }
@@ -309,15 +310,15 @@ function LocationPanel({ projectId, view, onSaved }) {
 
   const save = async (payload) => {
     setBusy(true)
-    setNotice(null)
     try {
       await saveSiteLocation(projectId, payload)
       setOpen(false)
       setResults(null)
-      setNotice({ text: text('weather.locationSaved') })
+      setManualErrors({})
+      toast.success(text('weather.locationSaved'))
       onSaved()
     } catch (error) {
-      setNotice({ error: true, text: errorMessage(error, text('weather.locationFailed')) })
+      toast.error(errorMessage(error, text('weather.locationFailed')))
     } finally {
       setBusy(false)
     }
@@ -326,7 +327,13 @@ function LocationPanel({ projectId, view, onSaved }) {
   const saveManual = () => {
     const parsed = parseCoordinates(manual.latitude, manual.longitude)
     if (!parsed) {
-      setNotice({ error: true, text: text('weather.locationInvalid') })
+      // Each coordinate checked on its own, so only the wrong one is highlighted.
+      const latitude = Number(String(manual.latitude ?? '').trim())
+      const longitude = Number(String(manual.longitude ?? '').trim())
+      const badLatitude = !String(manual.latitude ?? '').trim() || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+      const badLongitude = !String(manual.longitude ?? '').trim() || !Number.isFinite(longitude) || longitude < -180 || longitude > 180
+      setManualErrors({ latitude: badLatitude || !badLongitude, longitude: badLongitude })
+      toast.error(text('weather.locationInvalid'))
       return
     }
     save({ ...parsed, location_name: manual.name.trim() || null, source: 'MANUAL' })
@@ -364,7 +371,6 @@ function LocationPanel({ projectId, view, onSaved }) {
       ) : !location ? (
         <Text style={[styles.muted, { marginTop: 8 }]}>{text('weather.locationReadOnly')}</Text>
       ) : null}
-      {notice ? <Text style={[styles.locationNotice, { color: notice.error ? ink('#b91c1c') : ink('#1f6b45') }]}>{notice.text}</Text> : null}
 
       {open && canEdit ? (
         <View style={styles.editor}>
@@ -407,9 +413,10 @@ function LocationPanel({ projectId, view, onSaved }) {
 
           <Text style={[styles.label, { marginTop: 14 }]}>{text('weather.locationManual')}</Text>
           <View style={styles.searchRow}>
-            <TextInput value={manual.latitude} onChangeText={(value) => setManual((m) => ({ ...m, latitude: value }))} placeholder={`${text('weather.latitude')} (17.38500)`} placeholderTextColor={COLORS.slate[400]} keyboardType="numbers-and-punctuation" style={styles.input} />
-            <TextInput value={manual.longitude} onChangeText={(value) => setManual((m) => ({ ...m, longitude: value }))} placeholder={`${text('weather.longitude')} (78.48670)`} placeholderTextColor={COLORS.slate[400]} keyboardType="numbers-and-punctuation" style={styles.input} />
+            <TextInput value={manual.latitude} onChangeText={(value) => { setManual((m) => ({ ...m, latitude: value })); setManualErrors((e) => ({ ...e, latitude: false })) }} placeholder={`${text('weather.latitude')} (17.38500)`} placeholderTextColor={COLORS.slate[400]} keyboardType="numbers-and-punctuation" style={[styles.input, manualErrors.latitude ? styles.inputInvalid : null]} />
+            <TextInput value={manual.longitude} onChangeText={(value) => { setManual((m) => ({ ...m, longitude: value })); setManualErrors((e) => ({ ...e, longitude: false })) }} placeholder={`${text('weather.longitude')} (78.48670)`} placeholderTextColor={COLORS.slate[400]} keyboardType="numbers-and-punctuation" style={[styles.input, manualErrors.longitude ? styles.inputInvalid : null]} />
           </View>
+          {manualErrors.latitude || manualErrors.longitude ? <Text accessibilityRole="alert" style={styles.fieldError}>{text('weather.locationInvalid')}</Text> : null}
           <TextInput value={manual.name} onChangeText={(value) => setManual((m) => ({ ...m, name: value }))} placeholder={text('weather.locationName')} placeholderTextColor={COLORS.slate[400]} maxLength={255} style={[styles.input, { marginTop: 8, flex: 0 }]} />
           <Pressable onPress={saveManual} disabled={busy} style={[styles.primaryButton, { marginTop: 8, alignSelf: 'flex-start' }, busy ? { opacity: 0.6 } : null]}>
             <Text style={styles.primaryButtonText}>{text('weather.locationSave')}</Text>
@@ -426,7 +433,6 @@ function AlertCard({ alert, onAcknowledged }) {
   const text = useWeatherText()
   const { td } = useLanguage()
   const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
   const [openAdvice, setOpenAdvice] = useState(alert.severity === 'WARNING' || alert.severity === 'SEVERE')
   const colors = severityColors(alert.severity)
   const others = (alert.acknowledgements || []).map((row) => row.name).filter(Boolean)
@@ -434,11 +440,10 @@ function AlertCard({ alert, onAcknowledged }) {
 
   const acknowledge = async () => {
     setBusy(true)
-    setFailed(false)
     try {
       onAcknowledged(await acknowledgeWeatherAlert(alert.id))
     } catch {
-      setFailed(true)
+      toast.error(text('weather.ackFailed'))
     } finally {
       setBusy(false)
     }
@@ -482,7 +487,6 @@ function AlertCard({ alert, onAcknowledged }) {
         </View>
       ) : null}
       {others.length ? <Text style={styles.alertWhen}>{text('weather.acknowledgedBy', { names: others.join(', ') })}</Text> : null}
-      {failed ? <Text style={[styles.alertWhen, { color: ink('#b91c1c') }]}>{text('weather.ackFailed')}</Text> : null}
       {alert.status === 'ACTIVE' && alert.can_acknowledge !== false ? (alert.acknowledged ? (
         <View style={styles.acknowledged}>
           <Check size={14} color={ink('#1f6b45')} />
@@ -755,7 +759,8 @@ const styles = createStyles((c) => ({
   locationName: { marginTop: 2, fontSize: 14, lineHeight: 19, fontFamily: 'Inter_700Bold', color: c.text },
   locationCoords: { marginTop: 1, fontSize: 11.5, fontFamily: 'Inter_500Medium', color: c.textMuted },
   approximate: { marginTop: 4, alignSelf: 'flex-start', borderRadius: 6, backgroundColor: c.amberSoft, paddingHorizontal: 6, paddingVertical: 2, fontSize: 11, fontFamily: 'Inter_700Bold', color: c.amberText, overflow: 'hidden' },
-  locationNotice: { marginTop: 8, fontSize: 12.5, fontFamily: 'Inter_700Bold' },
+  inputInvalid: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 4, fontSize: 11.5, fontFamily: 'Inter_700Bold', color: '#dc2626' },
   editor: { marginTop: 12, borderTopWidth: 1, borderColor: c.borderSoft, paddingTop: 12 },
   searchRow: { marginTop: 6, flexDirection: 'row', gap: 8 },
   input: { flex: 1, height: 42, borderRadius: 11, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 11, fontSize: 13.5, fontFamily: 'Inter_500Medium', color: c.text },

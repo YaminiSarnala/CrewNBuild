@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { Camera, Save, Trash2 } from 'lucide-react-native'
 import { ActionButton, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
 import { FieldLabel, TextField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { createEquipmentItem, equipmentErrorMessage, updateEquipmentItem } from '../../api/equipment'
 import { uploadLocalFile } from '../../api/upload'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -54,7 +55,7 @@ const badPrice = (value) => {
 export default function SupplierEquipmentItemScreen({ navigation, route }) {
   const { t } = useLanguage()
   const country = useSupplierCountry()
-  const { items, upsertItem, reload, setNotice } = useEquipment()
+  const { items, upsertItem, reload } = useEquipment()
   const itemId = route?.params?.itemId
   const item = itemId ? items.find((row) => String(row.id) === String(itemId)) : null
   const editing = Boolean(itemId)
@@ -64,7 +65,6 @@ export default function SupplierEquipmentItemScreen({ navigation, route }) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
-  const [error, setError] = useState('')
 
   const set = (field) => (value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -84,7 +84,6 @@ export default function SupplierEquipmentItemScreen({ navigation, route }) {
   }
 
   const pickImage = async () => {
-    setError('')
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
@@ -101,7 +100,7 @@ export default function SupplierEquipmentItemScreen({ navigation, route }) {
       setForm((current) => ({ ...current, image_url: url }))
       setImagePreview(asset.uri)
     } catch (failure) {
-      setError(equipmentErrorMessage(failure, t('equipment.error.imageUpload')))
+      toast.error(equipmentErrorMessage(failure, t('equipment.error.imageUpload')))
     } finally {
       setUploading(false)
     }
@@ -130,10 +129,13 @@ export default function SupplierEquipmentItemScreen({ navigation, route }) {
   }
 
   const save = async () => {
-    setError('')
     const problems = validate()
     setErrors(problems)
-    if (Object.values(problems).some(Boolean)) return
+    const failing = Object.values(problems).filter(Boolean)
+    if (failing.length) {
+      toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
+      return
+    }
     const payload = {
       name: form.name.trim(),
       category: form.category.trim(),
@@ -151,11 +153,11 @@ export default function SupplierEquipmentItemScreen({ navigation, route }) {
     try {
       const saved = editing ? await updateEquipmentItem(item.id, payload) : await createEquipmentItem(payload)
       upsertItem(saved)
-      setNotice({ tone: 'success', text: t(editing ? 'labor.msg.updated' : 'labor.msg.added', { name: saved?.name || payload.name }) })
+      toast.success(t(editing ? 'labor.msg.updated' : 'labor.msg.added', { name: saved?.name || payload.name }))
       reload()
       navigation.goBack()
     } catch (failure) {
-      setError(equipmentErrorMessage(failure, t('equipment.error.save')))
+      toast.error(equipmentErrorMessage(failure, t('equipment.error.save')))
       setSaving(false)
     }
   }
@@ -214,7 +216,7 @@ export default function SupplierEquipmentItemScreen({ navigation, route }) {
           </View>
 
           {rentMode ? (
-            <View style={styles.group}>
+            <View style={[styles.group, errors.rates ? styles.groupInvalid : null]}>
               <Text style={styles.groupTitle}>{t('equipment.field.rentalRates')}</Text>
               <View style={styles.rateGrid}>
                 {RATE_UNITS.map((rate) => (
@@ -247,8 +249,6 @@ export default function SupplierEquipmentItemScreen({ navigation, route }) {
               />
             </View>
           ) : null}
-
-          {error ? <View style={{ marginTop: 14 }}><Notice tone="error" text={error} /></View> : null}
 
           <View style={styles.buttons}>
             <ActionButton label={t('labor.action.cancel')} tone="outline" onPress={() => navigation.goBack()} disabled={saving} style={{ flex: 1 }} />
@@ -310,6 +310,7 @@ const styles = createStyles((c) => ({
   groupTitle: { marginBottom: 10, fontSize: 11.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textTransform: 'uppercase', color: c.textMuted },
   rateGrid: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', rowGap: 10, columnGap: 10 },
   rateCell: { width: '47%', flexGrow: 1 },
+  groupInvalid: { borderColor: '#dc2626' },
   groupError: { marginTop: 8, fontSize: 12, fontFamily: 'Inter_600SemiBold', color: c.roseText },
   buttons: { marginTop: 18, flexDirection: 'row', gap: 10 },
 }))

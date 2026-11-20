@@ -14,6 +14,7 @@ import ScreenHeader from '../../components/ScreenHeader'
 import { ContentWrap } from '../../components/Responsive'
 import { PanelState, InsetArea } from '../../components/DashboardShell'
 import { FormNotice, TextField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
 import { fetchContractorProfile } from '../../api/profiles'
@@ -99,7 +100,8 @@ export default function BuilderProfileScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [composerOpen, setComposerOpen] = useState(false)
   const [messageBody, setMessageBody] = useState('')
-  const [messageStatus, setMessageStatus] = useState('')
+  // An empty message: the box is highlighted with the hint under it.
+  const [messageError, setMessageError] = useState('')
   const [messageSending, setMessageSending] = useState(false)
 
   useEffect(() => {
@@ -136,22 +138,23 @@ export default function BuilderProfileScreen({ navigation, route }) {
 
   const sendDirectMessage = async () => {
     if (!contactUnlocked) {
-      setMessageStatus(t('dash.owner.supplierModal.unlockNote'))
+      toast.info(t('dash.owner.supplierModal.unlockNote'))
       return
     }
     if (!messageBody.trim()) {
-      setMessageStatus(t('dash.contractor.typeMessage'))
+      setMessageError(t('dash.contractor.typeMessage'))
+      toast.error(t('dash.contractor.typeMessage'))
       return
     }
     setMessageSending(true)
-    setMessageStatus('')
+    setMessageError('')
     try {
       const conversation = await startConversation({ receiver_id: profile.user_id, title: profile.company_name || profile.name })
       await sendConversationMessage({ conversation_id: conversation.id, body: messageBody.trim() })
       setMessageBody('')
-      setMessageStatus(t('dash.contractor.messageSent'))
+      toast.success(t('dash.contractor.messageSent'))
     } catch (error) {
-      setMessageStatus(apiDetail(error, t('cpd.errSendMessage')))
+      toast.error(apiDetail(error, t('cpd.errSendMessage')))
     } finally {
       setMessageSending(false)
     }
@@ -454,7 +457,8 @@ export default function BuilderProfileScreen({ navigation, route }) {
                   <View style={styles.view24}>
                     <TextField
                       value={messageBody}
-                      onChangeText={setMessageBody}
+                      onChangeText={(value) => { setMessageBody(value); setMessageError('') }}
+                      error={messageError}
                       placeholder={t('ui.contractor.messageTo', { name: td(profile.company_name || profile.name) })}
                       multiline
                       style={{ minHeight: 80 }}
@@ -466,7 +470,6 @@ export default function BuilderProfileScreen({ navigation, route }) {
                     >
                       <Text style={[styles.text21, { fontSize: 12.5 }]}>{messageSending ? t('cpp.sending') : t('cpd.send')}</Text>
                     </Pressable>
-                    {messageStatus ? <Text style={[styles.text22, { fontSize: 12 }]}>{messageStatus}</Text> : null}
                   </View>
                 ) : null}
               </View>
@@ -552,7 +555,6 @@ const styles = createStyles((c) => ({
   view24: { marginTop: 7, borderRadius: 10.5, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft40, padding: 8.75 },
   pressable5: { height: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 10.5, backgroundColor: '#1a5038' },
   pressable6: { opacity: 0.6 },
-  text22: { marginTop: 7, fontFamily: 'Inter_600SemiBold', color: c.textMuted },
   scrollView: { marginBottom: 10.5, borderRadius: 14, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.card },
   pressable7: { borderBottomWidth: 2, paddingHorizontal: 10.5, paddingVertical: 8.75 },
   pressable8: { borderColor: '#1a5038' },

@@ -16,7 +16,8 @@ import { imageUrl } from '../../api/client'
 import { createSiteRequest, refusalText } from '../../api/store'
 import { quantityProblem } from '../../utils/quantityUnits'
 import { STOCK_STATE_KEYS, formatQty, matchesSearch } from '../../utils/storeHelpers'
-import { ActionButton, Notice, SelectChip, SheetModal } from '../../components/builder/BuilderUi'
+import { ActionButton, SelectChip, SheetModal } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import QuantityField from '../../components/QuantityField'
 import { COLORS } from '../../theme/tokens'
 import { ink, line, soft } from '../../theme/tint'
@@ -89,14 +90,15 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
   const { requireCompleteProfile } = useProfileGate()
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
-  const [notice, setNotice] = useState(null)
+  // Cart lines whose quantity stopped the send: { [itemId]: message }.
+  const [cartErrors, setCartErrors] = useState({})
   const [category, setCategory] = useState('')
   const [search, setSearch] = useState('')
   const [view, setView] = useState('products')
   const [openProduct, setOpenProduct] = useState(null)
   const [chosenId, setChosenId] = useState(null)
   const [draft, setDraft] = useState('')
-  const [draftError, setDraftError] = useState('')
+  const [draftError, setDraftError] = useState('') // { field: 'variant'|'quantity', text } or ''
   const projectStores = stores.filter((store) => (store.project_ids || []).some((id) => String(id) === String(activeProjectId)))
   const [storeId, setStoreId] = useState('')
   const store = projectStores.find((item) => String(item.store_manager_id) === storeId) || projectStores[0]
@@ -141,12 +143,23 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
   }
   const quantityMessage = (quantity, unit) => (quantityProblem(quantity, unit) === 'whole' ? t('store.quantityWhole', { unit: td(unit) }) : t('store.quantityInvalid'))
   const addToCart = () => {
-    if (!chosen) { setDraftError(t('store.engineer.chooseVariant')); return }
-    if (quantityProblem(draft, chosen.unit)) { setDraftError(quantityMessage(draft, chosen.unit)); return }
+    const problem = !chosen
+      ? { field: 'variant', text: t('store.engineer.chooseVariant') }
+      : quantityProblem(draft, chosen.unit) ? { field: 'quantity', text: quantityMessage(draft, chosen.unit) } : null
+    if (problem) {
+      setDraftError(problem)
+      toast.error(problem.text)
+      return
+    }
     const name = productTitle(chosen, td)
     updateCart((current) => ({ ...current, [chosen.id]: String(draft).trim() }))
+    setCartErrors((current) => ({ ...current, [chosen.id]: '' }))
     setOpenProduct(null)
-    setNotice({ text: t('store.engineer.addedToCart', { name }) })
+    toast.success(t('store.engineer.addedToCart', { name }))
+  }
+  const setLineQuantity = (itemId, text) => {
+    updateCart((current) => ({ ...current, [itemId]: text }))
+    setCartErrors((current) => (current[itemId] ? { ...current, [itemId]: '' } : current))
   }
   const removeFromCart = (itemId) => updateCart((current) => {
     const next = { ...current }
@@ -156,13 +169,17 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
 
   const send = async () => {
     if (requireCompleteProfile(send)) return
-    const wrong = cartLines.find((line) => quantityProblem(line.quantity, line.item.unit))
+    // Every line with a quantity its unit cannot take is highlighted at once.
+    const wrongLines = cartLines.filter((line) => quantityProblem(line.quantity, line.item.unit))
+    const wrong = wrongLines[0]
+    setCartErrors(Object.fromEntries(wrongLines.map((line) => [line.item.id, quantityMessage(line.quantity, line.item.unit)])))
     if (!cartLines.length || wrong) {
-      setNotice({ text: wrong ? `${productTitle(wrong.item, td)}: ${quantityMessage(wrong.quantity, wrong.item.unit)}` : t('store.quantityInvalid'), error: true })
+      toast.error(wrongLines.length > 1
+        ? t('cp.val.completeFields')
+        : wrong ? `${productTitle(wrong.item, td)}: ${quantityMessage(wrong.quantity, wrong.item.unit)}` : t('store.quantityInvalid'))
       return
     }
     setSending(true)
-    setNotice(null)
     try {
       const saved = await createSiteRequest({
         project_id: activeProjectId,
@@ -173,10 +190,10 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
       updateCart(() => ({}))
       setNote('')
       setView('products')
-      setNotice({ text: t('store.engineer.sentNumbered', { id: saved.public_request_id, name: td(saved.store_manager_name) }) })
+      toast.success(t('store.engineer.sentNumbered', { id: saved.public_request_id, name: td(saved.store_manager_name) }))
       onStoresChanged()
     } catch (error) {
-      setNotice({ text: refusalText(error, td, t('store.saveFailed')), error: true })
+      toast.error(refusalText(error, td, t('store.saveFailed')))
     } finally {
       setSending(false)
     }
@@ -206,7 +223,6 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
         ) : null}
       </View>
 
-      <Notice tone={notice?.error ? 'error' : 'success'} text={notice?.text} />
       <View style={styles.pickers}>
         <View style={styles.picker}>
           <Text style={styles.label}>{t('store.buy.project')}</Text>
@@ -248,7 +264,7 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
             <View>
               <View style={styles.cartList}>
                 {cartLines.map(({ item, quantity }) => (
-                  <View key={item.id} style={styles.cartRow}>
+                  <View key={item.id} style={[styles.cartRow, cartErrors[item.id] ? styles.cartRowInvalid : null]}>
                     <View style={styles.cartTop}>
                       <ProductImage item={item} />
                       <View style={{ flex: 1 }}>
@@ -259,11 +275,12 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
                       </View>
                     </View>
                     <View style={styles.cartBottom}>
-                      <QuantityField value={quantity} unit={item.unit} label={`${t('store.quantity')} ${productTitle(item, td)}`} onChange={(text) => updateCart((current) => ({ ...current, [item.id]: text }))} />
+                      <QuantityField value={quantity} unit={item.unit} label={`${t('store.quantity')} ${productTitle(item, td)}`} onChange={(text) => setLineQuantity(item.id, text)} />
                       <Pressable onPress={() => removeFromCart(item.id)} accessibilityLabel={`${t('store.remove')} ${productTitle(item, td)}`} style={styles.iconButton}>
                         <Trash2 size={15} color={COLORS.slate[600]} />
                       </Pressable>
                     </View>
+                    {cartErrors[item.id] && !String(quantity ?? '').trim() ? <Text style={styles.fieldError}>{cartErrors[item.id]}</Text> : null}
                   </View>
                 ))}
               </View>
@@ -352,7 +369,7 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
             <Text style={[styles.label, { marginTop: 12 }]}>{t('store.engineer.variant')}</Text>
             <View style={styles.variants}>
               {openProduct.items.map((item) => (
-                <Pressable key={item.id} onPress={() => chooseVariant(item)} accessibilityRole="radio" accessibilityState={{ checked: chosenId === item.id }} style={[styles.variant, chosenId === item.id ? styles.variantOn : null]}>
+                <Pressable key={item.id} onPress={() => chooseVariant(item)} accessibilityRole="radio" accessibilityState={{ checked: chosenId === item.id }} style={[styles.variant, chosenId === item.id ? styles.variantOn : null, draftError?.field === 'variant' ? styles.variantInvalid : null]}>
                   <Text style={[styles.variantText, chosenId === item.id ? styles.variantTextOn : null]}>{td(item.variant || item.unit)}</Text>
                   <Text style={styles.meta}>{`${formatQty(item.quantity)} ${td(item.unit)}`}</Text>
                 </Pressable>
@@ -365,13 +382,13 @@ export default function EngineerStorePanel({ projects, stores, activeProjectId, 
                   <View style={styles.fact}><Text style={styles.label}>{t('store.engineer.inStore')}</Text><Text style={styles.name}>{`${formatQty(chosen.quantity)} ${td(chosen.unit)}`}</Text></View>
                 </View>
                 <Text style={[styles.label, { marginTop: 12 }]}>{t('store.engineer.quantityToRequest', { unit: td(chosen.unit) })}</Text>
-                <View style={{ marginTop: 4 }}>
+                <View style={[{ marginTop: 4 }, draftError?.field === 'quantity' ? styles.quantityInvalid : null]}>
                   <QuantityField large value={draft} unit={chosen.unit} label={`${t('store.quantity')} ${productTitle(chosen, td)}`} onChange={(text) => { setDraft(text); setDraftError('') }} />
                 </View>
                 <View style={{ marginTop: 4 }}><StockLine item={chosen} quantity={draft} /></View>
               </View>
             ) : null}
-            {draftError ? <Text style={styles.draftError}>{draftError}</Text> : null}
+            {draftError ? <Text style={styles.draftError}>{draftError.text}</Text> : null}
           </View>
         ) : null}
       </SheetModal>
@@ -411,6 +428,10 @@ const styles = createStyles((c) => ({
   requested: { fontSize: 12, fontWeight: '800', color: c.text },
   cartList: { marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10 },
   cartRow: { gap: 8, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 10 },
+  cartRowInvalid: { marginVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#dc2626', paddingHorizontal: 8 },
+  fieldError: { fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
+  variantInvalid: { borderColor: '#dc2626' },
+  quantityInvalid: { alignSelf: 'flex-start', borderRadius: 12, borderWidth: 1, borderColor: '#dc2626', padding: 2 },
   cartTop: { flexDirection: 'row', gap: 10 },
   cartBottom: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   iconButton: { height: 36, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: c.border },
@@ -443,5 +464,5 @@ const styles = createStyles((c) => ({
   variantTextOn: { color: c.brandTextStrong },
   facts: { marginTop: 12, flexDirection: 'row', gap: 8 },
   fact: { flex: 1, borderRadius: 8, backgroundColor: c.subtle, padding: 8 },
-  draftError: { marginTop: 8, fontSize: 12, fontWeight: '800', color: ink('#be123c') },
+  draftError: { marginTop: 8, fontSize: 11.5, fontWeight: '700', color: '#dc2626' },
 }))

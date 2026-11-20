@@ -26,6 +26,7 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { COLORS } from '../../../theme/tokens'
 import { BulkPricingList, CartStepper, ServiceBadges, StockBadge, discountedPrice } from './shopParts'
 import { createStyles } from '../../../theme/createStyles'
+import { toast } from '../../../components/Toast'
 
 const selling = (listing) => discountedPrice(listing.price, listing.discount_percentage)
 
@@ -124,7 +125,7 @@ function bestOffer(offers = []) {
   )
 }
 
-function ProductPage({ product, offers, country, projectId, onBack, onMessage, message }) {
+function ProductPage({ product, offers, country, projectId, onBack, onMessage }) {
   const { width } = useResponsive()
   const [imageIndex, setImageIndex] = useState(0)
   if (!product) {
@@ -228,9 +229,6 @@ function ProductPage({ product, offers, country, projectId, onBack, onMessage, m
               </View>
             </View>
           ))}
-          {message ? (
-            <Text style={[styles.text18, { fontSize: 12 }]}>{message}</Text>
-          ) : null}
         </View>
       ) : null}
 
@@ -271,7 +269,8 @@ export default function OwnerMarketplace({ projectId, pincode, country = 'India'
   const [supplierCount, setSupplierCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  // A cart action's result (added, removed, refused) floats at the bottom.
+  const showCartMessage = (text, tone = 'info') => { if (text) toast.show(String(text), tone) }
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [categories, setCategories] = useState([])
@@ -388,8 +387,7 @@ export default function OwnerMarketplace({ projectId, pincode, country = 'India'
           country={country}
           projectId={projectId}
           onBack={() => setOpenListing(null)}
-          onMessage={setMessage}
-          message={message}
+          onMessage={showCartMessage}
         />
         {related.length ? (
           <View style={styles.view23}>
@@ -402,8 +400,8 @@ export default function OwnerMarketplace({ projectId, pincode, country = 'India'
                   country={country}
                   projectId={projectId}
                   width={cardWidth}
-                  onOpen={() => { setMessage(''); setOpenListing(listing) }}
-                  onMessage={setMessage}
+                  onOpen={() => setOpenListing(listing)}
+                  onMessage={showCartMessage}
                 />
               ))}
             </View>
@@ -456,9 +454,6 @@ export default function OwnerMarketplace({ projectId, pincode, country = 'India'
         </ScrollView>
       ) : null}
 
-      {message ? (
-        <Text style={[styles.text27, { fontSize: 12 }]}>{message}</Text>
-      ) : null}
       {error ? (
         <Text style={[styles.text28, { fontSize: 12 }]}>{error}</Text>
       ) : null}
@@ -501,8 +496,8 @@ export default function OwnerMarketplace({ projectId, pincode, country = 'India'
                   country={country}
                   projectId={projectId}
                   width={cardWidth}
-                  onOpen={() => { setMessage(''); setOpenListing(listing) }}
-                  onMessage={setMessage}
+                  onOpen={() => setOpenListing(listing)}
+                  onMessage={showCartMessage}
                 />
               ))}
             </View>
@@ -553,7 +548,6 @@ const styles = createStyles((c) => ({
   view15: { flexDirection: 'row', alignItems: 'center' },
   text16: { flex: 1, fontFamily: 'Inter_700Bold', color: c.text },
   text17: { marginTop: 1.75, fontFamily: 'Inter_600SemiBold', color: c.textFaint },
-  text18: { borderRadius: 7, backgroundColor: c.subtle, paddingHorizontal: 10.5, paddingVertical: 7, fontFamily: 'Inter_700Bold', color: c.textSecondary },
   view16: { marginTop: 14, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 12.25 },
   text19: { fontFamily: 'Inter_400Regular', color: c.textSecondary },
   view17: { marginBottom: 7 },
@@ -577,7 +571,6 @@ const styles = createStyles((c) => ({
   text24: { fontFamily: 'Inter_700Bold' },
   text25: { color: '#ffffff' },
   text26: { color: c.textSecondary },
-  text27: { marginTop: 10.5, borderRadius: 7, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 7, fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
   text28: { marginTop: 10.5, borderRadius: 7, backgroundColor: c.amberSoft, paddingHorizontal: 10.5, paddingVertical: 7, fontFamily: 'Inter_700Bold', color: c.amberText },
   view26: { marginTop: 10.5, alignItems: 'center', borderRadius: 10.5, borderWidth: 1, borderStyle: 'dashed', borderColor: c.borderStrong, paddingHorizontal: 21, paddingVertical: 35 },
   text29: { marginTop: 7, textAlign: 'center', fontFamily: 'Inter_700Bold', color: c.text },

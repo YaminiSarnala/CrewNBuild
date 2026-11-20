@@ -12,6 +12,7 @@ import { View, Text, Pressable } from 'react-native'
 import { Check, Save } from 'lucide-react-native'
 import { ActionButton, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
 import { FieldLabel, TextField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { createLabourService, labourErrorMessage, updateLabourService } from '../../api/labour'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { COLORS } from '../../theme/tokens'
@@ -21,7 +22,7 @@ import { useLabour } from './labour/LabourContext'
 
 export default function SupplierLabourServiceScreen({ navigation, route }) {
   const { t, td } = useLanguage()
-  const { services, trades, upsertService, reload, setNotice } = useLabour()
+  const { services, trades, upsertService, reload } = useLabour()
   const serviceId = route?.params?.serviceId
   const service = serviceId ? services.find((row) => String(row.id) === String(serviceId)) : null
   const editing = Boolean(serviceId)
@@ -33,7 +34,6 @@ export default function SupplierLabourServiceScreen({ navigation, route }) {
     notes: service?.notes || '',
   }))
   const [errors, setErrors] = useState({})
-  const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const set = (field) => (value) => {
@@ -54,23 +54,26 @@ export default function SupplierLabourServiceScreen({ navigation, route }) {
   const title = editing ? t('labor.services.editTitle', { name: td(service.trade) }) : t('labor.services.addTitle')
 
   const save = async () => {
-    setError('')
     const next = {}
     const capacity = Number(form.worker_capacity)
     if (!editing && !form.trade) next.trade = t('labor.error.chooseTrade')
     if (String(form.worker_capacity).trim() === '' || !Number.isInteger(capacity) || capacity < 0) next.worker_capacity = t('labor.error.capacity')
     setErrors(next)
-    if (Object.values(next).some(Boolean)) return
+    const failing = Object.values(next).filter(Boolean)
+    if (failing.length) {
+      toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
+      return
+    }
     setSaving(true)
     try {
       const payload = { skill_level: form.skill_level.trim(), worker_capacity: capacity, notes: form.notes }
       const saved = editing ? await updateLabourService(service.id, payload) : await createLabourService({ ...payload, trade: form.trade })
       upsertService(saved)
-      setNotice({ tone: 'success', text: t(editing ? 'labor.msg.updated' : 'labor.msg.added', { name: saved?.trade || form.trade }) })
+      toast.success(t(editing ? 'labor.msg.updated' : 'labor.msg.added', { name: saved?.trade || form.trade }))
       reload()
       navigation.goBack()
     } catch (failure) {
-      setError(labourErrorMessage(failure, t('labor.error.serviceSave')))
+      toast.error(labourErrorMessage(failure, t('labor.error.serviceSave')))
       setSaving(false)
     }
   }
@@ -94,7 +97,7 @@ export default function SupplierLabourServiceScreen({ navigation, route }) {
                     onPress={() => set('trade')(trade)}
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
-                    style={[styles.trade, selected ? styles.tradeOn : null]}
+                    style={[styles.trade, selected ? styles.tradeOn : errors.trade ? styles.tradeInvalid : null]}
                   >
                     {selected ? <Check size={14} color={COLORS.brand[700]} /> : null}
                     <Text style={[styles.tradeText, selected ? styles.tradeTextOn : null]}>{td(trade)}</Text>
@@ -127,8 +130,6 @@ export default function SupplierLabourServiceScreen({ navigation, route }) {
             <TextField label={t('labor.field.notes')} value={form.notes} onChangeText={set('notes')} multiline />
           </View>
 
-          {error ? <View style={{ marginTop: 4 }}><Notice tone="error" text={error} /></View> : null}
-
           <View style={styles.buttons}>
             <ActionButton label={t('labor.action.cancel')} tone="outline" onPress={() => navigation.goBack()} disabled={saving} style={{ flex: 1 }} />
             <ActionButton
@@ -150,6 +151,7 @@ const styles = createStyles((c) => ({
   trades: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   trade: { height: 40, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 11, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 13 },
   tradeOn: { borderColor: '#1f6b45', backgroundColor: c.brandSoft },
+  tradeInvalid: { borderColor: '#dc2626' },
   tradeText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: c.textSecondary },
   tradeTextOn: { fontFamily: 'Inter_700Bold', color: c.brandTextStrong },
   fixedTrade: { height: 46, justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.subtle, paddingHorizontal: 13 },

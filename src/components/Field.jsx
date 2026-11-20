@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Image } from 'expo-image'
 import { Eye, EyeOff } from 'lucide-react-native'
 import { createStyles } from '../theme/createStyles'
+import { ToastMessage } from './Toast'
+import { ErrorAnchor } from './ScrollToError'
 
 export function Field({
   label,
@@ -57,23 +59,21 @@ export function Field({
         ) : null}
       </View>
       {error ? (
-        <Text style={[styles.text2, { fontSize: 12 }]}>
-          {error}
-        </Text>
+        <>
+          <ErrorAnchor />
+          <Text style={[styles.text2, { fontSize: 12 }]}>
+            {error}
+          </Text>
+        </>
       ) : null}
     </View>
   )
 }
 
+// An error for the whole form (a refused sign-in, a failed save): shown as the
+// bottom toast whenever it changes, never as a box at the top of the form.
 export function ErrorBanner({ message }) {
-  if (!message) return null
-  return (
-    <View style={styles.view3}>
-      <Text style={[styles.text3, { fontSize: 13, lineHeight: 19 }]}>
-        {message}
-      </Text>
-    </View>
-  )
+  return <ToastMessage text={message} tone="error" />
 }
 
 // `image` (the web's role character, as on its sign-up role picker) takes the

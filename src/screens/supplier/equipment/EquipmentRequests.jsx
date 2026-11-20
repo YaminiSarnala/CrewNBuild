@@ -10,7 +10,8 @@ import { useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { CheckCircle2, ClipboardList, ShoppingCart, Truck, XCircle } from 'lucide-react-native'
 import { PanelState } from '../../../components/DashboardShell'
-import { ActionButton, LabeledInput, Notice, SheetModal } from '../../../components/builder/BuilderUi'
+import { ActionButton, LabeledInput, SheetModal } from '../../../components/builder/BuilderUi'
+import { toast } from '../../../components/Toast'
 import { acceptEquipmentRequest, equipmentErrorMessage, rejectEquipmentRequest } from '../../../api/equipment'
 import { useLanguage } from '../../../i18n/LanguageContext'
 import { COLORS } from '../../../theme/tokens'
@@ -30,7 +31,6 @@ export default function EquipmentRequests({ compact = false }) {
   const [filter, setFilter] = useState('PENDING')
   const [accepting, setAccepting] = useState(null)
   const [rejecting, setRejecting] = useState(null)
-  const [notice, setNotice] = useState(null)
 
   const visible = compact
     ? requests.filter((request) => request.status === 'PENDING').slice(0, 4)
@@ -44,7 +44,7 @@ export default function EquipmentRequests({ compact = false }) {
   const finish = (result) => {
     setAccepting(null)
     setRejecting(null)
-    setNotice(result)
+    if (result?.text) toast.show(result.text, result.tone || 'success')
     reload()
   }
 
@@ -67,7 +67,6 @@ export default function EquipmentRequests({ compact = false }) {
   return (
     <View style={{ gap: 12 }}>
       {!compact ? <CountTabs tabs={tabs} active={filter} onChange={setFilter} /> : null}
-      {notice?.text ? <Pressable onPress={() => setNotice(null)}><Notice tone={notice.tone} text={notice.text} /></Pressable> : null}
       {visible.length === 0 ? (
         <View style={styles.empty}>
           <ClipboardList size={30} color={COLORS.slate[300]} />
@@ -101,11 +100,11 @@ export default function EquipmentRequests({ compact = false }) {
             {pending && !request.supplier_assignment_active ? <Text style={styles.warning}>{t('labor.requests.unassigned')}</Text> : null}
             {pending ? (
               <View style={styles.actions}>
-                <Pressable onPress={() => { setNotice(null); setRejecting(request) }} style={[styles.button, styles.reject]} accessibilityRole="button">
+                <Pressable onPress={() => setRejecting(request)} style={[styles.button, styles.reject]} accessibilityRole="button">
                   <XCircle size={15} color={ink('#be123c')} />
                   <Text style={[styles.buttonText, styles.rejectText]}>{t('labor.action.reject')}</Text>
                 </Pressable>
-                <Pressable onPress={() => { setNotice(null); setAccepting(request) }} style={[styles.button, styles.accept]} accessibilityRole="button">
+                <Pressable onPress={() => setAccepting(request)} style={[styles.button, styles.accept]} accessibilityRole="button">
                   <CheckCircle2 size={15} color="#ffffff" />
                   <Text style={[styles.buttonText, { color: '#ffffff' }]}>{t('labor.action.accept')}</Text>
                 </Pressable>
@@ -123,7 +122,6 @@ export default function EquipmentRequests({ compact = false }) {
 function AcceptSheet({ request, country, onClose, onDone }) {
   const { t } = useLanguage()
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
   const rent = request.request_kind === 'RENT'
   const total = Number(request.unit_price || 0) * Number(request.quantity || 0)
   const rows = [
@@ -143,12 +141,11 @@ function AcceptSheet({ request, country, onClose, onDone }) {
 
   const accept = async () => {
     setBusy(true)
-    setError('')
     try {
       await acceptEquipmentRequest(request.id)
       onDone({ tone: 'success', text: t(rent ? 'equipment.msg.rentalAccepted' : 'equipment.msg.purchaseAccepted', { count: request.quantity, name: request.item_name }) })
     } catch (failure) {
-      setError(equipmentErrorMessage(failure, t('labor.error.accept')))
+      toast.error(equipmentErrorMessage(failure, t('labor.error.accept')))
       setBusy(false)
     }
   }
@@ -175,7 +172,6 @@ function AcceptSheet({ request, country, onClose, onDone }) {
         ))}
       </View>
       <Text style={styles.hint}>{rent ? t('equipment.requests.acceptRentalHint') : t('equipment.requests.acceptPurchaseHint')}</Text>
-      {error ? <View style={{ marginTop: 12 }}><Notice tone="error" text={error} /></View> : null}
     </SheetModal>
   )
 }
@@ -184,16 +180,14 @@ function RejectSheet({ request, onClose, onDone }) {
   const { t } = useLanguage()
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
 
   const reject = async () => {
     setBusy(true)
-    setError('')
     try {
       await rejectEquipmentRequest(request.id, note.trim())
       onDone({ tone: 'success', text: t('equipment.msg.rejected', { name: request.item_name }) })
     } catch (failure) {
-      setError(equipmentErrorMessage(failure, t('labor.error.reject')))
+      toast.error(equipmentErrorMessage(failure, t('labor.error.reject')))
       setBusy(false)
     }
   }
@@ -212,7 +206,6 @@ function RejectSheet({ request, onClose, onDone }) {
       )}
     >
       <LabeledInput label={t('labor.field.reasonOptional')} value={note} onChangeText={setNote} multiline maxLength={500} />
-      {error ? <View style={{ marginTop: 12 }}><Notice tone="error" text={error} /></View> : null}
     </SheetModal>
   )
 }

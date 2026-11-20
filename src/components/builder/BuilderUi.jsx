@@ -4,7 +4,7 @@
 // Built-in text uses the web's translation keys (subscription.*, dash.common.*).
 import { View, Text, Pressable, TextInput, Modal, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, RefreshControl } from 'react-native'
 import PianoLoader from '../PianoLoader'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Lock, Clock, Search, CalendarClock, ShieldCheck, ArrowLeft, ChevronDown, Check } from 'lucide-react-native'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -16,6 +16,8 @@ import {
   activeBadge, dashboardBanner, formatPlanDate, lockedMessage, offerName, statusName, currentTier,
 } from '../../utils/subscriptionFormat'
 import { createStyles } from '../../theme/createStyles'
+import { ToastHost } from '../Toast'
+import { ErrorAnchor, ScrollToErrorProvider, useScrollToErrorContainer } from '../ScrollToError'
 
 /**
  * Chrome for a Builder screen pushed on the root stack (Plan & billing,
@@ -25,6 +27,9 @@ import { createStyles } from '../../theme/createStyles'
 export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefresh, right, scrollRef, children }) {
   const insets = useSafeAreaInsets()
   const { t } = useLanguage()
+  const ownScrollRef = useRef(null)
+  const pageScrollRef = scrollRef || ownScrollRef
+  const errorScroll = useScrollToErrorContainer(pageScrollRef)
   return (
     <View style={styles.view}>
       <View style={[styles.view2, { paddingTop: insets.top }]}>
@@ -43,7 +48,8 @@ export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefres
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.view4}>
         <ScrollView
-          ref={scrollRef}
+          ref={pageScrollRef}
+          {...errorScroll.scrollProps}
           style={styles.view4}
           contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 28 }}
           keyboardShouldPersistTaps="handled"
@@ -51,9 +57,12 @@ export function StackScreenShell({ title, subtitle, onBack, refreshing, onRefres
             <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor="#134127" colors={['#134127']} />
           ) : undefined}
         >
-          <ContentWrap>{children}</ContentWrap>
+          <ScrollToErrorProvider value={errorScroll.value}>
+            <ContentWrap>{children}</ContentWrap>
+          </ScrollToErrorProvider>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ToastHost />
     </View>
   )
 }
@@ -150,7 +159,7 @@ export function LabeledInput({ label, hint, error, multiline, style, ...props })
         placeholderTextColor={COLORS.slate[400]}
         style={[styles.textInput, multiline ? styles.textInput2 : styles.textInput3, error ? styles.inputError : null, style]}
       />
-      {error ? <Text style={styles.fieldError}>{error}</Text> : hint ? <Text style={styles.text12}>{hint}</Text> : null}
+      {error ? <><ErrorAnchor /><Text style={styles.fieldError}>{error}</Text></> : hint ? <Text style={styles.text12}>{hint}</Text> : null}
     </View>
   )
 }
@@ -214,6 +223,8 @@ export function SheetModal({
 }) {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
+  const sheetScrollRef = useRef(null);
+  const errorScroll = useScrollToErrorContainer(sheetScrollRef);
 
   return (
     <Modal
@@ -268,6 +279,8 @@ export function SheetModal({
           </View>
 
           <ScrollView
+            ref={sheetScrollRef}
+            {...errorScroll.scrollProps}
             style={{ flexShrink: 1 }}
             contentContainerStyle={{
               padding: 20,
@@ -276,7 +289,9 @@ export function SheetModal({
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-            {children}
+            <ScrollToErrorProvider value={errorScroll.value}>
+              {children}
+            </ScrollToErrorProvider>
           </ScrollView>
 
           {footer ? (
@@ -286,6 +301,8 @@ export function SheetModal({
           ) : null}
         </View>
       </KeyboardAvoidingView>
+      {/* While the sheet is open its messages show inside it, above the footer. */}
+      <ToastHost offset={footer ? 72 : 0} />
     </Modal>
   );
 }
@@ -365,6 +382,7 @@ export function ConfirmDialog({ visible, title, body, rows = [], confirmLabel, t
           </View>
         </View>
       </View>
+      <ToastHost />
     </Modal>
   )
 }

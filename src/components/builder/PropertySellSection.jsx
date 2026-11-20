@@ -5,7 +5,7 @@
 // (PATCH /property-listings/{id}/status) and delete. The seller is always taken
 // from the token on the server. Photos go through POST /files/upload.
 // Strings use the web property.* keys; mobile-only ones are mobile.account.*.
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { View, Text, Pressable, Alert, Switch } from 'react-native'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
@@ -18,7 +18,8 @@ import {
 import { uploadLocalFile } from '../../api/upload'
 import { imageUrl } from '../../api/client'
 import { apiErrorText, asList, money } from '../../utils/builderHelpers'
-import { ActionButton, Badge, LabeledInput, Notice, SegmentTabs, SheetModal } from './BuilderUi'
+import { ActionButton, Badge, LabeledInput, SegmentTabs, SheetModal } from './BuilderUi'
+import { toast } from '../Toast'
 import { COLORS } from '../../theme/tokens'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
@@ -68,7 +69,7 @@ function listingToForm(listing) {
 async function pickImages(multiple, t) {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
   if (!permission.granted) {
-    Alert.alert(t('mobile.account.permissionTitle'), t('mobile.account.permissionPropertyPhotos'))
+    toast.error(t('mobile.account.permissionPropertyPhotos'), { title: t('mobile.account.permissionTitle') })
     return []
   }
   const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsMultipleSelection: multiple })
@@ -83,34 +84,46 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
   const [galleryUrls, setGalleryUrls] = useState(() => (listing?.images || []).map((image) => image.image_url).filter(Boolean))
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState('')
-  const [message, setMessage] = useState('')
+  // Messages under each required field that is missing.
+  const [errors, setErrors] = useState({})
   const canPublish = !editing || listing?.status === 'DRAFT'
-  const update = (field, value) => setDetails((current) => ({ ...current, [field]: value }))
+  const update = (field, value) => {
+    setDetails((current) => ({ ...current, [field]: value }))
+    setErrors((current) => (current[field] ? { ...current, [field]: '' } : current))
+  }
   const numeric = (field) => (value) => update(field, value.replace(/[^\d.]/g, ''))
 
   async function addPhotos(cover) {
     const assets = await pickImages(!cover, t)
     if (!assets.length) return
     setUploading(true)
-    setMessage('')
     try {
       const urls = []
       for (const asset of assets) urls.push(uploadedUrl(await uploadLocalFile(asset, 'property.jpg')))
       if (cover) setCoverImageUrl(urls[0])
       else setGalleryUrls((current) => [...current, ...urls.filter(Boolean)])
     } catch {
-      setMessage(t('property.form.uploadFailed'))
+      toast.error(t('property.form.uploadFailed'))
     } finally {
       setUploading(false)
     }
   }
 
   async function submit(publish) {
-    if (!details.title.trim()) { setMessage(t('mobile.account.property.enterTitle')); return }
-    if (!details.address.trim() || !details.pincode.trim()) { setMessage(t('mobile.account.property.enterAddress')); return }
-    if (!(Number(details.price) > 0)) { setMessage(t('mobile.account.property.enterPrice')); return }
+    const found = {}
+    if (!details.title.trim()) found.title = t('mobile.account.property.enterTitle')
+    if (!details.address.trim()) found.address = t('mobile.account.property.enterAddress')
+    if (!details.pincode.trim()) found.pincode = t('mobile.account.property.enterAddress')
+    if (!(Number(details.price) > 0)) found.price = t('mobile.account.property.enterPrice')
+    if (Object.keys(found).length) {
+      setErrors(found)
+      const messages = [...new Set(Object.values(found))]
+      toast.error(messages.length === 1 ? messages[0] : t('cp.val.completeFields'))
+      return
+    }
+    setErrors({})
     setSaving(publish ? 'publish' : 'save')
-    setMessage('')
+    toast.hide()
     // Exactly the fields the backend schema declares (web PropertyForm).
     const payload = {
       title: details.title.trim(),
@@ -141,7 +154,7 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
     try {
       await onSaved(payload, galleryUrls, { publish })
     } catch (error) {
-      setMessage(apiErrorText(error, t('property.form.saveFailed')))
+      toast.error(apiErrorText(error, t('property.form.saveFailed')))
     } finally {
       setSaving('')
     }
@@ -149,18 +162,18 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
 
   return (
     <View>
-      <LabeledInput label={`${t('property.form.titlePh')} *`} value={details.title} onChangeText={(value) => update('title', value)} />
+      <LabeledInput label={`${t('property.form.titlePh')} *`} value={details.title} onChangeText={(value) => update('title', value)} error={errors.title} />
       <Text style={styles.text}>{t('property.type')}</Text>
       <SegmentTabs dense tabs={PROPERTY_TYPES.map(([id, key]) => ({ id, label: t(key) }))} active={details.property_type} onChange={(value) => update('property_type', value)} />
       <Text style={styles.text2}>{t('mobile.account.property.listingFor')}</Text>
       <SegmentTabs dense tabs={LISTING_TYPES.map(([id, key]) => ({ id, label: t(key) }))} active={details.listing_type} onChange={(value) => update('listing_type', value)} />
       <View style={styles.view}>
         <LabeledInput label={t('dash.common.description')} value={details.description} onChangeText={(value) => update('description', value)} multiline />
-        <LabeledInput label={`${t('property.form.addressPh')} *`} value={details.address} onChangeText={(value) => update('address', value)} />
-        <LabeledInput label={`${t('dash.common.pincode')} *`} value={details.pincode} onChangeText={(value) => update('pincode', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} />
+        <LabeledInput label={`${t('property.form.addressPh')} *`} value={details.address} onChangeText={(value) => update('address', value)} error={errors.address} />
+        <LabeledInput label={`${t('dash.common.pincode')} *`} value={details.pincode} onChangeText={(value) => update('pincode', value.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} error={errors.pincode} />
         <LabeledInput label={t('property.form.cityPh')} value={details.city} onChangeText={(value) => update('city', value)} />
         <LabeledInput label={t('property.form.statePh')} value={details.state} onChangeText={(value) => update('state', value)} />
-        <LabeledInput label={`${t('property.price')} *`} value={details.price} onChangeText={numeric('price')} keyboardType="numeric" hint={Number(details.price) > 0 ? money(details.price, details.country) : ''} />
+        <LabeledInput label={`${t('property.price')} *`} value={details.price} onChangeText={numeric('price')} keyboardType="numeric" hint={Number(details.price) > 0 ? money(details.price, details.country) : ''} error={errors.price} />
       </View>
       <View style={styles.view2}>
         <Text style={styles.text3}>{t('property.negotiable')}</Text>
@@ -207,7 +220,6 @@ function ListingForm({ listing, projects, defaultCountry, onSaved, onCancel }) {
       </View>
       {galleryUrls.length ? <Text style={styles.text5}>{t('mobile.account.tapPhotoToRemove')}</Text> : null}
 
-      {message ? <View style={styles.view}><Notice tone="error" text={message} /></View> : null}
       <View style={styles.view5}>
         <ActionButton label={editing ? t('property.form.saveChanges') : t('property.form.saveDraft')} tone="outline" busy={saving === 'save'} disabled={Boolean(saving) || uploading} onPress={() => submit(false)} />
         {canPublish ? <ActionButton label={t('property.form.saveAndPublish')} busy={saving === 'publish'} disabled={Boolean(saving) || uploading} onPress={() => submit(true)} /> : null}
@@ -223,14 +235,7 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
   const [formOpen, setFormOpen] = useState(false)
   const [editingListing, setEditingListing] = useState(null)
   const [busyId, setBusyId] = useState(null)
-  const [message, setMessage] = useState(null)
   const listings = asList(mine.data, 'listings', 'items')
-
-  useEffect(() => {
-    if (!message) return undefined
-    const timer = setTimeout(() => setMessage(null), 5000)
-    return () => clearTimeout(timer)
-  }, [message])
 
   const saveListing = async (payload, galleryUrls, { publish = false } = {}) => {
     const saved = editingListing
@@ -239,17 +244,19 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
     // The gallery is replaced as a whole, ordered list.
     await updatePropertyListingImages(saved.id, galleryUrls)
     let text = editingListing ? t('property.msg.updated') : t('property.msg.draftSaved')
+    let tone = 'success'
     if (publish) {
       try {
         await updatePropertyListingStatus(saved.id, 'LISTED')
         text = t('property.msg.published')
       } catch {
         text = t('property.msg.publishFailed')
+        tone = 'warning'
       }
     }
     setFormOpen(false)
     setEditingListing(null)
-    setMessage({ tone: 'success', text })
+    toast.show(text, tone)
     await mine.reload()
   }
 
@@ -262,7 +269,7 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
       setEditingListing(full || listing)
       setFormOpen(true)
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, t('mobile.account.property.openFailed')) })
+      toast.error(apiErrorText(error, t('mobile.account.property.openFailed')))
     } finally {
       setBusyId(null)
     }
@@ -272,10 +279,10 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
     setBusyId(listing.id)
     try {
       await updatePropertyListingStatus(listing.id, status)
-      setMessage({ tone: 'success', text: t('property.msg.statusUpdated') })
+      toast.success(t('property.msg.statusUpdated'))
       await mine.reload()
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, t('property.msg.statusFailed')) })
+      toast.error(apiErrorText(error, t('property.msg.statusFailed')))
     } finally {
       setBusyId(null)
     }
@@ -291,10 +298,10 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
           setBusyId(listing.id)
           try {
             await deletePropertyListing(listing.id)
-            setMessage({ tone: 'success', text: t('property.msg.deleted') })
+            toast.success(t('property.msg.deleted'))
             await mine.reload()
           } catch (error) {
-            setMessage({ tone: 'error', text: apiErrorText(error, t('property.msg.deleteFailed')) })
+            toast.error(apiErrorText(error, t('property.msg.deleteFailed')))
           } finally {
             setBusyId(null)
           }
@@ -309,7 +316,6 @@ export default function PropertySellSection({ projects = [], defaultCountry = 'I
         title={t('property.myProperties')}
         action={<ActionButton small icon={Plus} label={t('property.addProperty')} onPress={() => { setEditingListing(null); setFormOpen(true) }} />}
       >
-        <Notice tone={message?.tone} text={message?.text} />
         <PanelState loading={mine.loading} error={mine.error} empty={!listings.length} emptyText={`${t('property.empty.mineTitle')}\n${t('property.empty.mineMessage')}`}>
           {listings.map((listing) => (
             <View key={listing.id} style={styles.view6}>

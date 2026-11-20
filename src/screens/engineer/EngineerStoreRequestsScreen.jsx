@@ -14,6 +14,7 @@ import { formatDateTime } from '../../utils/formatters'
 import {
   REQUEST_FILTERS, filterRequests, formatQty, purchaseRef, requestFilterCounts, requestRef, searchRequests,
 } from '../../utils/storeHelpers'
+import { toast } from '../../components/Toast'
 import { ActionButton, Notice, Section, SegmentTabs, SheetModal, StackScreenShell } from '../../components/builder/BuilderUi'
 import StatusPill from '../../components/StatusPill'
 import { COLORS } from '../../theme/tokens'
@@ -125,7 +126,8 @@ export default function EngineerStoreRequestsScreen({ navigation }) {
   const { t, td } = useLanguage()
   const [requests, setRequests] = useState([])
   const [loaded, setLoaded] = useState(false)
-  const [notice, setNotice] = useState(null)
+  // A failed load stays in place of the list; a cancel's result is a bottom toast.
+  const [loadFailed, setLoadFailed] = useState(false)
   const [historyGroup, setHistoryGroup] = useState('ALL')
   const [search, setSearch] = useState('')
   const [openId, setOpenId] = useState(null)
@@ -133,8 +135,8 @@ export default function EngineerStoreRequestsScreen({ navigation }) {
   const [cancellingId, setCancellingId] = useState(null)
 
   const reload = useCallback(() => fetchMySiteRequests()
-    .then((list) => { setRequests(Array.isArray(list) ? list : []); setLoaded(true) })
-    .catch(() => setNotice({ text: t('store.engineer.historyLoadFailed'), error: true })), [t])
+    .then((list) => { setRequests(Array.isArray(list) ? list : []); setLoaded(true); setLoadFailed(false) })
+    .catch(() => setLoadFailed(true)), [])
   useEffect(() => {
     reload()
     const timer = setInterval(reload, 15000)
@@ -149,13 +151,12 @@ export default function EngineerStoreRequestsScreen({ navigation }) {
   }
   const cancel = async (id, ref) => {
     setCancellingId(id)
-    setNotice(null)
     try {
       await cancelSiteRequest(id)
-      setNotice({ text: t('store.engineer.cancelled', { id: ref }) })
+      toast.success(t('store.engineer.cancelled', { id: ref }))
       reload()
     } catch (error) {
-      setNotice({ text: refusalText(error, td, t('store.saveFailed')), error: true })
+      toast.error(refusalText(error, td, t('store.saveFailed')))
     } finally {
       setCancellingId(null)
     }
@@ -169,7 +170,7 @@ export default function EngineerStoreRequestsScreen({ navigation }) {
   return (
     <StackScreenShell title={t('store.engineer.myRequests')} onBack={() => navigation.goBack()} refreshing={refreshing} onRefresh={onRefresh}>
       <Section>
-        {!open ? <Notice tone={notice?.error ? 'error' : 'success'} text={notice?.text} /> : null}
+        {loadFailed ? <Notice tone="error" text={t('store.engineer.historyLoadFailed')} /> : null}
         {requests.length ? (
           <View style={{ gap: 10 }}>
             <SegmentTabs
@@ -206,7 +207,6 @@ export default function EngineerStoreRequestsScreen({ navigation }) {
       >
         {open ? (
           <View style={{ gap: 8 }}>
-            <Notice tone={notice?.error ? 'error' : 'success'} text={notice?.text} />
             <RequestDetails request={open} />
           </View>
         ) : null}

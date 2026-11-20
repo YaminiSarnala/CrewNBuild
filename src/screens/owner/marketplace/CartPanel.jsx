@@ -19,6 +19,7 @@ import { formatNumber } from '../../../utils/formatters'
 import { SUPPLIER_CATEGORY_KEYS, optionLabel } from '../../../i18n/optionKeys'
 import { COLORS } from '../../../theme/tokens'
 import { createStyles } from '../../../theme/createStyles'
+import { ToastMessage } from '../../../components/Toast'
 
 function CartLine({ line, country, busy, onChangeQuantity, onRemove }) {
   const { t, td } = useLanguage()
@@ -188,11 +189,7 @@ export default function CartPanel({ projectId, country = 'India', onBack }) {
 
       {outcomeList}
       {/* The server writes its refusals in English. */}
-      {cart.errorMessage && !outcomes.length ? (
-        <Text style={[styles.text18, { fontSize: 12 }]}>
-          {td(cart.errorMessage)}
-        </Text>
-      ) : null}
+      <ToastMessage tone="error" text={cart.errorMessage && !outcomes.length ? td(cart.errorMessage) : ''} />
 
       {cart.suppliers.map((group) => (
         <View key={group.supplier_id} style={styles.view12}>
@@ -293,7 +290,6 @@ const styles = createStyles((c) => ({
   text16: { fontFamily: 'Manrope_800ExtraBold', color: c.text },
   pressable4: { height: 31.5, justifyContent: 'center', borderRadius: 7, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10.5 },
   text17: { fontFamily: 'Inter_700Bold', color: c.textMuted },
-  text18: { borderRadius: 10.5, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 10.5, paddingVertical: 7, fontFamily: 'Inter_700Bold', color: c.roseText },
   view12: { borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 12.25 },
   view13: { flexDirection: 'row', alignItems: 'center', paddingBottom: 10.5 },
   view14: { height: 31.5, width: 31.5, alignItems: 'center', justifyContent: 'center', borderRadius: 7, backgroundColor: c.brandSoft },

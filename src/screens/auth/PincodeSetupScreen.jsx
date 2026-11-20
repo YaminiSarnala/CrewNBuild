@@ -21,6 +21,7 @@ import { lookupPincodeArea, updateUserLocation } from '../../api/location'
 import { logoutUser, mergeUser } from '../../store/authSlice'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { PrimaryButton, GhostButton, GlassCard } from '../../components/ui'
+import { toast } from '../../components/Toast'
 import { createStyles } from '../../theme/createStyles'
 
 export default function PincodeSetupScreen({ navigation }) {
@@ -33,7 +34,12 @@ export default function PincodeSetupScreen({ navigation }) {
   const [selectedArea, setSelectedArea] = useState('')
   const [lookupLoading, setLookupLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  // A problem with the typed pincode: shown under (and highlighting) the field.
   const [error, setError] = useState('')
+  const pincodeProblem = (message) => {
+    setError(message)
+    toast.error(message)
+  }
   const [areaDetails, setAreaDetails] = useState(null)
   const { t } = useLanguage()
   // The pincode the last lookup was for, so a slow answer for an older one is dropped.
@@ -51,7 +57,7 @@ export default function PincodeSetupScreen({ navigation }) {
   async function findAreas(value = pincode.trim()) {
 
     if (!/^\d{6}$/.test(value)) {
-      setError('Enter a valid 6-digit pincode.')
+      pincodeProblem('Enter a valid 6-digit pincode.')
       return
     }
 
@@ -76,12 +82,12 @@ setAreas(branches)
 if (branches.length === 1) {
   setSelectedArea(branches[0].name)
 } else if (branches.length === 0) {
-  setError('No areas found for this pincode. Please try again.')
+  pincodeProblem('No areas found for this pincode. Please try again.')
 }
     } catch (err) {
       if (lookedUp.current !== value) return
       const detail = err?.response?.data?.detail
-      setError(
+      pincodeProblem(
         (typeof detail === 'string' && detail) ||
           'Could not find this pincode. Please check your connection and try again.',
       )
@@ -92,7 +98,7 @@ if (branches.length === 1) {
 
   async function saveLocation() {
     if (!areaDetails || !selectedArea) {
-      setError('Please look up your pincode and select an area.')
+      toast.error('Please look up your pincode and select an area.')
       return
     }
 
@@ -113,7 +119,7 @@ if (branches.length === 1) {
       }))
     } catch (err) {
       const detail = err?.response?.data?.detail
-      setError(
+      toast.error(
         (typeof detail === 'string' && detail) ||
           (typeof detail?.message === 'string' && detail.message) ||
           'Could not save your location. Please try again.',
@@ -172,8 +178,13 @@ if (branches.length === 1) {
               keyboardType="number-pad"
               maxLength={6}
               accessibilityLabel="6-digit pincode"
-              style={[styles.textInput, { fontSize: 16 }]}
+              style={[styles.textInput, error ? styles.textInputInvalid : null, { fontSize: 16 }]}
             />
+            {error ? (
+              <Text accessibilityRole="alert" style={styles.fieldError}>
+                {error}
+              </Text>
+            ) : null}
 
             <View style={styles.view4}>
               <PrimaryButton
@@ -243,12 +254,6 @@ if (branches.length === 1) {
               </View>
             ) : null}
 
-            {error ? (
-              <Text accessibilityRole="alert" style={[styles.text11, { fontSize: 13, lineHeight: 19 }]}>
-                {error}
-              </Text>
-            ) : null}
-
             {lookupLoading ? (
               <ActivityIndicator color="#2e7d55" style={{ marginTop: 18 }} />
             ) : null}
@@ -294,6 +299,7 @@ const styles = createStyles((c) => ({
   text9: { color: c.brandTextStrong },
   text10: { color: c.text },
   view7: { marginTop: 10.5 },
-  text11: { marginTop: 14, fontFamily: 'Inter_400Regular', color: c.redTextSoft },
+  textInputInvalid: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 6, fontSize: 11.5, lineHeight: 16, fontFamily: 'Inter_500Medium', color: '#dc2626' },
   text12: { marginTop: 14, textAlign: 'center', fontFamily: 'Inter_400Regular', color: c.textMuted },
 }))

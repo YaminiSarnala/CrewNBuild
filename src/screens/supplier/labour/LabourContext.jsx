@@ -23,9 +23,6 @@ export function LabourProvider({ children }) {
   const [requestsStatus, setRequestsStatus] = useState('idle')
   // Bumped on every request reload, so an open attendance list re-reads with it.
   const [refreshKey, setRefreshKey] = useState(0)
-  // The last action's message ({ tone, text }), shown on the Services tab even
-  // when it was the Add / Edit screen that saved.
-  const [notice, setNotice] = useState(null)
   const latest = useRef(0)
 
   const reload = useCallback(async () => {
@@ -54,7 +51,6 @@ export function LabourProvider({ children }) {
       setTrades([])
       setServicesStatus('idle')
       setRequestsStatus('idle')
-      setNotice(null)
       return
     }
     reload()
@@ -75,8 +71,8 @@ export function LabourProvider({ children }) {
   }, [])
 
   const value = useMemo(() => ({
-    services, requests, trades, servicesStatus, requestsStatus, refreshKey, reload, upsertService, notice, setNotice,
-  }), [services, requests, trades, servicesStatus, requestsStatus, refreshKey, reload, upsertService, notice])
+    services, requests, trades, servicesStatus, requestsStatus, refreshKey, reload, upsertService,
+  }), [services, requests, trades, servicesStatus, requestsStatus, refreshKey, reload, upsertService])
 
   return <LabourContext.Provider value={value}>{children}</LabourContext.Provider>
 }
@@ -84,6 +80,6 @@ export function LabourProvider({ children }) {
 export function useLabour() {
   return useContext(LabourContext) || {
     services: [], requests: [], trades: [], servicesStatus: 'idle', requestsStatus: 'idle', refreshKey: 0,
-    reload: async () => {}, upsertService: () => {}, notice: null, setNotice: () => {},
+    reload: async () => {}, upsertService: () => {},
   }
 }

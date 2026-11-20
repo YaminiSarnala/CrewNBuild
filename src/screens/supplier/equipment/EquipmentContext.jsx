@@ -22,9 +22,6 @@ export function EquipmentProvider({ children }) {
   // Bumped on every request reload, so an open usage log re-reads with it.
   const [refreshKey, setRefreshKey] = useState(0)
   const latest = useRef(0)
-  // The last action's message ({ tone, text }), shown on the Inventory tab even
-  // when it was the Add / Edit screen that saved.
-  const [notice, setNotice] = useState(null)
 
   const reload = useCallback(async () => {
     if (!isEquipment) return
@@ -51,7 +48,6 @@ export function EquipmentProvider({ children }) {
       setRequests([])
       setItemsStatus('idle')
       setRequestsStatus('idle')
-      setNotice(null)
       return
     }
     reload()
@@ -69,8 +65,8 @@ export function EquipmentProvider({ children }) {
   }, [])
 
   const value = useMemo(() => ({
-    items, requests, itemsStatus, requestsStatus, refreshKey, reload, upsertItem, notice, setNotice,
-  }), [items, requests, itemsStatus, requestsStatus, refreshKey, reload, upsertItem, notice])
+    items, requests, itemsStatus, requestsStatus, refreshKey, reload, upsertItem,
+  }), [items, requests, itemsStatus, requestsStatus, refreshKey, reload, upsertItem])
 
   return <EquipmentContext.Provider value={value}>{children}</EquipmentContext.Provider>
 }
@@ -78,6 +74,5 @@ export function EquipmentProvider({ children }) {
 export function useEquipment() {
   return useContext(EquipmentContext) || {
     items: [], requests: [], itemsStatus: 'idle', requestsStatus: 'idle', refreshKey: 0, reload: async () => {}, upsertItem: () => {},
-    notice: null, setNotice: () => {},
   }
 }

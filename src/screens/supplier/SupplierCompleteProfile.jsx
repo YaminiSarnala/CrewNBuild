@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { ArrowRight } from 'lucide-react-native'
 import { PanelState, Panel } from '../../components/DashboardShell'
-import { Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import Toast, { useToast } from '../../components/Toast'
 import { PrimaryButton } from '../../components/ui'
 import { completeUserProfile } from '../../api/auth'
 import { mergeUser } from '../../store/authSlice'
@@ -24,7 +25,10 @@ export default function SupplierCompleteProfile({ navigation }) {
   const { profile, status, reload } = useSupplier()
   const formState = useSupplierProfileForm(profile, user)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState(null)
+  // Errors show as a toast at the bottom, where the Submit button is, and the
+  // field at fault is highlighted in the form.
+  const { toast, showToast, hideToast } = useToast()
+  const scrollRef = useRef(null)
   // 'missing' = no supplier profile yet: nothing saved to keep, the form starts empty.
   const ready = status === 'ready' || status === 'missing'
   const seeded = useRef(false)
@@ -42,25 +46,33 @@ export default function SupplierCompleteProfile({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, profile])
 
+  // The e-mail added and verified in the form clears its highlight.
+  useEffect(() => {
+    if (user?.email) formState.setErrors((current) => (current?.email ? { ...current, email: undefined } : current))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email])
+
   async function submit() {
     if (saving) return
     if (!ready) {
-      setMessage({ tone: 'error', text: t(status === 'error' ? 'cp.loadSavedFailed' : 'cp.loadingSaved') })
+      showToast(t(status === 'error' ? 'cp.loadSavedFailed' : 'cp.loadingSaved'), 'error')
       return
     }
-    // A phone-first account has no e-mail yet, and the completion rule needs one.
-    if (!user?.email) {
-      setMessage({ tone: 'error', text: t('emailVerify.needEmail') })
-      return
-    }
-    const errors = formState.validate()
+    const errors = Object.fromEntries(Object.entries(formState.validate()).map(([key, value]) => [key, td(String(value))]))
+    // A phone-first account has no e-mail yet, and the completion rule needs one:
+    // it is added and verified in the e-mail field at the top of the form.
+    const emailMissing = !user?.email
+    if (emailMissing) errors.email = t('emailVerify.needEmail')
     if (Object.keys(errors).length) {
-      formState.setErrors(Object.fromEntries(Object.entries(errors).map(([key, value]) => [key, td(String(value))])))
-      setMessage({ tone: 'error', text: t('cp.val.completeFields') })
+      formState.setErrors(errors)
+      const onlyEmail = emailMissing && Object.keys(errors).length === 1
+      showToast(onlyEmail ? t('emailVerify.needEmail') : t('cp.val.completeFields'), 'error')
+      // The e-mail field is near the top: bring it into view.
+      if (emailMissing) scrollRef.current?.scrollTo({ y: 0, animated: true })
       return
     }
     setSaving(true)
-    setMessage(null)
+    hideToast()
     try {
       const updated = await completeUserProfile(formState.payload())
       dispatch(mergeUser(updated?.user || updated || {}))
@@ -72,21 +84,22 @@ export default function SupplierCompleteProfile({ navigation }) {
     } catch (error) {
       const fields = fieldErrorsFrom(error)
       formState.setErrors(Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, td(String(value))])))
-      setMessage({ tone: 'error', text: td(apiErrorText(error, t('cp.err.completeProfile'))) })
+      showToast(td(apiErrorText(error, t('cp.err.completeProfile'))), 'error')
       setSaving(false)
     }
   }
 
   return (
+    <>
     <StackScreenShell
       title={t('ps.sup.setupLabel')}
       subtitle={t('ps.sup.setupSubtitle')}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : null)}
+      scrollRef={scrollRef}
     >
-      <Section><Notice tone={message?.tone} text={message?.text} /></Section>
       {ready ? (
         <>
-          <SupplierProfileFields state={formState} email={user?.email} />
+          <SupplierProfileFields state={formState} email={user?.email} addEmail />
           <Section style={{ marginBottom: 14 }}>
             <PrimaryButton
               label={t('cp.submitProfile')}
@@ -104,5 +117,7 @@ export default function SupplierCompleteProfile({ navigation }) {
         </Panel>
       )}
     </StackScreenShell>
+    <Toast {...toast} onHide={hideToast} />
+    </>
   )
 }

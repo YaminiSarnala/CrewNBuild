@@ -9,13 +9,14 @@
 // DELETE /account.
 // Strings use the web cps.* / ps.* / account.* keys; mobile-only ones are mobile.account.*.
 import { useCallback, useEffect, useState } from 'react'
-import { View, Text, Pressable, Alert, Switch } from 'react-native'
+import { View, Text, Pressable, Switch } from 'react-native'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { useDispatch, useSelector } from 'react-redux'
 import { Camera, Plus, Trash2, Building2, ImagePlus } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
-import { ActionButton, LabeledInput, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { ActionButton, LabeledInput, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { fetchContractorProfile } from '../../api/profiles'
 import { completeUserProfile, updateBusinessLogo, updateProfileImage } from '../../api/auth'
 import { uploadLocalFile } from '../../api/upload'
@@ -94,7 +95,7 @@ function ChipPicker({ label, options, labelKeys, value, onChange }) {
 async function pickImage(aspect, t) {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
   if (!permission.granted) {
-    Alert.alert(t('mobile.account.permissionTitle'), t('mobile.account.permissionImage'))
+    toast.error(t('mobile.account.permissionImage'), { title: t('mobile.account.permissionTitle') })
     return null
   }
   const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: Boolean(aspect), aspect })
@@ -111,7 +112,6 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
   const [loadError, setLoadError] = useState('')
   const [form, setForm] = useState(() => formFromProfile(null, user))
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState(null)
   const [uploading, setUploading] = useState('')
   // Messages under each field: this screen's checks first, then the server's.
   const [errors, setErrors] = useState({})
@@ -162,20 +162,23 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
   async function save() {
     // Never save without the loaded profile: the payload is the full builder
     // profile, so saving from an empty form would blank every hidden field.
-    if (!profile) { setMessage({ tone: 'error', text: t('mobile.account.settings.notLoadedSave') }); return }
+    if (!profile) { toast.error(t('mobile.account.settings.notLoadedSave')); return }
     const localErrors = builderFieldErrors(form, country)
     // The web's rule: every portfolio project needs a title.
     if ((form.completed_project_details || []).some((project) => !String(project?.title || '').trim())) {
       localErrors.completed_project_details = t('cps.portfolio.titleRequired')
     }
     if (Object.keys(localErrors).length) {
-      setErrors(Object.fromEntries(Object.entries(localErrors).map(([key, text]) => [key, td(text)])))
-      setMessage({ tone: 'error', text: t('mobile.profile.fixFields') })
+      const shown = Object.fromEntries(Object.entries(localErrors).map(([key, text]) => [key, td(text)]))
+      setErrors(shown)
+      // Every failing field is highlighted; one at fault is named in the toast.
+      const messages = Object.values(shown)
+      toast.error(messages.length === 1 ? messages[0] : t('mobile.profile.fixFields'))
       return
     }
     setErrors({})
     setSaving(true)
-    setMessage(null)
+    toast.hide()
     const current = profile || {}
     // The web's payload, field for field.
     const payload = {
@@ -213,11 +216,11 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
       const refreshed = await fetchContractorProfile(user.id)
       setProfile(refreshed)
       setForm(formFromProfile(refreshed, user))
-      setMessage({ tone: 'success', text: t('dash.msg.profileSaved') })
+      toast.success(t('dash.msg.profileSaved'))
     } catch (error) {
       const fields = fieldErrorsFrom(error)
       setErrors(Object.fromEntries(Object.entries(fields).map(([key, text]) => [key, td(String(text))])))
-      setMessage({ tone: 'error', text: td(apiErrorText(error, t('cps.errSaveChanges'))) })
+      toast.error(td(apiErrorText(error, t('cps.errSaveChanges'))))
     } finally {
       setSaving(false)
     }
@@ -228,21 +231,21 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
     const asset = await pickImage([1, 1], t)
     if (!asset) return
     setUploading(kind)
-    setMessage({ tone: 'info', text: kind === 'logo' ? t('cp.msg.uploadingLogo') : t('dash.msg.uploadingProfileImage') })
+    toast.info(kind === 'logo' ? t('cp.msg.uploadingLogo') : t('dash.msg.uploadingProfileImage'))
     try {
       const fileUrl = uploadedUrl(await uploadLocalFile(asset, kind === 'logo' ? 'logo.jpg' : 'profile.jpg'))
       if (kind === 'logo') {
         const updatedProfile = await updateBusinessLogo(fileUrl)
         setProfile((currentProfile) => ({ ...(currentProfile || {}), ...(updatedProfile || {}), company_logo_url: updatedProfile?.company_logo_url || fileUrl }))
-        setMessage({ tone: 'success', text: t('cp.msg.logoUploaded') })
+        toast.success(t('cp.msg.logoUploaded'))
       } else {
         const updated = await updateProfileImage(fileUrl)
         dispatch(mergeUser(updated?.user || updated || { profile_image_url: fileUrl }))
         setProfile((currentProfile) => ({ ...(currentProfile || {}), profile_image_url: fileUrl }))
-        setMessage({ tone: 'success', text: t('dash.msg.profileImageUpdated') })
+        toast.success(t('dash.msg.profileImageUpdated'))
       }
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, t('cps.uploadFailed')) })
+      toast.error(apiErrorText(error, t('cps.uploadFailed')))
     } finally {
       setUploading('')
     }
@@ -272,7 +275,7 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
         )),
       }))
     } catch (error) {
-      setMessage({ tone: 'error', text: apiErrorText(error, t('cps.uploadFailed')) })
+      toast.error(apiErrorText(error, t('cps.uploadFailed')))
     } finally {
       setUploading('')
     }
@@ -288,7 +291,6 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
 
   return (
     <StackScreenShell title={t('ui.profileSettings')} subtitle={t('ps.con.builderProfile')} onBack={() => navigation.goBack()} refreshing={loading && !!profile} onRefresh={load}>
-      <Section><Notice tone={message?.tone} text={message?.text} /></Section>
       <Panel title={t('mobile.account.settings.photoAndLogo')}>
         <PanelState loading={loading && !profile} error={loadError} empty={false}>
           <View style={styles.view3}>
@@ -390,7 +392,12 @@ export default function BuilderProfileSettingsScreen({ navigation }) {
               <Text style={styles.text10}>{t('ui.requests.project', { n: index + 1 })}</Text>
               <Pressable onPress={() => removeProject(index)} accessibilityLabel={t('shop.remove')}><Trash2 size={16} color="#e11d48" /></Pressable>
             </View>
-            <LabeledInput label={t('dash.owner.projectForm.titlePh')} value={item.title} onChangeText={(value) => updateProject(index, 'title', value)} />
+            <LabeledInput
+              label={t('dash.owner.projectForm.titlePh')}
+              value={item.title}
+              onChangeText={(value) => updateProject(index, 'title', value)}
+              error={errors.completed_project_details && !String(item.title || '').trim() ? errors.completed_project_details : undefined}
+            />
             <LabeledInput label={t('ps.location')} value={item.location} onChangeText={(value) => updateProject(index, 'location', value)} />
             <LabeledInput label={t('dash.common.description')} value={item.description} onChangeText={(value) => updateProject(index, 'description', value)} multiline />
             <View style={styles.view2}>

@@ -16,7 +16,8 @@ import {
 } from '../../api/requests'
 import { formatMoney } from '../../utils/countryConfig'
 import { awardWorkStartedUnconfirmed } from '../../utils/awardFlow'
-import { ActionButton, ConfirmDialog, LabeledInput, Notice } from './BuilderUi'
+import { ActionButton, ConfirmDialog, LabeledInput } from './BuilderUi'
+import { toast } from '../Toast'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { createStyles } from '../../theme/createStyles'
 
@@ -65,11 +66,11 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
   const { t } = useLanguage()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState(null)
   const [showCounter, setShowCounter] = useState(false)
   const [counterAmount, setCounterAmount] = useState('')
+  const [amountError, setAmountError] = useState('')
   const [counterNote, setCounterNote] = useState('')
   const latest = useRef(0)
   const onLoadedRef = useRef(onLoaded)
@@ -144,7 +145,6 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
 
   const run = async (action) => {
     setBusy(true)
-    setMessage('')
     try {
       await action()
       setDialog(null)
@@ -154,7 +154,7 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
       await load()
       onChanged?.()
     } catch (error) {
-      setMessage(errorText(error, t('award.error')))
+      toast.error(errorText(error, t('award.error')))
       // A changed amount or state: show the current one.
       if (error?.response?.status === 409) await load()
     } finally {
@@ -165,9 +165,11 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
   const submitCounter = () => {
     const amount = Number(String(counterAmount).replace(/,/g, ''))
     if (!Number.isFinite(amount) || amount <= 0) {
-      setMessage(t('award.form.invalidAmount'))
+      setAmountError(t('award.form.invalidAmount'))
+      toast.error(t('award.form.invalidAmount'))
       return
     }
+    setAmountError('')
     run(() => submitAwardOffer(award.id, amount, counterNote.trim()))
   }
 
@@ -324,17 +326,15 @@ export default function AwardPanel({ projectId, requestId = null, onChanged, onL
             {openOffer && !openIsMine ? t('award.form.ownerOffer') : t('award.currentAgreed')}: <Text style={styles.text20}>{money(theirCurrent)}</Text>
             {myPrevious ? <Text> · {t('award.form.yourPrevious')}: <Text style={styles.text20}>{money(myPrevious.amount)}</Text></Text> : null}
           </Text>
-          <LabeledInput label={t('award.form.proposedAmount')} value={counterAmount} onChangeText={(value) => setCounterAmount(value.replace(/[^\d.]/g, ''))} keyboardType="numeric" placeholder={t('dash.common.amount')} />
+          <LabeledInput label={t('award.form.proposedAmount')} value={counterAmount} onChangeText={(value) => { setCounterAmount(value.replace(/[^\d.]/g, '')); if (amountError) setAmountError('') }} keyboardType="numeric" placeholder={t('dash.common.amount')} error={amountError} />
           {Number(counterAmount) > 0 ? <Text style={styles.text21}>{money(counterAmount)}</Text> : null}
           <LabeledInput label={t('award.form.reason')} value={counterNote} onChangeText={setCounterNote} multiline maxLength={1000} placeholder={t('mobile.dashboard.award.reasonPlaceholder')} />
           <View style={styles.view18}>
-            <ActionButton label={t('dash.common.cancel')} tone="outline" disabled={busy} onPress={() => setShowCounter(false)} style={styles.actionButton} />
+            <ActionButton label={t('dash.common.cancel')} tone="outline" disabled={busy} onPress={() => { setShowCounter(false); setAmountError('') }} style={styles.actionButton} />
             <ActionButton label={t('award.form.submit')} busy={busy} onPress={submitCounter} style={styles.actionButton} />
           </View>
         </View>
       ) : null}
-
-      {message ? <View style={styles.view19}><Notice tone="info" text={message} /></View> : null}
 
       {/* History */}
       <View style={styles.view20}>

@@ -1,7 +1,7 @@
 // Shared chrome for the four role dashboards: greeting header with the user's
 // name and role, a notification bell wired to GET /notifications, pull-to-
 // refresh, and consistent loading / error / empty states.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -17,6 +17,8 @@ import { useResponsive } from '../hooks/useResponsive'
 import { ContentWrap } from './Responsive'
 import ScreenHeader from './ScreenHeader'
 import ProfilePhotoSheet from './ProfilePhotoSheet'
+import { ToastHost } from './Toast'
+import { ScrollToErrorProvider, useScrollToErrorContainer } from './ScrollToError'
 import WeatherButton from './weather/WeatherButton'
 import { SkeletonList, SkeletonRows } from './Skeleton'
 import { SHADOW, COLORS } from '../theme/tokens'
@@ -152,7 +154,9 @@ export function ShellBackBar({ title, onBack, extra, children }) {
   return <ShellBackContext.Provider value={value}>{children}</ShellBackContext.Provider>
 }
 
-export default function DashboardShell({ children, refreshing, onRefresh, onOpenNotifications }) {
+// `scrollRef` reaches the page's ScrollView, e.g. to scroll a form to the field
+// that failed validation.
+export default function DashboardShell({ children, refreshing, onRefresh, onOpenNotifications, scrollRef }) {
   const insets = useSafeAreaInsets()
   const dispatch = useDispatch()
   const { t, td } = useLanguage()
@@ -164,6 +168,9 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
   // The header opens the photo sheet itself, so it works on every tab.
   const [photoOpen, setPhotoOpen] = useState(false)
   const { profile: supplierProfile } = useSupplier()
+  const ownScrollRef = useRef(null)
+  const pageScrollRef = scrollRef || ownScrollRef
+  const errorScroll = useScrollToErrorContainer(pageScrollRef)
 
   const roleLabelKey =
     {
@@ -246,6 +253,8 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
       )}
 
       <ScrollView
+        ref={pageScrollRef}
+        {...errorScroll.scrollProps}
         style={styles.scrollView}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 28 }}
         showsVerticalScrollIndicator={false}
@@ -255,9 +264,12 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
           ) : undefined
         }
       >
-        <ContentWrap>{children}</ContentWrap>
+        <ScrollToErrorProvider value={errorScroll.value}>
+          <ContentWrap>{children}</ContentWrap>
+        </ScrollToErrorProvider>
       </ScrollView>
       <ProfilePhotoSheet visible={photoOpen} onClose={() => setPhotoOpen(false)} />
+      <ToastHost />
     </View>
   )
 }

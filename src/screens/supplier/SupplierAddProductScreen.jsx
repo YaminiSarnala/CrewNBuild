@@ -14,13 +14,14 @@ import { View, Text, Pressable, ScrollView, TextInput, ActivityIndicator } from 
 import { useDispatch, useSelector } from 'react-redux'
 import { Check, ChevronRight, PackageSearch, Search, X } from 'lucide-react-native'
 import { Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { Skeleton, SkeletonGroup, SkeletonRows } from '../../components/Skeleton'
 import { PrimaryButton } from '../../components/ui'
 import {
   addSupplierCatalogListing, fetchCatalogBrands, fetchCatalogCategories, fetchCatalogProducts, fetchCatalogSubcategories, searchCatalog,
 } from '../../api/catalog'
 import { saveBulkPricing } from '../../api/supplierProducts'
-import { selectSupplierProducts, setStoreNotice, upsertSupplierProduct } from '../../store/supplierCatalogSlice'
+import { selectSupplierProducts, upsertSupplierProduct } from '../../store/supplierCatalogSlice'
 import { useResponsive } from '../../hooks/useResponsive'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
@@ -125,11 +126,17 @@ export default function SupplierAddProductScreen({ navigation }) {
   const [searching, setSearching] = useState(false)
 
   const [form, setForm] = useState(EMPTY_FORM)
-  const setField = (key) => (value) => setForm((current) => ({ ...current, [key]: value }))
+  // Per-field problems from the last Save press; editing a field clears its own.
+  const [errors, setErrors] = useState({})
+  const setField = (key) => (value) => {
+    setForm((current) => ({ ...current, [key]: value }))
+    setErrors((current) => (current[key] ? { ...current, [key]: '' } : current))
+  }
   const [bulkEnabled, setBulkEnabled] = useState(false)
   const [bulkTiers, setBulkTiers] = useState([blankSimpleTier()])
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState(null)
+  // The catalog failing to load stays on screen; save results are toasts.
+  const [catalogError, setCatalogError] = useState('')
   const scrollRef = useRef(null)
   const leaving = useRef(false)
 
@@ -195,7 +202,7 @@ export default function SupplierAddProductScreen({ navigation }) {
       .catch((error) => {
         if (!live) return
         setCategories({ loaded: true, rows: [] })
-        setMessage({ tone: 'error', text: error?.response?.data?.detail || 'The product catalog could not be loaded.' })
+        setCatalogError(error?.response?.data?.detail || 'The product catalog could not be loaded.')
       })
     return () => { live = false }
   }, [])
@@ -263,7 +270,6 @@ export default function SupplierAddProductScreen({ navigation }) {
       setVariantId('')
       setPickedProduct(null)
     }
-    setMessage(null)
     setStep('subcategory')
   }
   const chooseSubcategory = (value) => {
@@ -313,7 +319,6 @@ export default function SupplierAddProductScreen({ navigation }) {
     setSubcategoryId(String(row.subcategory_id))
     setBrandId(row.brand_id == null ? GENERIC_BRAND : String(row.brand_id))
     setQuery('')
-    setMessage(null)
     chooseProduct(row, row.matched_variant?.id)
   }
 
@@ -338,18 +343,29 @@ export default function SupplierAddProductScreen({ navigation }) {
   const stockNumbers = [form.quantity, form.lowStockThreshold].map((value) => (String(value).trim() === '' ? NaN : Number(value)))
   const priceNumber = String(form.price).trim() === '' ? NaN : Number(form.price)
   const bulkProblem = bulkEnabled ? simpleTierProblem(bulkTiers, Number.isFinite(priceNumber) ? priceNumber : null) : ''
-  const ready = Boolean(
-    categoryId && subcategoryId && brandId && productChosen && !alreadyListed
-    && Number.isFinite(priceNumber) && priceNumber > 0
-    && stockNumbers.every((value) => Number.isFinite(value) && value >= 0)
-    && validDiscount(form.discountPercentage)
-    && !bulkProblem,
-  )
+  const canSave = Boolean(categoryId && subcategoryId && brandId && productChosen && !alreadyListed)
+
+  // Every field that is wrong, at once.
+  const sellingProblems = () => {
+    const next = {}
+    if (!(Number.isFinite(priceNumber) && priceNumber > 0)) next.price = 'Enter a selling price above 0.'
+    if (!(Number.isFinite(stockNumbers[0]) && stockNumbers[0] >= 0)) next.quantity = 'Enter the stock you have (0 or more).'
+    if (!(Number.isFinite(stockNumbers[1]) && stockNumbers[1] >= 0)) next.lowStockThreshold = 'Enter a low-stock alert (0 or more).'
+    if (!validDiscount(form.discountPercentage)) next.discountPercentage = 'Discount must be a number from 0 to 100.'
+    if (bulkProblem) next.bulk = bulkProblem
+    return next
+  }
 
   async function submit() {
-    if (!ready || saving) return
+    if (!canSave || saving) return
+    const problems = sellingProblems()
+    setErrors(problems)
+    const failing = Object.values(problems).filter(Boolean)
+    if (failing.length) {
+      toast.error(failing.length === 1 ? failing[0] : 'Please fix the highlighted fields.')
+      return
+    }
     setSaving(true)
-    setMessage(null)
     try {
       const listing = await addSupplierCatalogListing({
         master_product_id: Number(productId),
@@ -373,12 +389,12 @@ export default function SupplierAddProductScreen({ navigation }) {
         }
       }
       dispatch(upsertSupplierProduct(listing))
-      dispatch(setStoreNotice({ tone: 'success', text: `${listing.name} added to your catalog.${note}` }))
+      toast.success(`${listing.name} added to your catalog.${note}`)
       // Back to the product list, which re-reads the listings on focus.
       leaving.current = true
       navigation.goBack()
     } catch (error) {
-      setMessage({ tone: 'error', text: error?.response?.data?.detail || 'That product could not be added.' })
+      toast.error(error?.response?.data?.detail || 'That product could not be added.')
       setSaving(false)
     }
   }
@@ -573,13 +589,13 @@ export default function SupplierAddProductScreen({ navigation }) {
       ) : null}
 
       <View style={{ gap: 12 }}>
-        <NumberField label={`Selling price${unit ? ` (per ${unit})` : ''}`} value={form.price} onChangeText={setField('price')} placeholder="300" prefix={currencySymbol(country)} />
+        <NumberField label={`Selling price${unit ? ` (per ${unit})` : ''}`} value={form.price} onChangeText={setField('price')} placeholder="300" prefix={currencySymbol(country)} error={errors.price} />
         <View style={styles.twoCol}>
           <View style={{ flex: 1 }}>
-            <NumberField label={`Stock${unitPlural ? ` (${unitPlural})` : ''}`} value={form.quantity} onChangeText={setField('quantity')} placeholder="450" />
+            <NumberField label={`Stock${unitPlural ? ` (${unitPlural})` : ''}`} value={form.quantity} onChangeText={setField('quantity')} placeholder="450" error={errors.quantity} />
           </View>
           <View style={{ flex: 1 }}>
-            <NumberField label={`Low-stock alert${unitPlural ? ` (${unitPlural})` : ''}`} value={form.lowStockThreshold} onChangeText={setField('lowStockThreshold')} placeholder="50" />
+            <NumberField label={`Low-stock alert${unitPlural ? ` (${unitPlural})` : ''}`} value={form.lowStockThreshold} onChangeText={setField('lowStockThreshold')} placeholder="50" error={errors.lowStockThreshold} />
           </View>
         </View>
         <NumberField
@@ -607,9 +623,9 @@ export default function SupplierAddProductScreen({ navigation }) {
         <Text style={[styles.screenHint, { marginBottom: 10 }]}>Optional: a lower price per unit from a quantity you choose.</Text>
         <BulkTierBuilder
           enabled={bulkEnabled}
-          onToggle={setBulkEnabled}
+          onToggle={(value) => { setBulkEnabled(value); setErrors((current) => (current.bulk ? { ...current, bulk: '' } : current)) }}
           tiers={bulkTiers}
-          onChange={setBulkTiers}
+          onChange={(value) => { setBulkTiers(value); setErrors((current) => (current.bulk ? { ...current, bulk: '' } : current)) }}
           unit={unit}
           normalPrice={Number.isFinite(priceNumber) ? priceNumber : null}
           country={country}
@@ -621,7 +637,7 @@ export default function SupplierAddProductScreen({ navigation }) {
           label="Save Product"
           onPress={submit}
           loading={saving}
-          disabled={!ready || saving}
+          disabled={!canSave || saving}
           icon={<Check size={16} color="#ffffff" />}
           full
         />
@@ -675,7 +691,7 @@ export default function SupplierAddProductScreen({ navigation }) {
 
       <Section style={{ marginTop: 16 }}>
         {screen}
-        {message ? <View style={{ marginTop: 14 }}><Notice tone={message.tone} text={message.text} /></View> : null}
+        {catalogError ? <View style={{ marginTop: 14 }}><Notice tone="error" text={catalogError} /></View> : null}
       </Section>
     </StackScreenShell>
   )

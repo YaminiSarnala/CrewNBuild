@@ -120,12 +120,13 @@ export function CartStepper({ offer, projectId, onMessage, full = false, size = 
     setBusy(true)
     const result = await dispatch(action)
     setBusy(false)
-    onMessage?.(result.meta.requestStatus === 'fulfilled' ? success : result.payload)
+    const ok = result.meta.requestStatus === 'fulfilled'
+    onMessage?.(ok ? success : result.payload, ok ? 'success' : 'error')
   }
 
   const add = () => {
     if (!projectId) {
-      onMessage?.('Choose a project first; the cart belongs to a project.')
+      onMessage?.('Choose a project first; the cart belongs to a project.', 'error')
       return
     }
     run(addProductToCart({ projectId, productId: offer.id, quantity: 1 }), `${offer.name} added to your cart.`)

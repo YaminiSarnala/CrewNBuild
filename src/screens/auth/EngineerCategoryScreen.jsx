@@ -9,10 +9,10 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowRight, HardHat, LogOut } from 'lucide-react-native'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { toast } from '../../components/Toast'
 import { saveEngineerCategory } from '../../api/auth'
 import { logoutUser, mergeUser } from '../../store/authSlice'
 import { ENGINEER_CATEGORY_OPTIONS, engineerCategoryLabel } from '../../utils/engineerProfile'
-import { ink } from '../../theme/tint'
 import { createStyles } from '../../theme/createStyles'
 
 export default function EngineerCategoryScreen() {
@@ -21,13 +21,18 @@ export default function EngineerCategoryScreen() {
   const insets = useSafeAreaInsets()
   const user = useSelector((state) => state.auth.user)
   const [category, setCategory] = useState('')
+  // No category picked: the choices are highlighted with the message under them.
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const submitting = useRef(false)
 
   async function submit() {
     if (submitting.current) return
-    if (!category) { setError(t('cp.val.specialization')); return }
+    if (!category) {
+      setError(t('cp.val.specialization'))
+      toast.error(t('cp.val.specialization'))
+      return
+    }
     submitting.current = true
     setSaving(true)
     setError('')
@@ -39,7 +44,7 @@ export default function EngineerCategoryScreen() {
     } catch {
       submitting.current = false
       setSaving(false)
-      setError(t('engineer.category.saveFailed'))
+      toast.error(t('engineer.category.saveFailed'))
     }
   }
 
@@ -69,7 +74,7 @@ export default function EngineerCategoryScreen() {
                 disabled={saving}
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
-                style={[styles.ec1, selected ? styles.ec2 : styles.ec3]}
+                style={[styles.ec1, selected ? styles.ec2 : styles.ec3, error ? styles.ecInvalid : null]}
               >
                 <Text style={styles.ec14}>{engineerCategoryLabel(value, t)}</Text>
               </Pressable>
@@ -77,7 +82,7 @@ export default function EngineerCategoryScreen() {
           })}
         </View>
 
-        {error ? <Text style={styles.ec15}>{error}</Text> : null}
+        {error ? <Text accessibilityRole="alert" style={styles.ec15}>{error}</Text> : null}
 
         <Pressable
           onPress={submit}
@@ -107,6 +112,7 @@ const styles = createStyles((c) => ({
   ec12: { marginTop: 7, color: '#c3dccd' },
   ec13: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   ec14: { textAlign: 'center', fontSize: 13, fontWeight: '800', color: c.brandTextDeep },
-  ec15: { marginTop: 3.5, fontSize: 12, lineHeight: 16, fontWeight: '700', color: ink('#e11d48') },
+  ec15: { marginTop: 3.5, fontSize: 11.5, lineHeight: 16, fontWeight: '700', color: '#dc2626' },
+  ecInvalid: { borderColor: '#dc2626' },
     ec16: { fontSize: 14, lineHeight: 20, fontWeight: '800', color: '#ffffff' },
 }))

@@ -20,8 +20,9 @@ import ScreenHeader from '../../components/ScreenHeader'
 import { Panel, InsetArea } from '../../components/DashboardShell'
 import { ContentWrap } from '../../components/Responsive'
 import { PrimaryButton } from '../../components/ui'
+import { toast } from '../../components/Toast'
 import {
-  BudgetInWords, DateField, FormNotice, PincodeAreaHint, SelectField, TextField,
+  BudgetInWords, DateField, PincodeAreaHint, SelectField, TextField,
 } from '../../components/form'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -97,13 +98,13 @@ export default function CreateProjectScreen({ navigation }) {
   const defaultCountry = userCountry(user)
 
   const [projectDetails, setProjectDetails] = useState(() => emptyProject(defaultCountry))
-  const [projectFormMessage, setProjectFormMessage] = useState({ text: '', tone: 'error' })
+  // Each field's problem, shown under (and highlighting) that field.
+  const [errors, setErrors] = useState({})
   // The estimate belongs to this draft only; only an accepted one is sent.
   const [finishingType, setFinishingType] = useState('standard')
   const [estimateResult, setEstimateResult] = useState(null)
   const [acceptedEstimate, setAcceptedEstimate] = useState(null)
   const [isEstimating, setIsEstimating] = useState(false)
-  const [estimateMessage, setEstimateMessage] = useState('')
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [projectImage, setProjectImage] = useState(null)
   const [selectedPincodeBranch, setSelectedPincodeBranch] = useState(null)
@@ -114,8 +115,16 @@ export default function CreateProjectScreen({ navigation }) {
   const autoAddressRef = useRef('')
   const scrollRef = useRef(null)
 
+  // Editing a field clears its own highlight (the two dates are checked together).
+  const clearErrors = (...fields) => setErrors((current) => (
+    fields.some((field) => current[field])
+      ? { ...current, ...Object.fromEntries(fields.map((field) => [field, ''])) }
+      : current
+  ))
+
   const updateProjectField = (field, value) => {
     setProjectDetails((current) => ({ ...current, [field]: value }))
+    clearErrors(...(field === 'start_date' || field === 'end_date' ? ['start_date', 'end_date'] : [field]))
   }
 
   const staleLocationReset = () => {
@@ -130,18 +139,21 @@ export default function CreateProjectScreen({ navigation }) {
   const handleCountryChange = (country) => {
     const reset = staleLocationReset()
     setSelectedPincodeBranch(null)
+    clearErrors('pincode', 'project_state', 'branch', 'project_city')
     setProjectDetails((current) => ({ ...current, ...reset, project_country: country, project_state: '', project_city: '' }))
   }
 
   const handleStateChange = (state) => {
     const reset = staleLocationReset()
     setSelectedPincodeBranch(null)
+    clearErrors('project_state')
     setProjectDetails((current) => ({ ...current, ...reset, project_state: state, project_city: '' }))
   }
 
   const handlePincodeChange = (pincode) => {
     const reset = staleLocationReset()
     setSelectedPincodeBranch(null)
+    clearErrors('pincode', 'branch')
     setProjectDetails((current) => ({ ...current, ...reset, pincode }))
   }
 
@@ -157,6 +169,7 @@ export default function CreateProjectScreen({ navigation }) {
     if (!addressIsOwn) autoAddressRef.current = branch.display
     if (branch.city) cityFromPincodeRef.current = true
     setSelectedPincodeBranch(branch)
+    clearErrors('branch', ...(branch.city ? ['project_city'] : []))
     setProjectDetails((current) => ({
       ...current,
       project_city: branch.city || current.project_city,
@@ -229,10 +242,10 @@ export default function CreateProjectScreen({ navigation }) {
   // Always the values in the form right now, so asking again after a change
   // returns a figure for the new values.
   const requestEstimate = async () => {
-    setEstimateMessage('')
     const plotArea = Number(projectDetails.land_area || 0)
     if (plotArea <= 0) {
-      setEstimateMessage(t('cp.val.landArea'))
+      setErrors((current) => ({ ...current, land_area: t('cp.val.landArea') }))
+      toast.error(t('cp.val.landArea'))
       return
     }
     setIsEstimating(true)
@@ -253,50 +266,63 @@ export default function CreateProjectScreen({ navigation }) {
       }))
     } catch (error) {
       setEstimateResult(null)
-      setEstimateMessage(apiDetail(error, t('site.estimate.errCalc')))
+      toast.error(apiDetail(error, t('site.estimate.errCalc')))
     } finally {
       setIsEstimating(false)
     }
   }
 
-  const showFormMessage = (text, tone = 'error') => {
-    setProjectFormMessage({ text, tone })
-    scrollRef.current?.scrollTo({ y: 0, animated: true })
-  }
-
   const submitProject = async () => {
-    setProjectFormMessage({ text: '', tone: 'error' })
-    if (!projectDetails.title.trim() || !projectDetails.description.trim() || !projectDetails.address.trim() || !projectDetails.pincode.trim()) {
-      showFormMessage(t('cp.val.completeFields'))
-      return
-    }
-    // An Indian pincode must be one India Post knows and maps to a district and state.
-    if (isIndiaProject && pincodeLookupState.status !== 'success') {
+    // Every problem at once, each under its own field.
+    const nextErrors = {}
+    if (!projectDetails.title.trim()) nextErrors.title = t('cp.val.projectTitle')
+    if (!projectDetails.description.trim()) nextErrors.description = t('cp.val.projectDescription')
+    if (!projectDetails.address.trim()) nextErrors.address = t('cp.val.address')
+    if (!projectDetails.pincode.trim()) {
+      nextErrors.pincode = isIndiaProject ? t('location.invalid') : 'Enter the postal code.'
+    } else if (isIndiaProject && pincodeLookupState.status !== 'success') {
+      // An Indian pincode must be one India Post knows and maps to a district and state.
       const pincodeMessageKeys = {
         loading: 'location.fetching',
         unknown: 'location.unknown',
         unmapped: 'location.unmapped',
         unavailable: 'location.unavailable',
       }
-      showFormMessage(t(pincodeMessageKeys[pincodeLookupState.status] || 'location.invalid'))
-      return
+      nextErrors.pincode = t(pincodeMessageKeys[pincodeLookupState.status] || 'location.invalid')
     }
-    // ...and the State, Postal branch and City must all be the pincode's own.
+    // ...and the State, Postal branch and City must all be the pincode's own
+    // (a mismatch is already shown under its field).
+    let locationProblem = ''
     if (isIndiaProject) {
-      const locationProblem = stateMismatch ? 'location.stateMismatch'
+      locationProblem = stateMismatch ? 'location.stateMismatch'
         : branchMismatch ? 'location.branchMismatch'
           : cityMismatch ? 'location.cityMismatch'
             : (!projectDetails.project_state || !selectedPincodeBranch || !projectDetails.project_city) ? 'location.selectValid'
               : ''
       if (locationProblem) {
         setShowLocationErrors(true)
-        showFormMessage(t(locationProblem))
-        return
+        if (!projectDetails.project_state) nextErrors.project_state = t('dash.owner.projectForm.selectState')
+        else if (!selectedPincodeBranch && !nextErrors.pincode) nextErrors.branch = t('location.prompt.selectBranch')
+        if (!projectDetails.project_city) nextErrors.project_city = t('dash.owner.projectForm.selectCity')
+        if (stateMismatch || branchMismatch || cityMismatch) nextErrors.location = t(locationProblem)
       }
     }
     const scheduleProblem = projectScheduleProblem(projectDetails.start_date, projectDetails.end_date)
-    if (scheduleProblem) {
-      showFormMessage(t(scheduleProblem))
+    if (scheduleProblem === 'dash.owner.projectForm.datesRequired') {
+      if (!projectDetails.start_date) nextErrors.start_date = t(scheduleProblem)
+      if (!projectDetails.end_date) nextErrors.end_date = t(scheduleProblem)
+    } else if (scheduleProblem) nextErrors.end_date = t(scheduleProblem)
+    const { location: mismatch, ...fieldErrors } = nextErrors
+    setErrors(fieldErrors)
+    const failing = Object.values(nextErrors)
+    if (failing.length) {
+      // The same message twice (both dates missing) is one problem.
+      const distinct = [...new Set(failing)]
+      toast.error(distinct.length === 1 ? distinct[0] : t('cp.val.completeFields'))
+      // The location fields are at the top of the form.
+      if (mismatch || fieldErrors.pincode || fieldErrors.project_state || fieldErrors.branch || fieldErrors.project_city || fieldErrors.address) {
+        scrollRef.current?.scrollTo({ y: 0, animated: true })
+      }
       return
     }
     setIsCreatingProject(true)
@@ -343,7 +369,7 @@ export default function CreateProjectScreen({ navigation }) {
         navigation.goBack()
       }
     } catch (error) {
-      showFormMessage(apiDetail(error, t('dash.owner.projectForm.createError')))
+      toast.error(apiDetail(error, t('dash.owner.projectForm.createError')))
     } finally {
       setIsCreatingProject(false)
     }
@@ -374,8 +400,6 @@ export default function CreateProjectScreen({ navigation }) {
         >
           <ContentWrap>
           <InsetArea>
-            <FormNotice message={projectFormMessage.text} tone={projectFormMessage.tone} style={{ marginBottom: 12 }} />
-
             <Panel title={t('dash.owner.projectForm.location')}>
               <View style={[styles.view2, { gap: 6 }]}>
                 <Globe2 size={14} color={COLORS.brand[600]} />
@@ -400,6 +424,7 @@ export default function CreateProjectScreen({ navigation }) {
                   // The stored value stays the English place name; only the label follows the language.
                   options={projectStateOptions(projectDetails.project_country).map((state) => ({ value: state, label: td(state) }))}
                   invalid={stateMismatch || missingState}
+                  error={errors.project_state}
                 />
               </View>
               <TextField
@@ -410,7 +435,7 @@ export default function CreateProjectScreen({ navigation }) {
                 keyboardType="number-pad"
                 maxLength={isIndiaProject ? 6 : 5}
                 invalid={stateMismatch}
-                error={stateMismatch ? t('location.stateMismatch') : ''}
+                error={stateMismatch ? t('location.stateMismatch') : errors.pincode}
               />
               {/* Every branch under the pincode until one is chosen (the
                   choice then shows in the Postal branch field); outside India,
@@ -436,7 +461,7 @@ export default function CreateProjectScreen({ navigation }) {
                     disabled={!branchesSelectable}
                     options={(branchesSelectable ? lookupBranches : []).map((branch) => ({ value: branch.name, label: td(branch.name) }))}
                     invalid={branchMismatch || missingBranch}
-                    error={branchMismatch ? t('location.branchMismatch') : ''}
+                    error={branchMismatch ? t('location.branchMismatch') : errors.branch}
                   />
                 ) : null}
                 <SelectField
@@ -448,7 +473,7 @@ export default function CreateProjectScreen({ navigation }) {
                   disabled={!projectDetails.project_state}
                   options={cityOptions.map((city) => ({ value: city, label: td(city) }))}
                   invalid={cityMismatch || missingCity}
-                  error={cityMismatch ? t('location.cityMismatch') : ''}
+                  error={cityMismatch ? t('location.cityMismatch') : errors.project_city}
                 />
               </View>
               <TextField
@@ -456,6 +481,7 @@ export default function CreateProjectScreen({ navigation }) {
                 value={projectDetails.address}
                 onChangeText={(value) => updateProjectField('address', value)}
                 placeholder={t('dash.owner.projectForm.addressPh')}
+                error={errors.address}
               />
             </Panel>
 
@@ -465,6 +491,7 @@ export default function CreateProjectScreen({ navigation }) {
                 value={projectDetails.title}
                 onChangeText={(value) => updateProjectField('title', value)}
                 placeholder={t('dash.owner.projectForm.titlePh')}
+                error={errors.title}
               />
               <TextField
                 label={t('dash.common.description')}
@@ -472,6 +499,7 @@ export default function CreateProjectScreen({ navigation }) {
                 onChangeText={(value) => updateProjectField('description', value)}
                 placeholder={t('dash.owner.projectForm.descriptionPh')}
                 multiline
+                error={errors.description}
               />
 
               <Pressable
@@ -533,6 +561,7 @@ export default function CreateProjectScreen({ navigation }) {
                   onChangeText={(value) => updateProjectField('land_area', numericText(value))}
                   placeholder={t('dash.owner.projectForm.plotAreaPh')}
                   keyboardType="decimal-pad"
+                  error={errors.land_area}
                 />
                 <SelectField
                   containerStyle={half}
@@ -550,6 +579,7 @@ export default function CreateProjectScreen({ navigation }) {
                   value={projectDetails.start_date}
                   max={projectDetails.end_date || undefined}
                   onChange={(value) => updateProjectField('start_date', value)}
+                  error={errors.start_date}
                 />
                 <DateField
                   containerStyle={{ flex: 1 }}
@@ -557,6 +587,7 @@ export default function CreateProjectScreen({ navigation }) {
                   value={projectDetails.end_date}
                   min={projectDetails.start_date || undefined}
                   onChange={(value) => updateProjectField('end_date', value)}
+                  error={errors.end_date}
                 />
               </View>
               <TextField
@@ -591,7 +622,6 @@ export default function CreateProjectScreen({ navigation }) {
                   {isEstimating ? t('site.estimate.calculating') : t('dash.owner.projectForm.getEstimate')}
                 </Text>
               </Pressable>
-              <FormNotice message={estimateMessage} tone="error" style={{ marginTop: 10 }} />
 
               {estimateResult ? (
                 <View style={styles.view4}>

@@ -17,6 +17,7 @@ import { Image } from 'expo-image'
 import { ArrowRight, BadgeCheck, Check, Eye, MapPin, Sparkles, Star, X } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
 import { FormNotice, SelectField } from '../../components/form'
+import { toast, ToastMessage } from '../../components/Toast'
 import StatusPill from '../../components/StatusPill'
 import Dialog, { DialogButton, DialogRow } from '../../components/Dialog'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -103,9 +104,10 @@ export function useBuilderHiring(project, reloadProject) {
   const { requireCompleteProfile } = useProfileGate()
   const [requestList, setRequestList] = useState([])
   const [requestsLoading, setRequestsLoading] = useState(true)
-  const [decisionMessage, setDecisionMessage] = useState('')
-  const [requestMessage, setRequestMessage] = useState('')
-  const [assignMessage, setAssignMessage] = useState('')
+  // An assign refusal, shown as a toast by the Assign section. Kept in state so
+  // it appears after the confirmation dialog has closed (a toast sent while the
+  // dialog is open would close with it); `id` repeats a repeated refusal.
+  const [assignMessage, setAssignMessage] = useState({ text: '', id: 0 })
   const [sendingReceiverId, setSendingReceiverId] = useState(null)
   const [assigningRequestId, setAssigningRequestId] = useState(null)
   const projectId = project?.id
@@ -135,11 +137,10 @@ export function useBuilderHiring(project, reloadProject) {
 
   const acceptRequest = async (requestId) => {
     if (requireCompleteProfile(() => acceptRequest(requestId))) return
-    setDecisionMessage('')
     try {
       await acceptProjectRequest(requestId)
     } catch (error) {
-      setDecisionMessage(decisionError(error, 'dash.err.acceptRequest'))
+      toast.error(decisionError(error, 'dash.err.acceptRequest'))
     }
     // Refreshed either way, so a request answered elsewhere shows its real state.
     refreshAll()
@@ -152,11 +153,10 @@ export function useBuilderHiring(project, reloadProject) {
         text: t('dash.common.reject'),
         style: 'destructive',
         onPress: async () => {
-          setDecisionMessage('')
           try {
             await rejectProjectRequest(requestId)
           } catch (error) {
-            setDecisionMessage(decisionError(error, 'dash.err.rejectRequest'))
+            toast.error(decisionError(error, 'dash.err.rejectRequest'))
           }
           refreshAll()
         },
@@ -166,38 +166,36 @@ export function useBuilderHiring(project, reloadProject) {
 
   // The owner's own pending request can be taken back; it stays as Withdrawn.
   const withdrawRequest = async (requestId) => {
-    setDecisionMessage('')
     try {
       await withdrawProjectRequest(requestId)
     } catch (error) {
-      setDecisionMessage(decisionError(error, 'dash.err.withdrawRequest'))
+      toast.error(decisionError(error, 'dash.err.withdrawRequest'))
     }
     refreshAll()
   }
 
   const sendBuilderRequest = async (contractor) => {
     if (requireCompleteProfile(() => sendBuilderRequest(contractor))) return
-    setRequestMessage('')
     setSendingReceiverId(contractor.user_id)
     try {
       await sendProjectRequest({ receiver_id: contractor.user_id, project_id: projectId, request_type: 'OWNER_TO_CONTRACTOR' })
       // No "sent" note: the card itself turns to Request Pending.
       await reloadRequests()
     } catch (error) {
-      setRequestMessage(apiDetail(error, t('dash.err.sendBuilderRequest')))
+      toast.error(apiDetail(error, t('dash.err.sendBuilderRequest')))
     } finally {
       setSendingReceiverId(null)
     }
   }
 
   const assignBuilder = async (requestId) => {
-    setAssignMessage('')
     setAssigningRequestId(requestId)
     try {
       await assignProjectToContractor(requestId)
       await refreshAll()
     } catch (error) {
-      setAssignMessage(apiDetail(error, t('quote.assignFailed')))
+      const text = apiDetail(error, t('quote.assignFailed'))
+      setAssignMessage((current) => ({ text, id: current.id + 1 }))
     } finally {
       setAssigningRequestId(null)
     }
@@ -205,7 +203,6 @@ export function useBuilderHiring(project, reloadProject) {
 
   // The dialog shows a refusal; the data is reloaded either way.
   const negotiateBuilder = async (requestId, amount, note) => {
-    setAssignMessage('')
     try {
       await negotiateQuotation(requestId, amount, note)
     } finally {
@@ -218,8 +215,6 @@ export function useBuilderHiring(project, reloadProject) {
     requestsLoading,
     reloadRequests,
     refreshAll,
-    decisionMessage,
-    requestMessage,
     assignMessage,
     sendingReceiverId,
     assigningRequestId,
@@ -319,7 +314,7 @@ function RequestDetails({ request, project, awards, canChoose, onNegotiate, onAw
 
 export function RequestsSection({ project, hiring, initialRequestId = null }) {
   const { t, td } = useLanguage()
-  const { requestList, requestsLoading, decisionMessage, acceptRequest, rejectRequest, withdrawRequest, negotiateBuilder, refreshAll } = hiring
+  const { requestList, requestsLoading, acceptRequest, rejectRequest, withdrawRequest, negotiateBuilder, refreshAll } = hiring
   const [expandedRequestId, setExpandedRequestId] = useState(initialRequestId)
   const [negotiating, setNegotiating] = useState(null)
   const [awards, reloadAwards] = useRequestAwards(requestList)
@@ -357,7 +352,6 @@ export function RequestsSection({ project, hiring, initialRequestId = null }) {
       )}
     >
       <Text style={[styles.text11, { fontSize: 12.5 }]}>{t('dash.owner.requests.sub')}</Text>
-      <FormNotice message={decisionMessage} tone="error" style={{ marginBottom: 10 }} />
       <PanelState
         loading={requestsLoading}
         empty={!count}
@@ -486,7 +480,7 @@ const NEWLY_JOINED_MS = 2 * 24 * 60 * 60 * 1000
 export function FindBuildersSection({ project, user, hiring, onViewProfile }) {
   const { t, td } = useLanguage()
   const { columns } = useResponsive()
-  const { requestList, requestMessage, decisionMessage, sendingReceiverId, sendBuilderRequest, acceptRequest, rejectRequest } = hiring
+  const { requestList, sendingReceiverId, sendBuilderRequest, acceptRequest, rejectRequest } = hiring
   const [contractors, setContractors] = useState([])
   const [loading, setLoading] = useState(true)
   const [awards] = useRequestAwards(requestList)
@@ -648,7 +642,6 @@ export function FindBuildersSection({ project, user, hiring, onViewProfile }) {
           {t('dash.owner.contractors.pincodeLabel', { pincode: sitePincode || t('dash.common.notSet') })}
         </Text>
       </View>
-      <FormNotice message={decisionMessage || requestMessage} tone="error" style={{ marginBottom: 10 }} />
       <PanelState
         loading={loading}
         empty={!contractors.length}
@@ -684,7 +677,8 @@ export function AssignBuilderSection({ project, hiring }) {
   // assigned a Site Engineer, and says which in `unassign_blocked`.
   const [unassignOpen, setUnassignOpen] = useState(false)
   const [unassignBusy, setUnassignBusy] = useState(false)
-  const [unassignError, setUnassignError] = useState('')
+  // Shown as a toast once the dialog has closed; `id` repeats a repeated refusal.
+  const [unassignError, setUnassignError] = useState({ text: '', id: 0 })
   const liveVersion = useLiveVersion()
   // Every accepted quotation on THIS project, whichever side opened it.
   const quotations = useMemo(() => requestList.filter((request) => (
@@ -762,7 +756,7 @@ export function AssignBuilderSection({ project, hiring }) {
                   label={t('quote.unassign')}
                   look="danger"
                   disabled={Boolean(unassignBlocked) || unassignBusy}
-                  onPress={() => { setUnassignError(''); setUnassignOpen(true) }}
+                  onPress={() => setUnassignOpen(true)}
                 />
               ) : null}
             </View>
@@ -770,7 +764,6 @@ export function AssignBuilderSection({ project, hiring }) {
           {canUnassign && unassignBlocked ? (
             <Text style={[styles.text26, { fontSize: 12 }]}>{unassignBlockedText}</Text>
           ) : null}
-          <FormNotice message={unassignError} tone="error" style={{ marginTop: 8 }} />
         </>
       ) : builderChoices.length === 0 ? (
         <Text style={[styles.text23, { fontSize: 12.5 }]}>{t('quote.noneYet')}</Text>
@@ -816,7 +809,9 @@ export function AssignBuilderSection({ project, hiring }) {
           ) : null}
         </>
       )}
-      <FormNotice message={assignMessage} tone="error" style={{ marginTop: 10 }} />
+
+      <ToastMessage tone="error" text={assignMessage.text} id={assignMessage.id} />
+      <ToastMessage tone="error" text={unassignError.text} id={unassignError.id} />
 
       {/* Request confirmation / Assign — the existing /project-requests/assign, confirmed first. */}
       <Dialog
@@ -876,12 +871,12 @@ export function AssignBuilderSection({ project, hiring }) {
               onPress={async () => {
                 if (unassignBusy) return
                 setUnassignBusy(true)
-                setUnassignError('')
                 try {
                   await cancelAward(currentAward.id)
                 } catch (error) {
                   const detail = error?.response?.data?.detail
-                  setUnassignError(typeof detail === 'string' ? detail : detail?.message || t('quote.unassignFailed'))
+                  const text = typeof detail === 'string' ? detail : detail?.message || t('quote.unassignFailed')
+                  setUnassignError((current) => ({ text, id: current.id + 1 }))
                 } finally {
                   setUnassignBusy(false)
                   setUnassignOpen(false)

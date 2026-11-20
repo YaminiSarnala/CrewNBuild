@@ -17,6 +17,7 @@ import { mergeUser } from '../store/authSlice'
 import { createStyles } from '../theme/createStyles'
 import { ink } from '../theme/tint'
 import { PhoneVerification, usePhoneConfig } from './WhatsAppCode'
+import { toast } from './Toast'
 
 function apiMessage(error, td, fallback) {
   const response = error?.response
@@ -36,8 +37,6 @@ export default function PhoneChangeSection({ style }) {
   const [open, setOpen] = useState(false)
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
-  const [problem, setProblem] = useState('')
-  const [notice, setNotice] = useState('')
   // Remounts the WhatsApp check, so a finished or cancelled change starts clean.
   const [attempt, setAttempt] = useState(0)
 
@@ -48,22 +47,20 @@ export default function PhoneChangeSection({ style }) {
   const close = () => {
     setOpen(false)
     setPhone('')
-    setProblem('')
     setAttempt((value) => value + 1)
   }
 
   const applyVerifiedNumber = async (token) => {
     if (!token || saving) return
     setSaving(true)
-    setProblem('')
     try {
       const updated = await changeAccountPhone(phone, token)
       // The saved number, read back from the API, not the typed one.
       dispatch(mergeUser(updated?.user || updated || {}))
-      setNotice(t('phoneChange.success'))
+      toast.success(t('phoneChange.success'))
       close()
     } catch (error) {
-      setProblem(apiMessage(error, td, t('phoneChange.failed')))
+      toast.error(apiMessage(error, td, t('phoneChange.failed')))
       // The token may be spent or refused: ask for a fresh check.
       setAttempt((value) => value + 1)
     } finally {
@@ -77,7 +74,7 @@ export default function PhoneChangeSection({ style }) {
         <View style={styles.icon}><Smartphone size={16} color={ink('#1a5038')} /></View>
         <Text style={styles.title}>{t('phoneChange.title')}</Text>
         {!open ? (
-          <Pressable onPress={() => { setNotice(''); setOpen(true) }} style={styles.button} accessibilityRole="button">
+          <Pressable onPress={() => setOpen(true)} style={styles.button} accessibilityRole="button">
             <Text style={styles.buttonText}>{currentPhone ? t('phoneChange.change') : t('phoneChange.add')}</Text>
           </Pressable>
         ) : null}
@@ -93,7 +90,7 @@ export default function PhoneChangeSection({ style }) {
           <PhoneVerification
             key={attempt}
             phone={phone}
-            onPhoneChange={(value) => { setPhone(value); setProblem('') }}
+            onPhoneChange={setPhone}
             onVerifiedChange={applyVerifiedNumber}
             label={t('phoneChange.newLabel')}
           />
@@ -104,8 +101,6 @@ export default function PhoneChangeSection({ style }) {
         </View>
       ) : null}
 
-      {problem ? <Text style={[styles.status, { color: ink('#b45309') }]}>{problem}</Text> : null}
-      {notice ? <Text style={[styles.status, { color: ink('#047857') }]}>{notice}</Text> : null}
     </View>
   )
 }

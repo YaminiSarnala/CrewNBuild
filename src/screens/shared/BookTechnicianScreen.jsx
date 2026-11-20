@@ -2,12 +2,13 @@
 // session, pick a trade, describe the job, book at the phone's location, and
 // track/cancel bookings. Only OWNER and ENGINEER may book — same rule as web.
 import { useEffect, useState } from 'react'
-import { View, Text, Pressable, TextInput, Alert, ScrollView } from 'react-native'
+import { View, Text, Pressable, TextInput, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSelector } from 'react-redux'
 import * as Location from 'expo-location'
 import { ArrowLeft, Paintbrush, Wrench, Zap, Hammer, MapPin } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
+import { toast } from '../../components/Toast'
 import { startRequesterSession, clearRequesterSession, createBooking, fetchMyBookings, cancelBooking } from '../../api/partner'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
@@ -26,6 +27,7 @@ export default function BookTechnicianScreen({ navigation, route }) {
   const [error, setError] = useState('')
   // Home's trade cards open this screen with that trade already picked.
   const [trade, setTrade] = useState(route?.params?.trade || null)
+  const [tradeError, setTradeError] = useState('')
   const [description, setDescription] = useState('')
   const [booking, setBooking] = useState(false)
   const [bookings, setBookings] = useState(null)
@@ -48,12 +50,16 @@ export default function BookTechnicianScreen({ navigation, route }) {
   }, [accessToken])
 
   async function book() {
-    if (!trade) { Alert.alert('Pick a trade', 'Choose which technician you need.'); return }
+    if (!trade) {
+      setTradeError('Choose which technician you need.')
+      toast.error('Choose which technician you need.', { title: 'Pick a trade' })
+      return
+    }
     setBooking(true)
     try {
       const permission = await Location.requestForegroundPermissionsAsync()
       if (!permission.granted) {
-        Alert.alert('Location needed', 'The nearest technicians are found from where you are — allow location to book.')
+        toast.error('The nearest technicians are found from where you are — allow location to book.', { title: 'Location needed' })
         return
       }
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
@@ -66,10 +72,10 @@ export default function BookTechnicianScreen({ navigation, route }) {
       })
       setTrade(null)
       setDescription('')
-      Alert.alert('Booking placed', 'Nearby technicians are being asked. Track it below.')
+      toast.success('Nearby technicians are being asked. Track it below.', { title: 'Booking placed' })
       await loadBookings()
     } catch (err) {
-      Alert.alert('Could not book', err?.response?.data?.detail || 'Please try again.')
+      toast.error(err?.response?.data?.detail || 'Please try again.', { title: 'Could not book' })
     } finally {
       setBooking(false)
     }
@@ -78,7 +84,7 @@ export default function BookTechnicianScreen({ navigation, route }) {
   async function cancel(bookingRow) {
     setCancellingId(bookingRow.id)
     try { await cancelBooking(bookingRow.id); await loadBookings() }
-    catch (err) { Alert.alert('Could not cancel', err?.response?.data?.detail || 'Please try again.') }
+    catch (err) { toast.error(err?.response?.data?.detail || 'Please try again.', { title: 'Could not cancel' }) }
     finally { setCancellingId(null) }
   }
 
@@ -101,17 +107,18 @@ export default function BookTechnicianScreen({ navigation, route }) {
         {phase === 'ready' && (
           <>
             <Panel title="What do you need?">
-              <View style={styles.view4}>
+              <View style={[styles.view4, tradeError ? styles.invalidBox : null]}>
                 {TRADES.map(({ code, label, icon: Icon }) => {
                   const active = trade === code
                   return (
-                    <Pressable key={code} onPress={() => setTrade(code)} style={[styles.pressable, active ? styles.pressable2 : styles.pressable3]}>
+                    <Pressable key={code} onPress={() => { setTrade(code); setTradeError('') }} style={[styles.pressable, active ? styles.pressable2 : styles.pressable3]}>
                       <Icon size={22} color={active ? '#fff' : COLORS.brand[700]} />
                       <Text style={[styles.text4, active ? styles.text5 : styles.text6]}>{label}</Text>
                     </Pressable>
                   )
                 })}
               </View>
+              {tradeError ? <Text accessibilityRole="alert" style={styles.errorText}>{tradeError}</Text> : null}
               <TextInput
                 value={description}
                 onChangeText={setDescription}
@@ -183,4 +190,6 @@ const styles = createStyles((c) => ({
   text11: { marginTop: 1.75, fontSize: 10.5, lineHeight: 14, fontWeight: '600', color: c.textMuted },
   pressable6: { marginTop: 7, alignSelf: 'flex-start', borderRadius: 7, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 8.75, paddingVertical: 5.25 },
   text12: { fontSize: 10, fontWeight: '800', color: c.roseText },
+  invalidBox: { borderWidth: 1, borderColor: '#dc2626', borderRadius: 14, padding: 6 },
+  errorText: { marginTop: 5, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
 }))

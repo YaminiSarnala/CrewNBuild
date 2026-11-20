@@ -19,6 +19,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeft, ArrowRight, Lock } from 'lucide-react-native'
 import { Field, ErrorBanner } from '../../components/Field'
+import { toast } from '../../components/Toast'
 import { PrimaryButton } from '../../components/ui'
 import EmailSection from '../../components/EmailSection'
 import { PhoneCodeCheck, usePhoneConfig } from '../../components/WhatsAppCode'
@@ -102,7 +103,7 @@ function RoleCompleteProfile({ navigation }) {
   const india = isIndia(country)
   const [form, setForm] = useState(() => initialForm(user, roleFields))
   const [errors, setErrors] = useState({})
-  const [formError, setFormError] = useState('')
+  const scrollRef = useRef(null)
   const [phoneToken, setPhoneToken] = useState(null)
   const loading = status === 'loading'
 
@@ -166,18 +167,18 @@ function RoleCompleteProfile({ navigation }) {
     const nextErrors = { ...baseErrors, ...roleFieldErrors(form, roleFields) }
     if (!nextErrors.pincode && branchMissing) nextErrors.pincode = t('location.prompt.selectBranch')
     if (!nextErrors.phone && phoneCheckNeeded && !phoneToken) nextErrors.phone = t('signup.phone.verifyFirst')
-    setErrors(Object.fromEntries(Object.entries(nextErrors).map(([key, text]) => [key, td(String(text))])))
-    if (Object.keys(nextErrors).length) {
-      setFormError(t('cp.val.completeFields'))
-      return
-    }
     // The completion rule needs an e-mail: a phone-first account adds and
     // verifies one in the section above the form (as the web).
-    if (!user?.email) {
-      setFormError(t('emailVerify.needEmail'))
+    if (!user?.email) nextErrors.email = t('emailVerify.needEmail')
+    const shown = Object.fromEntries(Object.entries(nextErrors).map(([key, text]) => [key, td(String(text))]))
+    setErrors(shown)
+    const failing = Object.values(shown)
+    if (failing.length) {
+      toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
+      // The e-mail section sits at the top of the form: bring it into view.
+      if (nextErrors.email) scrollRef.current?.scrollTo({ y: 0, animated: true })
       return
     }
-    setFormError('')
 
     const payload = {
       // The API resets an omitted owner budget / land area / floors to 0 / 0 / 1,
@@ -208,10 +209,13 @@ function RoleCompleteProfile({ navigation }) {
     // missing instead of leaving the form looking stuck.
     if (result.payload?.profile_complete === false) {
       const missing = result.payload?.profile_completion?.missing_fields || []
-      if (missing.some((item) => item?.field === 'email')) setFormError(t('emailVerify.needEmail'))
-      else {
+      if (missing.some((item) => item?.field === 'email')) {
+        setErrors((prev) => ({ ...prev, email: t('emailVerify.needEmail') }))
+        toast.error(t('emailVerify.needEmail'))
+        scrollRef.current?.scrollTo({ y: 0, animated: true })
+      } else {
         setErrors(Object.fromEntries(missing.map((item) => [item.field, td(`${item.label} is required.`)])))
-        setFormError(t('cp.val.completeFields'))
+        toast.error(t('cp.val.completeFields'))
       }
       return
     }
@@ -225,8 +229,12 @@ function RoleCompleteProfile({ navigation }) {
   const setField = (key) => (value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }))
-    setFormError('')
   }
+
+  // The e-mail added and verified above the form clears its highlight.
+  useEffect(() => {
+    if (user?.email) setErrors((prev) => (prev.email ? { ...prev, email: undefined } : prev))
+  }, [user?.email])
 
   const readOnly = (label, value) => (
     <View style={styles.readOnly}>
@@ -260,6 +268,7 @@ function RoleCompleteProfile({ navigation }) {
 
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 640, alignSelf: 'center' }}
           keyboardShouldPersistTaps="handled"
         >
@@ -267,8 +276,9 @@ function RoleCompleteProfile({ navigation }) {
 
           {/* A phone-first account has no e-mail yet; completing needs one. */}
           {!user?.email ? (
-            <View style={styles.emailBlock}>
-              <EmailSection />
+            <View style={[styles.emailBlock, errors.email ? styles.emailBlockInvalid : null]}>
+              <EmailSection invalid={Boolean(errors.email)} />
+              {errors.email ? <Text accessibilityRole="alert" style={styles.fieldError}>{errors.email}</Text> : null}
             </View>
           ) : null}
 
@@ -339,7 +349,6 @@ function RoleCompleteProfile({ navigation }) {
             />
           ))}
 
-          <ErrorBanner message={formError} />
           <PrimaryButton
             label={t('cp.completeProfileBtn')}
             onPress={submit}
@@ -364,6 +373,8 @@ const styles = createStyles((c) => ({
   text3: { marginTop: 3.5, fontFamily: 'Inter_400Regular', color: '#9dc5af' },
   sectionTitle: { marginBottom: 10, fontSize: 15, fontFamily: 'Manrope_800ExtraBold', color: c.text },
   emailBlock: { marginBottom: 18, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 },
+  emailBlockInvalid: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 6, fontSize: 11.5, fontFamily: 'Inter_500Medium', color: '#dc2626' },
   readOnly: { marginBottom: 14 },
   readOnlyLabel: { marginBottom: 5.25, fontSize: 13, fontFamily: 'Inter_600SemiBold', color: c.textSecondary },
   readOnlyBox: {

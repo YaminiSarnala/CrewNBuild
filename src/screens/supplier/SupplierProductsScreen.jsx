@@ -13,14 +13,14 @@
 // as you type, as on the owner's marketplace.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text, Pressable, ScrollView, TextInput } from 'react-native'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import { useFocusEffect } from '@react-navigation/native'
 import { ArrowUpDown, LayoutGrid, PackageSearch, Search, X } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
 import { SkeletonGrid } from '../../components/Skeleton'
-import { Notice, SelectChip } from '../../components/builder/BuilderUi'
+import { SelectChip } from '../../components/builder/BuilderUi'
 import { fetchCatalogCategories } from '../../api/catalog'
-import { clearStoreFilters, selectStoreNotice, setStoreNotice, useStoreFilter } from '../../store/supplierCatalogSlice'
+import { clearStoreFilters, useStoreFilter } from '../../store/supplierCatalogSlice'
 import { stockState } from '../owner/marketplace/shopParts'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -37,7 +37,6 @@ export default function SupplierProductsScreen({ navigation }) {
   const country = useSupplierCountry()
   const { width, maxContentWidth, gutter, isTablet } = useResponsive()
   const { products: productList, status, reload } = useSupplierListings()
-  const notice = useSelector(selectStoreNotice)
   const { togglePublish, askDelete, dialog } = useListingActions()
 
   const [categoryId, setCategoryId] = useStoreFilter('storeCategory')
@@ -136,7 +135,6 @@ export default function SupplierProductsScreen({ navigation }) {
   const symbol = currencySymbol(country)
 
   const openAdd = () => {
-    dispatch(setStoreNotice(null))
     navigation.navigate('SupplierAddProduct')
   }
 
@@ -170,12 +168,6 @@ export default function SupplierProductsScreen({ navigation }) {
             </Pressable>
           ) : null}
         </View>
-
-        {notice ? (
-          <Pressable onPress={() => dispatch(setStoreNotice(null))} style={{ marginTop: 10 }}>
-            <Notice tone={notice.tone} text={notice.text} />
-          </Pressable>
-        ) : null}
       </View>
 
       {productList.length > 0 ? (

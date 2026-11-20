@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { View, Text, Pressable, Switch, TextInput, ActivityIndicator } from 'react-native'
 import PianoLoader from '../../../components/PianoLoader'
+import { toast } from '../../../components/Toast'
 import { useDispatch, useSelector } from 'react-redux'
 import { Image } from 'expo-image'
 import { Check, ImageOff, Plus, Tags, Trash2 } from 'lucide-react-native'
@@ -355,14 +356,17 @@ export function BulkPricingPanel({ productId, unit = '', normalPrice = null, cou
 
   const save = async () => {
     const problem = enabled ? tierProblem(tiers) : ''
-    if (problem) { setState((current) => ({ ...current, tone: 'error', text: problem })); return }
+    // The tier at fault is described in red under the tiers; the toast sums it up.
+    if (problem) { toast.error(problem); return }
     setState((current) => ({ ...current, saving: true, tone: '', text: '' }))
     try {
       const saved = await saveBulkPricing(productId, enabled ? tiersForApi(tiers) : [])
       const count = saved?.tiers?.length || 0
-      setState({ loading: false, saving: false, tone: 'success', text: count ? `Bulk pricing saved (${count} tier${count === 1 ? '' : 's'}).` : 'Bulk pricing turned off.' })
+      setState({ loading: false, saving: false, tone: '', text: '' })
+      toast.success(count ? `Bulk pricing saved (${count} tier${count === 1 ? '' : 's'}).` : 'Bulk pricing turned off.')
     } catch (failure) {
-      setState({ loading: false, saving: false, tone: 'error', text: failure?.response?.data?.detail || 'Bulk pricing could not be saved.' })
+      setState({ loading: false, saving: false, tone: '', text: '' })
+      toast.error(failure?.response?.data?.detail || 'Bulk pricing could not be saved.')
     }
   }
 

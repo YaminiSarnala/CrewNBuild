@@ -19,7 +19,7 @@ import { formatCalendarDate } from '../../utils/formatters'
 import {
   buildingTypeText, completionPercent, completionText, formatPercent, money, projectStatusText, scheduleText, scheduleWidth,
 } from '../../utils/builderHelpers'
-import { Notice, SheetModal } from '../../components/builder/BuilderUi'
+import { SheetModal } from '../../components/builder/BuilderUi'
 import { COLORS } from '../../theme/tokens'
 import { ink, line, soft } from '../../theme/tint'
 import { createStyles } from '../../theme/createStyles'
@@ -169,7 +169,8 @@ export function EngineerMyProjects({ projectList, onOpenProject }) {
 // Join Builder Team (web EngineerJoinTeamSection)
 // ---------------------------------------------------------------------------
 
-export function EngineerJoinTeam({ teams, incomingRequests, onJoin, onRefresh, onRespondToBuilder, joinMessage, joinError }) {
+// `codeError` highlights the invite-code box; results show as a bottom toast.
+export function EngineerJoinTeam({ teams, incomingRequests, onJoin, onRefresh, onRespondToBuilder, codeError, onCodeChange }) {
   const { t, td } = useLanguage()
   const [code, setCode] = useState('')
   const activeTeams = teams.filter((team) => team.status === 'ACTIVE')
@@ -190,19 +191,18 @@ export function EngineerJoinTeam({ teams, incomingRequests, onJoin, onRefresh, o
         <View style={styles.ep44}>
           <TextInput
             value={code}
-            onChangeText={setCode}
+            onChangeText={(value) => { setCode(value); onCodeChange?.() }}
             placeholder={t('dash.engineer.msg.enterCode')}
             placeholderTextColor={COLORS.slate[400]}
             autoCapitalize="characters"
             autoCorrect={false}
-            style={styles.ep45}
+            style={[styles.ep45, codeError ? styles.epInvalid : null]}
           />
           <Pressable onPress={() => onJoin(code.trim())} style={styles.ep46}>
             <Text style={styles.ep47}>{t('dash.engineer.joinTeam')}</Text>
           </Pressable>
         </View>
-        {joinMessage ? <View style={styles.ep48}><Notice tone="success" text={joinMessage} /></View> : null}
-        {joinError ? <View style={styles.ep48}><Notice tone="error" text={joinError} /></View> : null}
+        {codeError ? <Text style={styles.epError}>{codeError}</Text> : null}
       </Card>
 
       {activeTeams.length > 0 ? (
@@ -270,11 +270,10 @@ export function EngineerJoinTeam({ teams, incomingRequests, onJoin, onRefresh, o
 // Discover Builders (web EngineerContractorsSection)
 // ---------------------------------------------------------------------------
 
-export function EngineerContractors({ contractors, teamStatusByContractor, onViewContractor, onRequestJoin, message }) {
+export function EngineerContractors({ contractors, teamStatusByContractor, onViewContractor, onRequestJoin }) {
   const { t, td } = useLanguage()
   return (
     <View>
-      {message ? <Notice tone="info" text={message} /> : null}
       {!contractors.length ? (
         <EmptyCard icon={Building2} title={t('dash.engineer.noBuilders')} body={t('dash.engineer.noBuildersSub')} />
       ) : contractors.map((contractor) => {
@@ -319,11 +318,10 @@ export function EngineerContractors({ contractors, teamStatusByContractor, onVie
 // Find Opportunities (web EngineerOpportunitiesSection)
 // ---------------------------------------------------------------------------
 
-export function EngineerOpportunities({ opportunities, appliedKeys, onApply, onView, message }) {
+export function EngineerOpportunities({ opportunities, appliedKeys, onApply, onView }) {
   const { t, td } = useLanguage()
   return (
     <View>
-      {message ? <Notice tone="info" text={message} /> : null}
       {!opportunities.length ? (
         <EmptyCard icon={Briefcase} title={t('dash.engineer.noOpportunities')} body={t('dash.engineer.noOpportunitiesSub')} />
       ) : (
@@ -397,7 +395,7 @@ function Figure({ value, label }) {
   )
 }
 
-export function ContractorProfileSheet({ contractor, profile, onClose, onRequestJoin, requestState, message }) {
+export function ContractorProfileSheet({ contractor, profile, onClose, onRequestJoin, requestState }) {
   const { t, td } = useLanguage()
   const data = profile || contractor || {}
   const contactVisible = Boolean(profile?.can_view_contact)
@@ -448,7 +446,6 @@ export function ContractorProfileSheet({ contractor, profile, onClose, onRequest
         <InfoTile icon={Phone} label={t('dash.common.phone')} value={data.phone} blur={!contactVisible} />
       </View>
 
-      {message ? <View style={styles.ep87}><Notice tone="info" text={message} /></View> : null}
 
       <View style={styles.ep93}>
               {requestState === 'active' ? (
@@ -472,7 +469,7 @@ export function ContractorProfileSheet({ contractor, profile, onClose, onRequest
   )
 }
 
-export function OpportunitySheet({ opportunity, onClose, onApply, applied, message }) {
+export function OpportunitySheet({ opportunity, onClose, onApply, applied }) {
   const { t, td } = useLanguage()
   const item = opportunity || {}
   return (
@@ -497,7 +494,6 @@ export function OpportunitySheet({ opportunity, onClose, onApply, applied, messa
         <InfoTile icon={FileText} label={t('dash.common.type')} value={constructionTypeLabel(item.construction_type, t) || '—'} />
       </View>
       {item.description ? <Text style={styles.ep86}>{td(item.description)}</Text> : null}
-      {message ? <View style={styles.ep87}><Notice tone="info" text={message} /></View> : null}
       <View style={styles.ep93}>
         {applied ? (
           <View style={styles.ep94}>
@@ -563,7 +559,8 @@ const styles = createStyles((c) => ({
   ep45: { height: 35, flex: 1, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 10.5, fontSize: 14, lineHeight: 20, fontWeight: '600', color: c.text },
   ep46: { height: 35, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#236645', paddingHorizontal: 14 },
   ep47: { fontSize: 14, lineHeight: 20, fontWeight: '800', color: '#ffffff' },
-  ep48: { marginTop: 7 },
+  epInvalid: { borderColor: '#dc2626' },
+  epError: { marginTop: 5, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
   ep49: { flexDirection: 'row', alignItems: 'center', gap: 10.5, borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },
   ep50: { fontSize: 12, lineHeight: 16, fontWeight: '500', color: c.textMuted },
   ep51: { borderBottomWidth: 1, borderColor: c.borderSoft, paddingVertical: 8.75 },

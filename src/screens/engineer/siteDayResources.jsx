@@ -10,7 +10,8 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { formatMoney } from '../../utils/countryConfig'
 import { formatDate } from '../../utils/formatters'
 import { ratePer, saveEquipmentUsage, saveLaborDailyRecord, supplyErrorMessage } from '../../api/siteResources'
-import { attendanceProblem, recordForDate, rentalChargeForDate, splitPayments } from '../../utils/siteResources'
+import { recordForDate, rentalChargeForDate, splitPayments } from '../../utils/siteResources'
+import { toast } from '../../components/Toast'
 import { COLORS } from '../../theme/tokens'
 import { ink, soft } from '../../theme/tint'
 import { createStyles } from '../../theme/createStyles'
@@ -27,6 +28,54 @@ const normalize = (form) => ({
   activity: String(form.activity || '').trim(), notes: String(form.notes || '').trim(),
 })
 const same = (first, second) => JSON.stringify(first) === JSON.stringify(second)
+
+// The attendance rules (utils/siteResources attendanceProblem), per field so
+// every count at fault is highlighted at once: { field: message }.
+function attendanceErrors(form, allocated, t) {
+  const errors = {}
+  const value = (field) => Number(form?.[field] || 0)
+  ;['present_count', 'absent_count', 'half_day_count', 'overtime_workers'].forEach((field) => {
+    if (!Number.isInteger(value(field)) || value(field) < 0) errors[field] = t('labor.error.counts')
+  })
+  const overtimeHours = value('overtime_hours')
+  if (Number.isNaN(overtimeHours) || overtimeHours < 0) errors.overtime_hours = t('labor.error.counts')
+  if (Object.keys(errors).length) return errors
+  const present = value('present_count')
+  const halfDay = value('half_day_count')
+  const total = present + value('absent_count') + halfDay
+  const limit = Number(allocated || 0)
+  if (total > limit) {
+    const message = t('labor.error.countsExceed', { total, allocated: limit })
+    errors.present_count = message
+    errors.absent_count = message
+    errors.half_day_count = message
+  }
+  const overtimeWorkers = value('overtime_workers')
+  if (overtimeWorkers > present + halfDay) errors.overtime_workers = t('labor.error.overtimeExceed')
+  else if (overtimeHours > 0 && overtimeWorkers === 0) {
+    errors.overtime_workers = t('se.res.errOvertimeWorkers')
+    errors.overtime_hours = t('se.res.errOvertimeWorkers')
+  }
+  return errors
+}
+
+// A form's messages, each once: shown under the fields and summed up in a toast.
+const uniqueMessages = (errors) => [...new Set(Object.values(errors).filter(Boolean))]
+function reportErrors(errors, t) {
+  const list = uniqueMessages(errors)
+  if (list.length) toast.error(list.length === 1 ? list[0] : t('cp.val.completeFields'))
+  return list.length > 0
+}
+
+function ErrorLines({ errors }) {
+  const list = uniqueMessages(errors)
+  if (!list.length) return null
+  return (
+    <View style={styles.errorLines}>
+      {list.map((message) => <Text key={message} accessibilityRole="alert" style={styles.fieldError}>{message}</Text>)}
+    </View>
+  )
+}
 
 const TAG_TONES = {
   slate: ['#f1f5f9', '#334155'], calc: ['#e0f2fe', '#075985'], entered: ['#fef3c7', '#92400e'],
@@ -60,11 +109,12 @@ function CardShell({ title, subtitle, aside, children }) {
   )
 }
 
-function CardFooter({ editable, dirty, saving, onSave, label, notice }) {
-  if (!editable && !notice?.text) return null
+// The result of a save shows as a bottom toast; the footer holds the button.
+function CardFooter({ editable, dirty, saving, onSave, label }) {
+  if (!editable) return null
   return (
     <View style={styles.footer}>
-      <Text style={[styles.footerText, { color: ink(notice?.tone === 'error' ? '#e11d48' : '#047857') }]}>{notice?.text || ''}</Text>     
+      <View style={styles.footerText} />
        {editable ? (
         <Pressable onPress={onSave} disabled={saving || !dirty} style={[styles.saveButton, (saving || !dirty) && styles.dim]}>
           {saving ? <ActivityIndicator size="small" color={ink('#0f172a')} /> : null}        
@@ -75,7 +125,7 @@ function CardFooter({ editable, dirty, saving, onSave, label, notice }) {
   )
 }
 
-function NumberField({ label, value, onChange, editable, decimal = false }) {
+function NumberField({ label, value, onChange, editable, decimal = false, invalid = false }) {
   return (
     <View style={styles.numberField}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -85,7 +135,7 @@ function NumberField({ label, value, onChange, editable, decimal = false }) {
         keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
         selectTextOnFocus
         editable={editable}
-        style={[styles.numberInput, !editable && styles.inputDisabled]}
+        style={[styles.numberInput, !editable && styles.inputDisabled, invalid && styles.inputInvalid]}
       />
     </View>
   )
@@ -115,25 +165,31 @@ function LabourCard({ request, date, records, editable, onSaved, onDirtyChange, 
   const saved = recordForDate(records, date)
   const [form, setForm] = useState(() => attendanceFrom(saved))
   const [saving, setSaving] = useState(false)
-  const [notice, setNotice] = useState(null)
+  const [errors, setErrors] = useState({})
   const baseline = attendanceFrom(saved)
-  useEffect(() => { setForm(attendanceFrom(saved)); setNotice(null) }, [date, saved?.id, saved?.updated_at, resetSignal]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setForm(attendanceFrom(saved)); setErrors({}) }, [date, saved?.id, saved?.updated_at, resetSignal]) // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = editable && !same(normalize(form), normalize(baseline))
   useEffect(() => { onDirtyChange(`labour:${request.id}`, dirty); return () => onDirtyChange(`labour:${request.id}`, false) }, [dirty]) // eslint-disable-line react-hooks/exhaustive-deps
-  const set = (field) => (value) => { setForm((current) => ({ ...current, [field]: value })); setNotice(null) }
+  // Editing a count re-checks the rest, so a settled rule stops highlighting.
+  const set = (field) => (value) => {
+    const next = { ...form, [field]: value }
+    setForm(next)
+    if (Object.keys(errors).length) setErrors(attendanceErrors(next, allocated, t))
+  }
   const allocated = Number(request.workers_allocated || 0)
 
   async function save() {
-    const problem = attendanceProblem(form, allocated)
-    if (problem) { setNotice({ tone: 'error', text: t(problem.key, problem.values) }); return }
+    const problems = attendanceErrors(form, allocated, t)
+    setErrors(problems)
+    if (reportErrors(problems, t)) return
     setSaving(true)
     try {
       const payload = normalize(form)
       await saveLaborDailyRecord(request.id, date, { ...payload, activity: payload.activity || null, notes: payload.notes || null })
       await onSaved(request.id)
-      setNotice({ tone: 'ok', text: t('labor.msg.attendanceSaved', { date: formatDate(date, date) }) })
+      toast.success(t('labor.msg.attendanceSaved', { date: formatDate(date, date) }))
     } catch (error) {
-      setNotice({ tone: 'error', text: supplyErrorMessage(error, t('labor.error.attendanceSave')) })
+      toast.error(supplyErrorMessage(error, t('labor.error.attendanceSave')))
     } finally {
       setSaving(false)
     }
@@ -152,17 +208,18 @@ function LabourCard({ request, date, records, editable, onSaved, onDirtyChange, 
       )}
     >
       <View style={styles.grid}>
-        <NumberField label={t('labor.field.present')} value={form.present_count} onChange={set('present_count')} editable={editable} />
-        <NumberField label={t('labor.field.absent')} value={form.absent_count} onChange={set('absent_count')} editable={editable} />
-        <NumberField label={t('labor.field.halfDay')} value={form.half_day_count} onChange={set('half_day_count')} editable={editable} />
-        <NumberField label={t('labor.field.otWorkers')} value={form.overtime_workers} onChange={set('overtime_workers')} editable={editable} />
-        <NumberField label={t('labor.field.otHours')} value={form.overtime_hours} onChange={set('overtime_hours')} editable={editable} decimal />
+        <NumberField label={t('labor.field.present')} value={form.present_count} onChange={set('present_count')} editable={editable} invalid={Boolean(errors.present_count)} />
+        <NumberField label={t('labor.field.absent')} value={form.absent_count} onChange={set('absent_count')} editable={editable} invalid={Boolean(errors.absent_count)} />
+        <NumberField label={t('labor.field.halfDay')} value={form.half_day_count} onChange={set('half_day_count')} editable={editable} invalid={Boolean(errors.half_day_count)} />
+        <NumberField label={t('labor.field.otWorkers')} value={form.overtime_workers} onChange={set('overtime_workers')} editable={editable} invalid={Boolean(errors.overtime_workers)} />
+        <NumberField label={t('labor.field.otHours')} value={form.overtime_hours} onChange={set('overtime_hours')} editable={editable} decimal invalid={Boolean(errors.overtime_hours)} />
       </View>
+      <ErrorLines errors={errors} />
       <TextField label={t('labor.field.activity')} value={form.activity} onChange={set('activity')} editable={editable} placeholder={editable ? t('labor.field.activityPh') : ''} />
       <TextField label={t('labor.field.notes')} value={form.notes} onChange={set('notes')} editable={editable} />
       {/* No agreed rate exists on labour requests, so no amount is shown. */}
       <Text style={[styles.small, styles.top]}>{t('se.res.noRate')}</Text>
-      <CardFooter editable={editable} dirty={dirty} saving={saving} onSave={save} label={saved ? t('labor.attendance.update') : t('labor.attendance.save')} notice={notice} />
+      <CardFooter editable={editable} dirty={dirty} saving={saving} onSave={save} label={saved ? t('labor.attendance.update') : t('labor.attendance.save')} />
     </CardShell>
   )
 }
@@ -184,23 +241,26 @@ function RentalCard({ rental, date, logs, editable, country, onSaved, onDirtyCha
   const [hours, setHours] = useState(savedHours)
   const [notes, setNotes] = useState(saved?.notes || '')
   const [saving, setSaving] = useState(false)
-  const [notice, setNotice] = useState(null)
-  useEffect(() => { setHours(savedHours); setNotes(saved?.notes || ''); setNotice(null) }, [date, saved?.id, saved?.updated_at, resetSignal]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [hoursError, setHoursError] = useState('')
+  useEffect(() => { setHours(savedHours); setNotes(saved?.notes || ''); setHoursError('') }, [date, saved?.id, saved?.updated_at, resetSignal]) // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = editable && (String(hours) !== savedHours || String(notes || '') !== String(saved?.notes || ''))
   useEffect(() => { onDirtyChange(`rental:${rental.id}`, dirty); return () => onDirtyChange(`rental:${rental.id}`, false) }, [dirty]) // eslint-disable-line react-hooks/exhaustive-deps
   const charge = rentalChargeForDate(rental, date, saved ? saved.hours_used : null)
 
   async function save() {
     const value = Number(hours)
-    if (hours === '' || !Number.isFinite(value) || value < 0) { setNotice({ tone: 'error', text: t('equipment.error.hours') }); return }
-    if (value > 24 * Number(rental.quantity || 1)) { setNotice({ tone: 'error', text: t('se.res.errHoursCap', { max: 24 * Number(rental.quantity || 1) }) }); return }
+    const problem = hours === '' || !Number.isFinite(value) || value < 0
+      ? t('equipment.error.hours')
+      : value > 24 * Number(rental.quantity || 1) ? t('se.res.errHoursCap', { max: 24 * Number(rental.quantity || 1) }) : ''
+    setHoursError(problem)
+    if (problem) { toast.error(problem); return }
     setSaving(true)
     try {
       await saveEquipmentUsage(rental.id, date, { hours_used: value, notes: String(notes || '').trim() || null })
       await onSaved(rental.id)
-      setNotice({ tone: 'ok', text: t('se.res.hoursSaved') })
+      toast.success(t('se.res.hoursSaved'))
     } catch (error) {
-      setNotice({ tone: 'error', text: supplyErrorMessage(error, t('equipment.error.usageSave')) })
+      toast.error(supplyErrorMessage(error, t('equipment.error.usageSave')))
     } finally {
       setSaving(false)
     }
@@ -233,14 +293,15 @@ function RentalCard({ rental, date, logs, editable, country, onSaved, onDirtyCha
       </View>
       {editable ? (
         <View style={styles.grid}>
-          <NumberField label={t('equipment.field.hoursUsed')} value={hours} onChange={(value) => { setHours(value); setNotice(null) }} editable decimal />
+          <NumberField label={t('equipment.field.hoursUsed')} value={hours} onChange={(value) => { setHours(value); setHoursError('') }} editable decimal invalid={Boolean(hoursError)} />
           <View style={{ flex: 2, minWidth: 140 }}>
-            <TextField label={t('labor.field.notes')} value={notes} onChange={(value) => { setNotes(value); setNotice(null) }} editable />
+            <TextField label={t('labor.field.notes')} value={notes} onChange={setNotes} editable />
           </View>
         </View>
       ) : null}
+      {editable && hoursError ? <Text accessibilityRole="alert" style={styles.fieldError}>{hoursError}</Text> : null}
       <Text style={[styles.small, styles.top]}>{t(`se.res.basis.${charge.basis}`)}</Text>
-      <CardFooter editable={editable} dirty={dirty} saving={saving} onSave={save} label={t('se.res.saveHours')} notice={notice} />
+      <CardFooter editable={editable} dirty={dirty} saving={saving} onSave={save} label={t('se.res.saveHours')} />
     </CardShell>
   )
 }
@@ -357,6 +418,9 @@ const styles = createStyles((c) => ({
   numberField: { flex: 1, minWidth: 64 },
   textField: { marginTop: 7 },
   fieldLabel: { marginBottom: 3.5, fontSize: 11, fontWeight: '700', color: c.textSecondary },
+  inputInvalid: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 3, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
+  errorLines: { marginTop: 4 },
   numberInput: { height: 36, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 7, textAlign: 'right', fontSize: 14, fontWeight: '800', color: c.text },
   textInput: { height: 36, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 9, fontSize: 14, fontWeight: '600', color: c.text },
   inputDisabled: { backgroundColor: c.subtle, color: c.textSoft },

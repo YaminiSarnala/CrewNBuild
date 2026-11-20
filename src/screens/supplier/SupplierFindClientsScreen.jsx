@@ -12,7 +12,7 @@ import { View, Text, Pressable } from 'react-native'
 import { useSelector } from 'react-redux'
 import { useFocusEffect } from '@react-navigation/native'
 import { Briefcase, CheckCircle2, ChevronRight, Clock, Eye, House as Home, MapPin, Send, Star } from 'lucide-react-native'
-import { Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { Section, StackScreenShell } from '../../components/builder/BuilderUi'
 import { PanelState } from '../../components/DashboardShell'
 import { fetchSupplierClients } from '../../api/profiles'
 import { fetchIncomingRequests } from '../../api/requests'
@@ -182,7 +182,6 @@ export default function SupplierFindClientsScreen({ navigation }) {
   return (
     <StackScreenShell title={t('ui.findClients')} subtitle={t('dash.supplier.nearbyClients')} onBack={() => navigation.goBack()} refreshing={refreshing} onRefresh={onRefresh}>
       <Section style={{ gap: 12 }}>
-        {actions.message ? <Notice tone={actions.message.tone} text={actions.message.text} /> : null}
         <CountTabs tabs={tabs} active={tab} onChange={setTab} />
         {status === 'loading' ? <PanelState loading skeleton="cards" /> : status === 'error' ? (
           <View style={styles.empty}>

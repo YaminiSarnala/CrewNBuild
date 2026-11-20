@@ -14,7 +14,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Camera, Pencil, Save, Store, Trash2, X } from 'lucide-react-native'
 import { Panel, PanelState } from '../../components/DashboardShell'
 import PreferenceRows from '../../components/PreferenceRows'
-import { ActionButton, InfoRow, Notice, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { ActionButton, InfoRow, Section, StackScreenShell } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import EmailSection from '../../components/EmailSection'
 import { completeUserProfile, updateBusinessLogo, updateProfileImage } from '../../api/auth'
 import { uploadLocalFile } from '../../api/upload'
@@ -73,18 +74,15 @@ export default function SupplierProfileScreen({ navigation }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState('')
-  const [message, setMessage] = useState(null)
   const formState = useSupplierProfileForm(profile, user)
   const text = supplierTextKeys(formState.kind)
 
   const startEditing = () => {
     formState.reset(profile)
-    setMessage(null)
     setEditing(true)
   }
   const cancelEditing = () => {
     formState.reset(profile)
-    setMessage(null)
     setEditing(false)
   }
 
@@ -94,23 +92,25 @@ export default function SupplierProfileScreen({ navigation }) {
     if (!profile) return
     const errors = formState.validate()
     if (Object.keys(errors).length) {
-      formState.setErrors(Object.fromEntries(Object.entries(errors).map(([key, value]) => [key, td(String(value))])))
-      setMessage({ tone: 'error', text: t('cp.val.completeFields') })
+      const translated = Object.fromEntries(Object.entries(errors).map(([key, value]) => [key, td(String(value))]))
+      formState.setErrors(translated)
+      const failing = Object.values(translated).filter(Boolean)
+      toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
       return
     }
     setSaving(true)
-    setMessage({ tone: 'info', text: t('dash.supplier.msg.savingProfile') })
+    toast.info(t('dash.supplier.msg.savingProfile'))
     try {
       const updatedUser = await completeUserProfile(formState.payload())
       dispatch(mergeUser(updatedUser?.user || updatedUser || {}))
       const refreshed = await reload()
       if (refreshed) formState.reset(refreshed)
       setEditing(false)
-      setMessage({ tone: 'success', text: t('dash.supplier.msg.profileSaved') })
+      toast.success(t('dash.supplier.msg.profileSaved'))
     } catch (error) {
       const fields = fieldErrorsFrom(error)
       formState.setErrors(Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, td(String(value))])))
-      setMessage({ tone: 'error', text: td(apiErrorText(error, t('dash.owner.profile.saveError'))) })
+      toast.error(td(apiErrorText(error, t('dash.owner.profile.saveError'))))
     } finally {
       setSaving(false)
     }
@@ -121,22 +121,22 @@ export default function SupplierProfileScreen({ navigation }) {
     const asset = await pickSquareImage()
     if (!asset) return
     setUploading(kind)
-    setMessage({ tone: 'info', text: kind === 'logo' ? t('dash.supplier.msg.uploadingStoreLogo') : t('dash.supplier.msg.uploadingProfileImage') })
+    toast.info(kind === 'logo' ? t('dash.supplier.msg.uploadingStoreLogo') : t('dash.supplier.msg.uploadingProfileImage'))
     try {
       const fileUrl = uploadedUrl(await uploadLocalFile(uploadableAsset(asset, kind), `${kind}.jpg`))
       if (!fileUrl) throw new Error('upload answered without a url')
       if (kind === 'logo') {
         const updatedProfile = await updateBusinessLogo(fileUrl)
         setProfile((current) => ({ ...(current || {}), ...(updatedProfile || {}), store_logo_url: updatedProfile?.store_logo_url || fileUrl }))
-        setMessage({ tone: 'success', text: t('dash.supplier.msg.storeLogoUpdated') })
+        toast.success(t('dash.supplier.msg.storeLogoUpdated'))
       } else {
         const updated = await updateProfileImage(fileUrl)
         dispatch(mergeUser({ ...(updated?.user || updated || {}), profile_image_url: fileUrl }))
         setProfile((current) => ({ ...(current || {}), profile_image_url: fileUrl }))
-        setMessage({ tone: 'success', text: t('dash.supplier.msg.profileImageUpdated') })
+        toast.success(t('dash.supplier.msg.profileImageUpdated'))
       }
     } catch (error) {
-      setMessage({ tone: 'error', text: td(apiErrorText(error, kind === 'logo' ? t('dash.supplier.msg.storeLogoUploadFailed') : t('dash.common.profileImageUploadFailed'))) })
+      toast.error(td(apiErrorText(error, kind === 'logo' ? t('dash.supplier.msg.storeLogoUploadFailed') : t('dash.common.profileImageUploadFailed'))))
     } finally {
       setUploading('')
     }
@@ -158,8 +158,6 @@ export default function SupplierProfileScreen({ navigation }) {
       refreshing={status === 'loading' && Boolean(profile)}
       onRefresh={editing ? undefined : reload}
     >
-      <Section><Notice tone={message?.tone} text={message?.text} /></Section>
-
       <Panel title={t('dash.common.settings')}>
         <PanelState
           loading={!profile && (status === 'loading' || status === 'idle')}

@@ -20,6 +20,7 @@ import {
   Layers, Package, TrendingUp, Users, X,
 } from 'lucide-react-native'
 import DashboardShell, { useAsyncData } from '../../components/DashboardShell'
+import { toast } from '../../components/Toast'
 import { SkeletonGrid, SkeletonRows } from '../../components/Skeleton'
 import StatusPill from '../../components/StatusPill'
 import { fetchOwnerProjects } from '../../api/projects'
@@ -220,7 +221,6 @@ export default function OwnerDashboard({ navigation }) {
   const { gutter, isTablet, isLargeTablet, width, maxContentWidth } = useResponsive()
   const [refreshing, setRefreshing] = useState(false)
   const [busyRequestId, setBusyRequestId] = useState(null)
-  const [decisionMessage, setDecisionMessage] = useState('')
 
   const projects = useAsyncData(fetchOwnerProjects, [])
   const requests = useAsyncData(fetchIncomingRequests, [])
@@ -338,13 +338,12 @@ export default function OwnerDashboard({ navigation }) {
     // Accepting needs a complete profile (the API enforces it too).
     if (accept && requireCompleteProfile(() => decide(request, accept))) return
     setBusyRequestId(request.id)
-    setDecisionMessage('')
     try {
       if (accept) await acceptProjectRequest(request.id)
       else await rejectProjectRequest(request.id)
       await Promise.all([requests.reload(), projects.reload()])
     } catch (error) {
-      setDecisionMessage(apiErrorMessage(error, t('dash.common.request')))
+      toast.error(apiErrorMessage(error, t('dash.common.request')))
     } finally {
       setBusyRequestId(null)
     }
@@ -447,11 +446,6 @@ export default function OwnerDashboard({ navigation }) {
           {/* Recent activity beside upcoming deadlines */}
           <View style={pairStyle}>
             <Card title={t('dash.owner.overview.activityTitle')} icon={Activity} style={half}>
-              {!!decisionMessage && (
-                <View style={styles.view14}>
-                  <Text style={[styles.text20, { fontSize: 12 }]}>{decisionMessage}</Text>
-                </View>
-              )}
               {requests.loading ? (
                 <SkeletonRows count={3} />
               ) : requestList.length ? (
@@ -672,8 +666,6 @@ const styles = createStyles((c) => ({
   text17: { marginBottom: 7, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', color: c.textMuted },
   text18: { marginTop: -7, marginBottom: 10.5, fontFamily: 'Inter_400Regular', color: c.textMuted },
   text19: { paddingVertical: 10.5, fontFamily: 'Inter_400Regular', color: c.textFaint },
-  view14: { marginBottom: 7, borderRadius: 10.5, borderWidth: 1, borderColor: c.roseBorder, backgroundColor: c.roseSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
-  text20: { fontFamily: 'Inter_600SemiBold', color: c.roseText },
   pressable5: { marginBottom: 7, borderRadius: 10.5, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10.5, paddingVertical: 8.75 },
   view15: { flex: 1 },
   activityAvatar: { width: 30, height: 30, borderRadius: 9, overflow: 'hidden', borderWidth: 1, borderColor: c.border, backgroundColor: c.brandSoft },

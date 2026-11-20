@@ -5,6 +5,7 @@ import { View, Text, Pressable, TextInput, Alert } from 'react-native'
 import { useSelector } from 'react-redux'
 import { MapPin, BedDouble, Send } from 'lucide-react-native'
 import { Panel, PanelState, useAsyncData } from '../../components/DashboardShell'
+import { toast } from '../../components/Toast'
 import { fetchPropertyListings, fetchMyPropertyListings, sendPropertyRequest } from '../../api/properties'
 import { COLORS } from '../../theme/tokens'
 import { createStyles } from '../../theme/createStyles'
@@ -38,7 +39,7 @@ export default function PropertyMarketSection() {
             await sendPropertyRequest(listing.id, null)
             setSentIds((prev) => new Set(prev).add(listing.id))
           } catch (error) {
-            Alert.alert('Could not send', error?.response?.data?.detail || 'Please try again.')
+            toast.error(error?.response?.data?.detail || 'Please try again.', { title: 'Could not send' })
           } finally {
             setSendingId(null)
           }

@@ -2,6 +2,7 @@
 // fixed `role="dialog"` boxes. Tapping outside closes it unless `busy`.
 import { View, Text, Pressable, Modal, KeyboardAvoidingView, ScrollView } from 'react-native'
 import { createStyles } from '../theme/createStyles'
+import { ToastHost } from './Toast'
 
 export default function Dialog({ visible, title, subtitle, onClose, busy = false, children, footer }) {
   return (
@@ -22,6 +23,7 @@ export default function Dialog({ visible, title, subtitle, onClose, busy = false
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
+      <ToastHost />
     </Modal>
   )
 }

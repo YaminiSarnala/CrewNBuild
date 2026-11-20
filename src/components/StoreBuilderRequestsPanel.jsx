@@ -13,7 +13,8 @@ import {
   createStoreBuilderRequest, fetchStoreBuilderRequests, refusalText, respondStoreBuilderRequest, withdrawStoreBuilderRequest,
 } from '../api/store'
 import { formatDateTime } from '../utils/formatters'
-import { ActionButton, LabeledInput, Notice, SegmentTabs, SelectChip, SheetModal } from './builder/BuilderUi'
+import { ActionButton, LabeledInput, SegmentTabs, SelectChip, SheetModal } from './builder/BuilderUi'
+import { toast } from './Toast'
 import StatusPill from './StatusPill'
 import { COLORS } from '../theme/tokens'
 import { ink, soft } from '../theme/tint'
@@ -58,11 +59,18 @@ function NewRequestSheet({ text, counterparts, onDone, onClose }) {
   const { t, td } = useLanguage()
   const [form, setForm] = useState({ counterpart_id: counterparts.length === 1 ? String(counterparts[0].id) : '', category: 'GENERAL', title: '', description: '' })
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const update = (field) => (value) => { setForm((current) => ({ ...current, [field]: value })); setError('') }
+  // Each missing or short field is highlighted under itself; the toast sums it up.
+  const [errors, setErrors] = useState({})
+  const update = (field) => (value) => { setForm((current) => ({ ...current, [field]: value })); setErrors((current) => ({ ...current, [field]: '' })) }
+  const textProblem = (value) => (!value.trim() ? t('ui.shared.required') : value.trim().length < 3 ? 'Enter at least 3 characters.' : '')
   const submit = async () => {
-    if (!form.counterpart_id || form.title.trim().length < 3 || form.description.trim().length < 3) {
-      setError(t('store.sbr.fillAll'))
+    const problems = {}
+    if (!form.counterpart_id) problems.counterpart_id = t('ui.shared.required')
+    if (textProblem(form.title)) problems.title = textProblem(form.title)
+    if (textProblem(form.description)) problems.description = textProblem(form.description)
+    setErrors(problems)
+    if (Object.keys(problems).length) {
+      toast.error(t('store.sbr.fillAll'))
       return
     }
     setSaving(true)
@@ -70,7 +78,7 @@ function NewRequestSheet({ text, counterparts, onDone, onClose }) {
       await createStoreBuilderRequest({ ...form, title: form.title.trim(), description: form.description.trim() })
       onDone()
     } catch (failure) {
-      setError(refusalText(failure, td, t('store.saveFailed')))
+      toast.error(refusalText(failure, td, t('store.saveFailed')))
       setSaving(false)
     }
   }
@@ -88,7 +96,7 @@ function NewRequestSheet({ text, counterparts, onDone, onClose }) {
       )}
     >
       <Text style={styles.label}>{t(text.counterpart)}</Text>
-      <View style={styles.chipRow}>
+      <View style={[styles.chipRow, errors.counterpart_id ? styles.chipInvalid : null]}>
         <SelectChip
           placeholder={t('store.sbr.choose')}
           value={form.counterpart_id}
@@ -96,6 +104,7 @@ function NewRequestSheet({ text, counterparts, onDone, onClose }) {
           options={counterparts.map((person) => ({ value: String(person.id), label: td(person.name) }))}
         />
       </View>
+      {errors.counterpart_id ? <Text accessibilityRole="alert" style={styles.fieldError}>{errors.counterpart_id}</Text> : null}
       <Text style={styles.label}>{t('store.sbr.type')}</Text>
       <View style={styles.chipRow}>
         <SelectChip
@@ -105,9 +114,8 @@ function NewRequestSheet({ text, counterparts, onDone, onClose }) {
           options={BUILDER_REQUEST_CATEGORIES.map((category) => ({ value: category, label: t(`store.sbr.category.${category}`) }))}
         />
       </View>
-      <LabeledInput label={t('store.sbr.title')} value={form.title} onChangeText={update('title')} maxLength={160} placeholder={t('store.sbr.titlePh')} />
-      <LabeledInput label={t('store.sbr.description')} value={form.description} onChangeText={update('description')} maxLength={2000} multiline placeholder={t('store.sbr.descriptionPh')} />
-      <Notice tone="error" text={error} />
+      <LabeledInput label={t('store.sbr.title')} value={form.title} error={errors.title} onChangeText={update('title')} maxLength={160} placeholder={t('store.sbr.titlePh')} />
+      <LabeledInput label={t('store.sbr.description')} value={form.description} error={errors.description} onChangeText={update('description')} maxLength={2000} multiline placeholder={t('store.sbr.descriptionPh')} />
     </SheetModal>
   )
 }
@@ -116,16 +124,14 @@ function RequestDetailSheet({ request, text, counterpartName, onChanged, onClose
   const { t, td } = useLanguage()
   const [response, setResponse] = useState('')
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState(null)
   const act = async (action, doneKey) => {
     setBusy(true)
-    setNotice(null)
     try {
       await action()
-      setNotice({ text: t(doneKey) })
+      toast.success(t(doneKey))
       onChanged()
     } catch (failure) {
-      setNotice({ text: refusalText(failure, td, t('store.saveFailed')), error: true })
+      toast.error(refusalText(failure, td, t('store.saveFailed')))
     } finally {
       setBusy(false)
     }
@@ -176,7 +182,6 @@ function RequestDetailSheet({ request, text, counterpartName, onChanged, onClose
         <Text style={styles.factLabel}>{t('store.sbr.response')}</Text>
         <Text style={styles.body}>{request.response ? td(request.response) : t(request.status === 'PENDING' ? 'store.sbr.awaitingResponse' : 'store.sbr.noResponseText')}</Text>
       </View>
-      <Notice tone={notice?.error ? 'error' : 'success'} text={notice?.text} />
       {request.can_respond ? (
         <LabeledInput label={t('store.sbr.yourResponse')} value={response} onChangeText={setResponse} maxLength={1000} multiline placeholder={t('store.sbr.responsePh')} />
       ) : null}
@@ -189,7 +194,6 @@ export default function StoreBuilderRequestsPanel({ data, failed, reload }) {
   const [tab, setTab] = useState('received')
   const [openId, setOpenId] = useState(null)
   const [creating, setCreating] = useState(false)
-  const [notice, setNotice] = useState(null)
   if (!data) {
     return <View style={styles.panel}><Text style={styles.meta}>{t(failed ? 'store.sbr.loadFailed' : 'store.sbr.loading')}</Text></View>
   }
@@ -204,7 +208,6 @@ export default function StoreBuilderRequestsPanel({ data, failed, reload }) {
 
   return (
     <View style={{ gap: 10 }}>
-      <Notice tone="success" text={notice} />
       <View style={styles.panel}>
         <View style={styles.head}>
           <Text style={styles.panelTitle}>{t(tab === 'received' ? text.received : text.sent)}</Text>
@@ -248,7 +251,7 @@ export default function StoreBuilderRequestsPanel({ data, failed, reload }) {
           text={text}
           counterparts={counterparts}
           onClose={() => setCreating(false)}
-          onDone={() => { setCreating(false); setTab('sent'); setNotice(t('store.sbr.sent')); reload() }}
+          onDone={() => { setCreating(false); setTab('sent'); toast.success(t('store.sbr.sent')); reload() }}
         />
       ) : null}
     </View>
@@ -272,6 +275,8 @@ const styles = createStyles((c) => ({
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
   label: { marginBottom: 4, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, color: c.textSoft },
   chipRow: { marginBottom: 12, flexDirection: 'row' },
+  chipInvalid: { marginBottom: 4, alignSelf: 'flex-start', borderRadius: 10, borderWidth: 1, borderColor: '#dc2626' },
+  fieldError: { marginBottom: 12, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
   facts: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10, borderRadius: 12, borderWidth: 1, borderColor: c.border, padding: 10 },
   fact: { width: '50%', paddingRight: 6 },
   factLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, color: c.textFaint },

@@ -7,19 +7,20 @@
 // the server then refuses passwords for everyone but administrators. Servers
 // without it keep the e-mail and password form unchanged.
 import { useRef, useState } from 'react'
-import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, ActivityIndicator } from 'react-native'
 import { Image } from 'expo-image'
 import { useDispatch, useSelector } from 'react-redux'
 import { ArrowRight } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Field, ErrorBanner } from '../../components/Field'
+import { toast, ToastMessage } from '../../components/Toast'
 import { PrimaryButton } from '../../components/ui'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { loginWithCredentials, loginWithWhatsApp, clearAuthError, setAuthenticatedUser } from '../../store/authSlice'
 import { startGoogleOAuth, startMicrosoftOAuth } from '../../api/oauth'
 import { sendPhoneLoginCode } from '../../api/phoneVerification'
 import {
-  CodeActions, DevOtpNotice, INDIA_MOBILE, Notice, OtpBoxes, OutlineButton, PhoneNumberField,
+  CodeActions, DevOtpNotice, INDIA_MOBILE, OtpBoxes, OutlineButton, PhoneNumberField,
   codeComplete, devPreviewOf, emptyCode, useCountdown, usePhoneConfig, useRequestGate,
 } from '../../components/WhatsAppCode'
 import { createStyles } from '../../theme/createStyles'
@@ -69,7 +70,7 @@ export default function LoginScreen({ navigation }) {
         dispatch(setAuthenticatedUser(result))
       }
     } catch (error) {
-      Alert.alert('Sign-in failed', String(error?.message || error))
+      toast.error(String(error?.message || error), { title: 'Sign-in failed' })
     } finally {
       setOauthBusy(false)
     }
@@ -317,7 +318,16 @@ function PhoneLogin({ onSignUp }) {
 
   return (
     <View style={styles.phoneForm}>
-      <PhoneNumberField label={t('signup.mobileNumber')} value={phone} onChangeText={changePhone} />
+      <PhoneNumberField
+        label={t('signup.mobileNumber')}
+        value={phone}
+        onChangeText={changePhone}
+        error={stage === 'enter' && problem ? problem : ''}
+      />
+      {/* A refused number is marked on the field itself; the code boxes mark a refused code. */}
+      {stage === 'enter' && problem ? (
+        <Text accessibilityRole="alert" style={styles.fieldError}>{translateMessage(problem)}</Text>
+      ) : null}
 
       {stage === 'enter' ? (
         <PrimaryButton
@@ -366,13 +376,9 @@ function PhoneLogin({ onSignUp }) {
         </>
       )}
 
-      {problem ? (
-        <View style={styles.phoneForm}>
-          <Notice>{translateMessage(problem)}</Notice>
-          {notRegistered ? <OutlineButton label={t('login.phone.signUp')} onPress={onSignUp} /> : null}
-        </View>
-      ) : null}
-      {!problem && failed && stage === 'code' ? <Notice>{translateMessage(errorMessage)}</Notice> : null}
+      <ToastMessage tone="error" text={problem ? translateMessage(problem) : ''} />
+      <ToastMessage tone="error" text={!problem && failed && stage === 'code' ? translateMessage(errorMessage) : ''} />
+      {problem && notRegistered ? <OutlineButton label={t('login.phone.signUp')} onPress={onSignUp} /> : null}
       <Text style={styles.phoneHint}>{t('login.phone.noPhone')}</Text>
     </View>
   )
@@ -382,6 +388,7 @@ const styles = createStyles((c) => ({
   view: { flex: 1 },
   loader: { marginVertical: 24 },
   phoneForm: { gap: 10 },
+  fieldError: { marginTop: -4, fontSize: 11.5, lineHeight: 16, fontFamily: 'Inter_500Medium', color: '#dc2626' },
   phoneHint: { fontSize: 11.5, lineHeight: 17, fontFamily: 'Inter_500Medium', color: c.textMuted },
   view2: { paddingHorizontal: 21, paddingTop: 35 },
   text: { marginTop: 17.5, fontFamily: 'Manrope_800ExtraBold', color: '#ffffff' },

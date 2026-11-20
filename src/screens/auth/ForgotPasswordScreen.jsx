@@ -6,15 +6,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft } from 'lucide-react-native'
 import { sendResetCode, verifyResetCode, resetPassword } from '../../api/passwordReset'
 import { COLORS } from '../../theme/tokens'
+import { toast } from '../../components/Toast'
 import { createStyles } from '../../theme/createStyles'
 
-function Input(props) {
+function Input({ error, ...props }) {
   return (
-    <TextInput
-      {...props}
-      style={styles.textInput}
-      placeholderTextColor={COLORS.slate[400]}
-    />
+    <>
+      <TextInput
+        {...props}
+        style={[styles.textInput, error ? styles.textInputInvalid : null]}
+        placeholderTextColor={COLORS.slate[400]}
+      />
+      {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
+    </>
   )
 }
 
@@ -26,31 +30,43 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  // Each field's problem, shown under (and highlighting) that field.
+  const [errors, setErrors] = useState({})
+  const clearError = (field) => setErrors((current) => (current[field] ? { ...current, [field]: '' } : current))
 
-  async function run(action, nextStep, successMessage) {
+  // `field` is the input the step's answer is about: a refusal highlights it.
+  async function run(action, nextStep, successMessage, field) {
     setBusy(true)
-    setError('')
+    setErrors({})
     try {
       await action()
       setStep(nextStep)
-      setMessage(successMessage)
+      toast.success(successMessage)
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Something went wrong. Please try again.')
+      const detail = err?.response?.data?.detail
+      const text = (typeof detail === 'string' && detail) || 'Something went wrong. Please try again.'
+      setErrors(field ? { [field]: text } : {})
+      toast.error(text)
     } finally {
       setBusy(false)
     }
   }
 
   const submitEmail = () => run(() => sendResetCode(email.trim()), 'code',
-    'If that address has an account, a 6-digit code is on its way.')
+    'If that address has an account, a 6-digit code is on its way.', step === 'email' ? 'email' : null)
   const submitCode = () => run(() => verifyResetCode(email.trim(), code.trim()), 'password',
-    'Code verified. Choose a new password.')
+    'Code verified. Choose a new password.', 'code')
   const submitPassword = () => {
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
-    run(() => resetPassword(email.trim(), password), 'done', 'Password updated. You can sign in now.')
+    const nextErrors = {}
+    if (password.length < 8) nextErrors.password = 'Password must be at least 8 characters.'
+    if (password !== confirm) nextErrors.confirm = 'Passwords do not match.'
+    const failing = Object.values(nextErrors)
+    if (failing.length) {
+      setErrors(nextErrors)
+      toast.error(failing.length === 1 ? failing[0] : 'Please fix the highlighted fields.')
+      return
+    }
+    run(() => resetPassword(email.trim(), password), 'done', 'Password updated. You can sign in now.', 'password')
   }
 
   const canContinue =
@@ -70,27 +86,18 @@ export default function ForgotPasswordScreen({ navigation }) {
 
           <View style={[styles.view2, { maxWidth: 520 }]}>
             <Text style={styles.text2}>Reset your password</Text>
-            {!!message && !error && (
-              <View style={styles.view3}>
-                <Text style={styles.text3}>{message}</Text>
-              </View>
-            )}
-            {!!error && (
-              <View style={styles.view4}>
-                <Text style={styles.text4}>{error}</Text>
-              </View>
-            )}
+            {step === 'done' && <Text style={styles.text5}>Password updated. You can sign in now.</Text>}
 
             {step === 'email' && (
               <>
                 <Text style={styles.text5}>Enter the email you signed up with and we'll send a verification code.</Text>
-                <Input value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoFocus />
+                <Input value={email} onChangeText={(value) => { setEmail(value); clearError('email') }} error={errors.email} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoFocus />
               </>
             )}
             {step === 'code' && (
               <>
                 <Text style={styles.text5}>Enter the 6-digit code sent to {email.trim()}.</Text>
-                <Input value={code} onChangeText={setCode} placeholder="6-digit code" keyboardType="number-pad" maxLength={6} autoFocus style={{ letterSpacing: 8, textAlign: 'center', fontWeight: '800' }} />
+                <Input value={code} onChangeText={(value) => { setCode(value); clearError('code') }} error={errors.code} placeholder="6-digit code" keyboardType="number-pad" maxLength={6} autoFocus style={{ letterSpacing: 8, textAlign: 'center', fontWeight: '800' }} />
                 <Pressable onPress={submitEmail} disabled={busy} style={styles.pressable2}>
                   <Text style={styles.text6}>Resend code</Text>
                 </Pressable>
@@ -98,8 +105,8 @@ export default function ForgotPasswordScreen({ navigation }) {
             )}
             {step === 'password' && (
               <>
-                <Input value={password} onChangeText={setPassword} placeholder="New password (min 8 characters)" secureTextEntry autoCapitalize="none" autoFocus />
-                <Input value={confirm} onChangeText={setConfirm} placeholder="Confirm new password" secureTextEntry autoCapitalize="none" />
+                <Input value={password} onChangeText={(value) => { setPassword(value); clearError('password') }} error={errors.password} placeholder="New password (min 8 characters)" secureTextEntry autoCapitalize="none" autoFocus />
+                <Input value={confirm} onChangeText={(value) => { setConfirm(value); clearError('confirm') }} error={errors.confirm} placeholder="Confirm new password" secureTextEntry autoCapitalize="none" />
               </>
             )}
 
@@ -133,10 +140,8 @@ const styles = createStyles((c) => ({
   text: { fontSize: 12.25, lineHeight: 17.5, fontWeight: '800', color: '#c3dccd' },
   view2: { width: '100%', alignSelf: 'center', borderRadius: 21, backgroundColor: c.card, padding: 21 },
   text2: { fontSize: 17.5, lineHeight: 24.5, fontWeight: '800', color: c.text },
-  view3: { marginTop: 10.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
-  text3: { fontSize: 13, fontWeight: '600', color: c.brandTextStrong },
-  view4: { marginTop: 10.5, borderRadius: 10.5, borderWidth: 1, borderColor: c.roseBorderSoft, backgroundColor: c.roseSoft, paddingHorizontal: 10.5, paddingVertical: 7 },
-  text4: { fontSize: 13, fontWeight: '600', color: c.roseText },
+  textInputInvalid: { borderColor: '#dc2626' },
+  fieldError: { marginTop: 4, fontSize: 11.5, fontWeight: '600', color: '#dc2626' },
   text5: { marginTop: 7, fontSize: 13, fontWeight: '600', color: c.textMuted },
   pressable2: { marginTop: 7, alignSelf: 'center' },
   text6: { fontSize: 10.5, lineHeight: 14, fontWeight: '800', color: c.brandText },

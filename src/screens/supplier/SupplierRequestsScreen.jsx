@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { Check, CheckCircle2, ChevronRight, MapPin, PackageOpen, X, XCircle } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
 import { Notice } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { fetchSupplierMaterialRequests, respondPurchaseRequest } from '../../api/materialRequests'
 import { fetchIncomingRequests } from '../../api/requests'
 import { useProfileGate } from '../../hooks/useProfileGate'
@@ -124,7 +125,6 @@ function PurchaseRequests({ state }) {
   const { requireCompleteProfile } = useProfileGate()
   const [openCode, setOpenCode] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState(null)
   const fmt = (value) => money(value, country)
   const open = state.requests.find((request) => request.code === openCode) || null
 
@@ -133,15 +133,11 @@ function PurchaseRequests({ state }) {
   async function respond(request, action) {
     if (action === 'ACCEPT' && requireCompleteProfile(() => respond(request, action))) return
     setBusy(true)
-    setNotice(null)
     try {
       await respondPurchaseRequest(request.code, action)
-      setNotice({
-        tone: 'success',
-        text: `${action === 'ACCEPT' ? 'Order accepted successfully.' : 'Order rejected successfully.'} ${request.buyer || 'The buyer'} has been notified.`,
-      })
+      toast.success(`${action === 'ACCEPT' ? 'Order accepted successfully.' : 'Order rejected successfully.'} ${request.buyer || 'The buyer'} has been notified.`)
     } catch (failure) {
-      setNotice({ tone: 'error', text: failure?.response?.data?.detail || 'The order could not be updated. Nothing was changed.' })
+      toast.error(failure?.response?.data?.detail || 'The order could not be updated. Nothing was changed.')
     }
     await state.load()
     setBusy(false)
@@ -169,7 +165,6 @@ function PurchaseRequests({ state }) {
 
   return (
     <>
-      {notice && !open ? <Pressable onPress={() => setNotice(null)}><Notice tone={notice.tone} text={notice.text} /></Pressable> : null}
       {state.requests.length === 0 ? (
         <View style={styles.empty}>
           <PackageOpen size={30} color={COLORS.slate[300]} />
@@ -180,7 +175,7 @@ function PurchaseRequests({ state }) {
         const pending = request.status === 'PENDING'
         return (
           <View key={request.code} style={[styles.card, pending ? styles.cardPending : null]}>
-            <Pressable onPress={() => { setNotice(null); setOpenCode(request.code) }} accessibilityRole="button" accessibilityLabel="View Request">
+            <Pressable onPress={() => setOpenCode(request.code)} accessibilityRole="button" accessibilityLabel="View Request">
               <View style={styles.cardTop}>
                 <BuyerAvatar order={request} />
                 <View style={{ flex: 1, minWidth: 0 }}>
@@ -230,9 +225,8 @@ function PurchaseRequests({ state }) {
         order={open}
         title={open ? `Purchase request ${open.code.slice(0, 8).toUpperCase()}` : ''}
         money={fmt}
-        onClose={() => { setOpenCode(null); setNotice(null) }}
+        onClose={() => setOpenCode(null)}
       >
-        {notice ? <View style={{ marginTop: 12 }}><Notice tone={notice.tone} text={notice.text} /></View> : null}
         {open ? decision(open) : null}
       </OrderSheet>
     </>
@@ -283,7 +277,6 @@ function ClientRequests({ state }) {
   return (
     <>
       <CountTabs tabs={tabs} active={tab} onChange={setTab} />
-      {actions.message ? <Notice tone={actions.message.tone} text={actions.message.text} /> : null}
       {visible.length === 0 ? (
         <View style={styles.empty}><Text style={styles.emptyText}>No pending requests here right now.</Text></View>
       ) : visible.map((request) => {

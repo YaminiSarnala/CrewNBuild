@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { View, Text } from 'react-native'
 import Dialog, { DialogButton, DialogRow } from '../../components/Dialog'
-import { BudgetInWords, FormNotice, TextField } from '../../components/form'
+import { BudgetInWords, TextField } from '../../components/form'
+import { toast } from '../../components/Toast'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { formatMoney } from '../../utils/countryConfig'
 import { formatDateTime } from '../../utils/formatters'
@@ -53,30 +54,32 @@ export function NegotiateDialog({ visible, quotation, builderName, budget, count
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
+  // The counter amount's problem, shown under (and highlighting) the field.
+  const [amountError, setAmountError] = useState('')
   const money = (value) => formatMoney(value, country)
 
   useEffect(() => {
     if (visible) {
       setAmount('')
       setNote('')
-      setMessage('')
+      setAmountError('')
     }
   }, [visible])
 
   const submit = async () => {
     const value = Number(amount)
     if (amount === '' || !Number.isFinite(value) || value <= 0) {
-      setMessage(t('award.form.invalidAmount'))
+      setAmountError(t('award.form.invalidAmount'))
+      toast.error(t('award.form.invalidAmount'))
       return
     }
     setBusy(true)
-    setMessage('')
+    setAmountError('')
     try {
       await onSubmit(value, note.trim())
       onClose()
     } catch (error) {
-      setMessage(awardErrorText(error, t('award.error')))
+      toast.error(awardErrorText(error, t('award.error')))
     } finally {
       setBusy(false)
     }
@@ -104,15 +107,15 @@ export function NegotiateDialog({ visible, quotation, builderName, budget, count
         containerStyle={{ marginTop: 12, marginBottom: 4 }}
         label={t('award.negotiateModal.yourCounter')}
         value={amount}
-        onChangeText={(value) => setAmount(amountText(value))}
+        onChangeText={(value) => { setAmount(amountText(value)); setAmountError('') }}
         keyboardType="decimal-pad"
         autoFocus
+        error={amountError}
       />
       {Number(amount) > 0 ? <Text style={[styles.text, { fontSize: 12 }]}>{money(amount)}</Text> : null}
       <BudgetInWords value={amount} country={country} style={{ marginTop: 0 }} />
       <TextField label={t('award.form.reason')} value={note} onChangeText={setNote} multiline maxLength={1000} style={{ minHeight: 64 }} />
       <Text style={[styles.text2, { fontSize: 12, lineHeight: 17 }]}>{t('award.negotiateModal.body')}</Text>
-      <FormNotice message={message} tone="error" style={{ marginTop: 10 }} />
     </Dialog>
   )
 }
@@ -121,12 +124,13 @@ export default function AwardPanel({ projectId, requestId = null, onChanged }) {
   const { t, td } = useLanguage()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState(null)
   const [showCounter, setShowCounter] = useState(false)
   const [counterAmount, setCounterAmount] = useState('')
   const [counterNote, setCounterNote] = useState('')
+  // The counter amount's problem, shown under (and highlighting) the field.
+  const [counterError, setCounterError] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -167,7 +171,6 @@ export default function AwardPanel({ projectId, requestId = null, onChanged }) {
 
   const run = async (action) => {
     setBusy(true)
-    setMessage('')
     try {
       await action()
       setDialog(null)
@@ -177,7 +180,7 @@ export default function AwardPanel({ projectId, requestId = null, onChanged }) {
       await load()
       onChanged?.()
     } catch (error) {
-      setMessage(awardErrorText(error, t('award.error')))
+      toast.error(awardErrorText(error, t('award.error')))
       // A changed amount or state: show the current one.
       if (error?.response?.status === 409) await load()
     } finally {
@@ -188,9 +191,11 @@ export default function AwardPanel({ projectId, requestId = null, onChanged }) {
   const submitCounter = () => {
     const amount = Number(counterAmount)
     if (!Number.isFinite(amount) || amount <= 0) {
-      setMessage(t('award.form.invalidAmount'))
+      setCounterError(t('award.form.invalidAmount'))
+      toast.error(t('award.form.invalidAmount'))
       return
     }
+    setCounterError('')
     run(() => submitAwardOffer(award.id, amount, counterNote.trim()))
   }
 
@@ -359,19 +364,18 @@ export default function AwardPanel({ projectId, requestId = null, onChanged }) {
             containerStyle={{ marginTop: 10, marginBottom: 4 }}
             label={t('award.form.proposedAmount')}
             value={counterAmount}
-            onChangeText={(value) => setCounterAmount(amountText(value))}
+            onChangeText={(value) => { setCounterAmount(amountText(value)); setCounterError('') }}
             keyboardType="decimal-pad"
+            error={counterError}
           />
           {Number(counterAmount) > 0 ? <Text style={[styles.text19, { fontSize: 12 }]}>{money(counterAmount)}</Text> : null}
           <TextField label={t('award.form.reason')} value={counterNote} onChangeText={setCounterNote} multiline maxLength={1000} style={{ minHeight: 60 }} />
           <View style={[styles.view13, { gap: 8 }]}>
             <DialogButton label={t('award.form.submit')} onPress={submitCounter} disabled={busy} />
-            <DialogButton look="secondary" label={t('dash.common.cancel')} onPress={() => setShowCounter(false)} disabled={busy} />
+            <DialogButton look="secondary" label={t('dash.common.cancel')} onPress={() => { setShowCounter(false); setCounterError('') }} disabled={busy} />
           </View>
         </View>
       ) : null}
-
-      <FormNotice message={message} tone="error" style={{ marginTop: 10 }} />
 
       <View style={styles.view}>
         <Text style={[styles.text4, { fontSize: 10.5 }]}>{t('award.history')}</Text>

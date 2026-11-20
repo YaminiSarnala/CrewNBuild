@@ -7,7 +7,7 @@
 //                        components/dashboard/requestProfileDashboard)
 // Contact details are shown only when the server says the relationship
 // allows it (can_view_contact); otherwise they read as locked.
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { View, Text, Pressable, ScrollView, Modal, Linking } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image'
@@ -26,6 +26,7 @@ import { formatNumber } from '../../../utils/formatters'
 import { COLORS } from '../../../theme/tokens'
 import { createStyles } from '../../../theme/createStyles'
 import SheetHeader from '../SheetHeader'
+import { ToastHost, toast } from '../../../components/Toast'
 
 export const REQUEST_STATUS_KEYS = {
   pending: 'ui.status.pending',
@@ -75,19 +76,12 @@ export const clientRequestKey = (client) => `${client.type}-${client.user_id}-${
 export function useClientRequestActions(reload) {
   const { t, td } = useLanguage()
   const { requireCompleteProfile } = useProfileGate()
-  const [message, setMessage] = useState(null)
   const [sendingId, setSendingId] = useState(null)
   const [busyId, setBusyId] = useState(null)
   const [sentKeys, setSentKeys] = useState({})
-  const timer = useRef(null)
 
-  // A message clears itself after 4 s, as on the web.
-  const say = useCallback((tone, text) => {
-    clearTimeout(timer.current)
-    setMessage({ tone, text })
-    timer.current = setTimeout(() => setMessage(null), 4000)
-  }, [])
-  useEffect(() => () => clearTimeout(timer.current), [])
+  // Each result shows as a toast at the bottom.
+  const say = (tone, text) => toast.show(text, tone)
 
   async function send(client) {
     if (requireCompleteProfile(() => send(client))) return
@@ -129,7 +123,7 @@ export function useClientRequestActions(reload) {
   // Taken back, it stays in the list as Withdrawn.
   const withdraw = (id) => run(id, withdrawProjectRequest, 'dash.msg.requestWithdrawn', 'dash.err.withdrawRequest')
 
-  return { message, setMessage, send, accept, reject, withdraw, sendingId, busyId, sentKeys }
+  return { send, accept, reject, withdraw, sendingId, busyId, sentKeys }
 }
 
 /** A request's status as a dot and words, "· Sent" on the supplier's own. */
@@ -171,6 +165,7 @@ function ProfileShell({ eyebrow, title, subtitle, onClose, header, children }) {
         </View>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30, gap: 12 }}>{children}</ScrollView>
       </View>
+      <ToastHost />
     </Modal>
   )
 }

@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { CalendarDays, ShoppingCart, Truck, Undo2 } from 'lucide-react-native'
 import DashboardShell, { PanelState } from '../../components/DashboardShell'
 import { ConfirmDialog, Notice } from '../../components/builder/BuilderUi'
+import { toast } from '../../components/Toast'
 import { completeEquipmentRequest, equipmentErrorMessage, fetchEquipmentUsage } from '../../api/equipment'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -41,7 +42,6 @@ export default function SupplierAssignmentsScreen({ route }) {
   const [openId, setOpenId] = useState(null)
   const [confirming, setConfirming] = useState(null)
   const [busyId, setBusyId] = useState(null)
-  const [notice, setNotice] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
 
   // A dashboard figure can open a given tab.
@@ -69,13 +69,12 @@ export default function SupplierAssignmentsScreen({ route }) {
   const complete = async (request) => {
     const rent = request.request_kind === 'RENT'
     setBusyId(request.id)
-    setNotice(null)
     try {
       await completeEquipmentRequest(request.id)
-      setNotice({ tone: 'success', text: t(rent ? 'equipment.msg.returned' : 'equipment.msg.delivered', { name: request.item_name }) })
+      toast.success(t(rent ? 'equipment.msg.returned' : 'equipment.msg.delivered', { name: request.item_name }))
       await reload()
     } catch (failure) {
-      setNotice({ tone: 'error', text: equipmentErrorMessage(failure, t('equipment.error.complete')) })
+      toast.error(equipmentErrorMessage(failure, t('equipment.error.complete')))
     } finally {
       setBusyId(null)
       setConfirming(null)
@@ -89,7 +88,6 @@ export default function SupplierAssignmentsScreen({ route }) {
       <View style={{ paddingHorizontal: gutter, gap: 12 }}>
         <Text style={styles.title}>{t('labor.nav.assignments')}</Text>
         <CountTabs tabs={tabs} active={tab} onChange={(id) => { setTab(id); setOpenId(null) }} />
-        {notice?.text ? <Pressable onPress={() => setNotice(null)}><Notice tone={notice.tone} text={notice.text} /></Pressable> : null}
 
         {requestsStatus === 'idle' ? (
           <PanelState loading skeleton="cards" />
@@ -137,7 +135,7 @@ export default function SupplierAssignmentsScreen({ route }) {
                   ) : null}
                   {request.status === 'ACCEPTED' ? (
                     <Pressable
-                      onPress={() => { setNotice(null); setConfirming(request) }}
+                      onPress={() => setConfirming(request)}
                       disabled={busy}
                       style={[styles.button, styles.primary, busy ? { opacity: 0.6 } : null]}
                       accessibilityRole="button"

@@ -9,7 +9,8 @@ import { useMemo, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { CheckCircle2, ClipboardList, HardHat, XCircle } from 'lucide-react-native'
 import { PanelState } from '../../../components/DashboardShell'
-import { ActionButton, LabeledInput, Notice, SheetModal } from '../../../components/builder/BuilderUi'
+import { ActionButton, LabeledInput, SheetModal } from '../../../components/builder/BuilderUi'
+import { toast } from '../../../components/Toast'
 import { acceptLabourRequest, labourErrorMessage, rejectLabourRequest } from '../../../api/labour'
 import { useLanguage } from '../../../i18n/LanguageContext'
 import { COLORS } from '../../../theme/tokens'
@@ -29,7 +30,6 @@ export default function LabourRequests({ compact = false }) {
   const [filter, setFilter] = useState('PENDING')
   const [accepting, setAccepting] = useState(null)
   const [rejecting, setRejecting] = useState(null)
-  const [notice, setNotice] = useState(null)
   const serviceByTrade = useMemo(() => Object.fromEntries(services.map((service) => [service.trade, service])), [services])
 
   const visible = compact
@@ -44,7 +44,7 @@ export default function LabourRequests({ compact = false }) {
   const finish = (result) => {
     setAccepting(null)
     setRejecting(null)
-    setNotice(result)
+    if (result?.text) toast.show(result.text, result.tone || 'success')
     reload()
   }
 
@@ -61,7 +61,6 @@ export default function LabourRequests({ compact = false }) {
   return (
     <View style={{ gap: 12 }}>
       {!compact ? <CountTabs tabs={tabs} active={filter} onChange={setFilter} /> : null}
-      {notice?.text ? <Pressable onPress={() => setNotice(null)}><Notice tone={notice.tone} text={notice.text} /></Pressable> : null}
       {visible.length === 0 ? (
         <View style={styles.empty}>
           <ClipboardList size={30} color={COLORS.slate[300]} />
@@ -97,11 +96,11 @@ export default function LabourRequests({ compact = false }) {
                   {!request.supplier_assignment_active ? ` · ${t('labor.requests.unassigned')}` : ''}
                 </Text>
                 <View style={styles.actions}>
-                  <Pressable onPress={() => { setNotice(null); setRejecting(request) }} style={[styles.button, styles.reject]} accessibilityRole="button">
+                  <Pressable onPress={() => setRejecting(request)} style={[styles.button, styles.reject]} accessibilityRole="button">
                     <XCircle size={15} color={ink('#be123c')} />
                     <Text style={[styles.buttonText, styles.rejectText]}>{t('labor.action.reject')}</Text>
                   </Pressable>
-                  <Pressable onPress={() => { setNotice(null); setAccepting(request) }} style={[styles.button, styles.accept]} accessibilityRole="button">
+                  <Pressable onPress={() => setAccepting(request)} style={[styles.button, styles.accept]} accessibilityRole="button">
                     <CheckCircle2 size={15} color="#ffffff" />
                     <Text style={[styles.buttonText, { color: '#ffffff' }]}>{t('labor.action.accept')}</Text>
                   </Pressable>
@@ -125,22 +124,27 @@ function AcceptSheet({ request, service, onClose, onDone }) {
   const [workers, setWorkers] = useState(maxAllocatable > 0 ? String(maxAllocatable) : '')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+  const [workersError, setWorkersError] = useState('')
   const project = td(request.project_title) || t('labor.theProject')
   const value = Number(workers)
   const partial = Number.isInteger(value) && value >= 1 && value < required
 
   const accept = async () => {
-    if (!Number.isInteger(value) || value < 1) { setError(t('labor.error.allocateOne')); return }
-    if (value > required) { setError(t('labor.error.allocateMax', { count: required })); return }
-    if (value > available) { setError(t('labor.error.allocateAvailable', { count: available, trade: request.trade })); return }
+    const problem = !Number.isInteger(value) || value < 1 ? t('labor.error.allocateOne')
+      : value > required ? t('labor.error.allocateMax', { count: required })
+        : value > available ? t('labor.error.allocateAvailable', { count: available, trade: request.trade })
+          : ''
+    if (problem) {
+      setWorkersError(problem)
+      toast.error(problem)
+      return
+    }
     setBusy(true)
-    setError('')
     try {
       await acceptLabourRequest(request.id, { workers_allocated: value, decision_note: note.trim() || null })
       onDone({ tone: 'success', text: t('labor.msg.accepted', { count: value, trade: request.trade, project }) })
     } catch (failure) {
-      setError(labourErrorMessage(failure, t('labor.error.accept')))
+      toast.error(labourErrorMessage(failure, t('labor.error.accept')))
       setBusy(false)
     }
   }
@@ -163,8 +167,9 @@ function AcceptSheet({ request, service, onClose, onDone }) {
         <NumberField
           label={t('labor.field.workersToAllocate')}
           value={workers}
-          onChangeText={(text) => { setWorkers(text); setError('') }}
+          onChangeText={(text) => { setWorkers(text); setWorkersError('') }}
           decimal={false}
+          error={workersError}
         />
       </View>
       {partial ? (
@@ -175,7 +180,6 @@ function AcceptSheet({ request, service, onClose, onDone }) {
       <View style={{ marginTop: 12 }}>
         <LabeledInput label={t('labor.field.noteOptional')} value={note} onChangeText={setNote} maxLength={500} />
       </View>
-      {error ? <View style={{ marginTop: 12 }}><Notice tone="error" text={error} /></View> : null}
     </SheetModal>
   )
 }
@@ -184,16 +188,14 @@ function RejectSheet({ request, onClose, onDone }) {
   const { t, td } = useLanguage()
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
 
   const reject = async () => {
     setBusy(true)
-    setError('')
     try {
       await rejectLabourRequest(request.id, note.trim())
       onDone({ tone: 'success', text: t('labor.msg.rejected', { name: request.engineer_name || t('labor.theSiteEngineer') }) })
     } catch (failure) {
-      setError(labourErrorMessage(failure, t('labor.error.reject')))
+      toast.error(labourErrorMessage(failure, t('labor.error.reject')))
       setBusy(false)
     }
   }
@@ -212,7 +214,6 @@ function RejectSheet({ request, onClose, onDone }) {
       )}
     >
       <LabeledInput label={t('labor.field.reasonOptional')} value={note} onChangeText={setNote} multiline maxLength={500} />
-      {error ? <View style={{ marginTop: 12 }}><Notice tone="error" text={error} /></View> : null}
     </SheetModal>
   )
 }

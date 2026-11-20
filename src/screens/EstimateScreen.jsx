@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Pressable, KeyboardAvoidingView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeft, Calculator } from 'lucide-react-native'
-import { Field, ErrorBanner } from '../components/Field'
+import { Field } from '../components/Field'
+import { toast } from '../components/Toast'
 import { PrimaryButton, Eyebrow } from '../components/ui'
 import { useLanguage } from '../i18n/LanguageContext'
 import { calculatePublicEstimate } from '../api/estimates'
@@ -22,18 +23,24 @@ export default function EstimateScreen({ navigation }) {
   const [buildingType, setBuildingType] = useState('RESIDENTIAL')
   const [finishing, setFinishing] = useState('STANDARD')
   const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
   async function calculate() {
     const areaValue = Number(area)
-    if (!areaValue || areaValue <= 0) return setError(t('site.estimate.errArea'))
     const floorValue = Number(floors)
-    if (!floorValue || floorValue <= 0) return setError(t('site.estimate.errFloor'))
+    const nextErrors = {}
+    if (!areaValue || areaValue <= 0) nextErrors.area = t('site.estimate.errArea')
+    if (!floorValue || floorValue <= 0) nextErrors.floors = t('site.estimate.errFloor')
+    setErrors(nextErrors)
+    const failing = Object.values(nextErrors)
+    if (failing.length) {
+      toast.error(failing.length === 1 ? failing[0] : t('cp.val.completeFields'))
+      return
+    }
 
     try {
       setLoading(true)
-      setError('')
       const payload = {
         land_area: areaValue,
         floors: floorValue,
@@ -44,7 +51,8 @@ export default function EstimateScreen({ navigation }) {
       }
       setResult(await calculatePublicEstimate(payload))
     } catch (err) {
-      setError(err?.response?.data?.detail || t('site.estimate.errCalc'))
+      const detail = err?.response?.data?.detail
+      toast.error((typeof detail === 'string' && detail) || t('site.estimate.errCalc'))
     } finally {
       setLoading(false)
     }
@@ -97,12 +105,11 @@ export default function EstimateScreen({ navigation }) {
           </Text>
 
           <View style={[styles.view5, SHADOW.card]}>
-            <ErrorBanner message={error} />
-
             <Field
               label={t('site.estimate.area')}
               value={area}
-              onChangeText={setArea}
+              onChangeText={(value) => { setArea(value); setErrors((current) => ({ ...current, area: '' })) }}
+              error={errors.area}
               placeholder={t('site.estimate.areaPh')}
               keyboardType="numeric"
             />
@@ -113,7 +120,8 @@ export default function EstimateScreen({ navigation }) {
             <Field
               label={t('site.estimate.floors')}
               value={floors}
-              onChangeText={setFloors}
+              onChangeText={(value) => { setFloors(value); setErrors((current) => ({ ...current, floors: '' })) }}
+              error={errors.floors}
               placeholder="1"
               keyboardType="numeric"
             />
