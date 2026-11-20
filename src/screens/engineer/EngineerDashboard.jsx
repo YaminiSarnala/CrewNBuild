@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 // The Site Engineer's Dashboard tab — port of the web pages/engineer/
 // EngineerDashboard.jsx 'dashboard' section and EngineerDashboardOverview.jsx:
 //   the cream welcome banner with the project picker and today's date,
@@ -25,16 +24,6 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { useNotifications } from '../../notifications/NotificationsContext'
 import { useLiveRefresh } from '../../hooks/useLiveRefresh'
 import { fetchEngineerProjects, fetchEngineerTeam } from '../../api/engineers'
-=======
-// Port of the web src/pages/engineer/EngineerDashboard.jsx.
-// Wired to: GET /engineers/my-projects, GET /engineers/opportunities,
-// GET /material-requests/mine, POST /engineers/opportunities/{id}/apply.
-import { useState, useCallback } from 'react'
-import { View, Text, Pressable, Alert } from 'react-native'
-import { HardHat, Send, ClipboardList } from 'lucide-react-native'
-import DashboardShell, { Panel, PanelState, MetricRow, useAsyncData } from '../../components/DashboardShell'
-import { fetchEngineerProjects, fetchEngineerOpportunities, applyEngineerOpportunity } from '../../api/engineers'
->>>>>>> Stashed changes
 import { fetchMyMaterialRequests } from '../../api/materialRequests'
 import { fetchCostToolSummary } from '../../api/costTool'
 import { formatMoney } from '../../utils/countryConfig'
@@ -186,12 +175,9 @@ const TONES = {
 }
 
 export default function EngineerDashboard({ navigation }) {
-<<<<<<< Updated upstream
   const { t, td } = useLanguage()
   const user = useSelector((state) => state.auth.user)
   const { notifications } = useNotifications()
-=======
->>>>>>> Stashed changes
   const [refreshing, setRefreshing] = useState(false)
   const projects = useAsyncData(fetchEngineerProjects, [])
   const team = useAsyncData(fetchEngineerTeam, [])
@@ -302,7 +288,6 @@ export default function EngineerDashboard({ navigation }) {
   )
 
   return (
-<<<<<<< Updated upstream
     <DashboardShell refreshing={refreshing} onRefresh={onRefresh} onOpenNotifications={() => navigation.navigate('Notifications')}>
       <Section>
         <WelcomeBanner
@@ -311,20 +296,6 @@ export default function EngineerDashboard({ navigation }) {
           title={t('dash.engineer.hero.welcome', { name: td(user?.name || '') || t('role.engineer') })}
           subtitle={t('dash.engineer.hero.sub')}
           aside={heroAside}
-=======
-    <>
-      <DashboardShell
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        onOpenNotifications={() => navigation.navigate('Notifications')}
-      >
-        <MetricRow
-          items={[
-            { label: 'My sites', value: String(projectList.length) },
-            { label: 'Openings', value: String(opportunityList.length) },
-            { label: 'Requests', value: String(materialList.length) },
-          ]}
->>>>>>> Stashed changes
         />
       </Section>
 
@@ -473,17 +444,10 @@ export default function EngineerDashboard({ navigation }) {
                 <Text style={styles.ed72} numberOfLines={1}>{item.cost > 0 ? money(item.cost, country) : '—'}</Text>
               </View>
             ))}
-<<<<<<< Updated upstream
           </View>
         ) : <Empty>{ready ? t('dash.engineer.analytics.noMaterialRecords') : '—'}</Empty>}
       </Panel>
     </DashboardShell>
-=======
-          </PanelState>
-        </Panel>
-      </DashboardShell>
-    </>
->>>>>>> Stashed changes
   )
 }
 

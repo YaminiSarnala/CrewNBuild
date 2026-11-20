@@ -49,7 +49,6 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
       ],
-      "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {

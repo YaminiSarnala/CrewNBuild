@@ -5,13 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-<<<<<<< Updated upstream
 import { Bell, LogOut, Globe, MessageCircle, Moon, Sun } from 'lucide-react-native'
-import WeatherPill from './weather/WeatherPill'
 import { useTheme } from '../theme/ThemeContext'
-=======
-import { Bell, LogOut, MessageCircle } from 'lucide-react-native'
->>>>>>> Stashed changes
 import { useNavigation } from '@react-navigation/native'
 import { useNotifications } from '../notifications/NotificationsContext'
 import { useDispatch, useSelector } from 'react-redux'
@@ -226,26 +221,10 @@ export default function DashboardShell({ children, refreshing, onRefresh, onOpen
                 {roleLabel}
               </Text>
             </View>
-<<<<<<< Updated upstream
-                        {/* The web's top-bar Weather indicator (Builder and Site Engineer dashboards). */}
-            {user?.role === 'CONTRACTOR' || user?.role === 'ENGINEER' ? <WeatherPill /> : null}
-            {/* Light / dark, as the web's header toggle: the icon shows the theme you switch to. */}
-            <Pressable
-              onPress={toggleTheme}
-              accessibilityRole="button"
-              accessibilityLabel={isDark ? t('ui.shared.switchToLightTheme') : t('ui.shared.switchToDarkTheme')}
-              style={styles.pressable}
-            >
-              {isDark ? <Sun size={19} color="#c3dccd" /> : <Moon size={19} color="#c3dccd" />}
-            </Pressable>
-            <Pressable onPress={onOpenLanguage || (() => setLanguageOpen(true))} accessibilityLabel={t('language.label')} style={styles.pressable}>
-              <Globe size={19} color="#c3dccd" />
-            </Pressable>
-=======
+              
             {/* Weather, messages, notifications and sign out only: Language and
                 Dark Mode are in each role's profile (PreferenceRows). */}
             <WeatherButton />
->>>>>>> Stashed changes
             <Pressable onPress={() => navigation.navigate('Messages')} accessibilityLabel={t('dash.common.messages')} style={styles.pressable}>
               <MessageCircle size={19} color="#c3dccd" />
               <CountBadge count={unreadMessages} />

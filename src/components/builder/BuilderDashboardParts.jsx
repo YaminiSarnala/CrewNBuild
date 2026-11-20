@@ -126,42 +126,80 @@ export function HeroConstructionScene({ width = '100%', height = 70 }) {
  * Like the web it stays cream in the dark theme, so its text uses fixed
  * colours (#083E2B / #3d5246), not the theme utilities that turn light.
  */
-<<<<<<< Updated upstream
-export function WelcomeBanner({ name, subtitle, imagePath, title, role = 'CONTRACTOR', aside = null }) {
-
-=======
-export function WelcomeBanner({ name, subtitle, imagePath, title, role = 'CONTRACTOR' }) {
->>>>>>> Stashed changes
+export function WelcomeBanner({
+  name,
+  subtitle,
+  imagePath,
+  title,
+  role = 'CONTRACTOR',
+  aside = null,
+}) {
   return (
     <Gradient
       colors={['#F3F4F6', '#EEF4F0', '#DFF0E6']}
       locations={[0, 0.55, 1]}
       start={{ x: 0, y: 0.3 }}
       end={{ x: 1, y: 0.7 }}
-      style={{ borderRadius: 20, borderWidth: 1, borderColor: '#083E2B', overflow: 'hidden', padding: 14 }}
+      style={{
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#083E2B',
+        overflow: 'hidden',
+        padding: 14,
+      }}
     >
       <View style={styles.view}>
-<<<<<<< Updated upstream
-        <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(18,107,69,0.4)' }}>
-=======
-        <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(244,183,64,0.5)' }}>
->>>>>>> Stashed changes
-          <Image source={avatarFromPath(imagePath, role)} style={{ width: 36, height: 36 }} contentFit="cover" />
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            overflow: 'hidden',
+            borderWidth: 2,
+            borderColor: 'rgba(18,107,69,0.4)',
+          }}
+        >
+          <Image
+            source={avatarFromPath(imagePath, role)}
+            style={{ width: 36, height: 36 }}
+            contentFit="cover"
+          />
         </View>
-                <View style={styles.view2}>
-          <Text style={[styles.text, { color: '#083E2B', letterSpacing: -0.3 }]} numberOfLines={2}>{title || name}</Text>
-          <Gradient colors={['#2fa26e', '#126b45']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ marginTop: 4, height: 4, width: 26, borderRadius: 2 }} />
-          <Text style={[styles.text2, { color: '#3d5246' }]}>{subtitle}</Text>
+
+        <View style={styles.view2}>
+          <Text
+            style={[styles.text, { color: '#083E2B', letterSpacing: -0.3 }]}
+            numberOfLines={2}
+          >
+            {title || name}
+          </Text>
+
+          <Gradient
+            colors={['#2fa26e', '#126b45']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              marginTop: 4,
+              height: 4,
+              width: 26,
+              borderRadius: 2,
+            }}
+          />
+
+          <Text style={[styles.text2, { color: '#3d5246' }]}>
+            {subtitle}
+          </Text>
         </View>
       </View>
-       {aside ? <View style={{ marginTop: 7 }}>{aside}</View> : null}
+
+      {aside ? <View style={{ marginTop: 7 }}>{aside}</View> : null}
+
       <View style={styles.view3}>
         <HeroConstructionScene height={64} />
       </View>
     </Gradient>
   )
 }
-
 // Card themes of the web's four figure cards (blue / purple / green / orange).
 const STAT_THEMES = {
   blue: { card: '#eff6ff', border: '#bfdbfe', chip: '#dbeafe', icon: '#1d4ed8', arrow: '#dbeafe' },

@@ -52,7 +52,6 @@ import { SupplierProvider } from '../screens/supplier/SupplierContext'
 import { supplierCategoryMissing } from '../screens/supplier/supplierKinds'
 import { OwnerTabs, ContractorTabs, EngineerTabs } from './RoleTabs'
 import NotificationsScreen from '../screens/shared/NotificationsScreen'
-import WeatherScreen from '../screens/shared/WeatherScreen'
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'
 import LiveCameraScreen from '../screens/engineer/LiveCameraScreen'
 import MessagesScreen from '../screens/shared/MessagesScreen'
@@ -191,7 +190,6 @@ export default function RootNavigator() {
             <Stack.Screen name="OwnerProject" component={OwnerProjectScreen} />
             <Stack.Screen name="BuilderProfile" component={BuilderProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
-                        <Stack.Screen name="Weather" component={WeatherScreen} />
             <Stack.Screen name="LiveCamera" component={LiveCameraScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
             {/* Site Weather, from the header weather button on every dashboard. */}
